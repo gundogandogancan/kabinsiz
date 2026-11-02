@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "trace_id": "t-1234",
+  "state": "DEGRADED",
+  "value": "2D_CARD",
+  "confidence": "PARTIAL",
+  "reasons": ["Cihaz yoğun"],
+  "limitations": ["3D önizleme yok"],
+  "fault": "RESOURCE_DENIED",
+  "evidence_ids": []
+}

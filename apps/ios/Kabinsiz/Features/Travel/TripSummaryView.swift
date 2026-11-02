@@ -45,6 +45,25 @@ struct TripSummaryView: View {
                     }
                     .accessibilityIdentifier("simulateWeather")
                 }
+                if !trip.isSyntheticDemo {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Button {
+                            Task { await model.fetchLiveWeather(tripID: tripID) }
+                        } label: {
+                            Label("Apple Weather'dan tahmin al", systemImage: "cloud.sun").frame(maxWidth: .infinity, minHeight: 44)
+                        }
+                        .disabled(CityDirectory.cityCenter(for: trip.destination) == nil || model.weatherInFlight.contains(tripID))
+                        .accessibilityIdentifier("fetchLiveWeather")
+                        Text("Yalnız şehir merkezinin konumu Apple Weather'a gönderilir. Senin konumun, dolabın ve ölçülerin gönderilmez.")
+                            .font(.caption).foregroundStyle(Token.textSecondary)
+                        if let status = model.weatherStatus[tripID] {
+                            Text(status).font(.caption).accessibilityIdentifier("weatherStatus")
+                        }
+                    }
+                }
+                if model.plans[tripID]?.slots.contains(where: { $0.weather.provider == "APPLE_WEATHER" }) == true {
+                    WeatherAttributionView()
+                }
                 Button("Seyahati sil", role: .destructive) { confirmDelete = true }
                     .frame(maxWidth: .infinity, minHeight: 44)
                     .accessibilityIdentifier("deleteTrip")

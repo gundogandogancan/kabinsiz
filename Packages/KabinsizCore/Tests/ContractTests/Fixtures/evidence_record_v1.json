@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "evidence_id": "ev-0001",
+  "fact_key": "chest_width_cm",
+  "subject_product_id": "KB-JKT-01",
+  "variant_id": "KB-JKT-01-NVY-M",
+  "fact_value": "102",
+  "unit": "cm",
+  "source_type": "SYNTHETIC_FIXTURE",
+  "source_uri_or_licensed_dataset_id": "kabinsiz-synthetic-catalog-v1",
+  "license_id": null,
+  "collected_at": "2026-11-03T09:00:00Z",
+  "effective_from": null,
+  "expires_at": null,
+  "region": "TR",
+  "model_or_parser_version": null,
+  "confidence_kind": "HEURISTIC",
+  "verification_method": "NONE",
+  "user_override": false,
+  "revocation_tombstone": false
+}

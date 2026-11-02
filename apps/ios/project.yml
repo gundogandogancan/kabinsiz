@@ -9,7 +9,7 @@ settings:
     SWIFT_VERSION: "6.0"
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
-    DEVELOPMENT_TEAM: ""
+    DEVELOPMENT_TEAM: 47XQMQZLF6
     CODE_SIGN_STYLE: Automatic
 packages:
   KabinsizCore:
@@ -33,6 +33,9 @@ targets:
         product: FitPassport
       - package: KabinsizCore
         product: ShoppingCopilot
+      - package: KabinsizCore
+        product: SystemContracts
+      - sdk: WeatherKit.framework
     info:
       path: Kabinsiz/Info.plist
       properties:
@@ -44,6 +47,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.kabinsiz.ios
+        CODE_SIGN_ENTITLEMENTS: Kabinsiz/Kabinsiz.entitlements
         TARGETED_DEVICE_FAMILY: "1"
         ASSETCATALOG_COMPILER_APPICON_NAME: ""
         ENABLE_PREVIEWS: YES

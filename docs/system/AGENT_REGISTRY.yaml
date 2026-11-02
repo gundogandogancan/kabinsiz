@@ -1,0 +1,31 @@
+# Runtime specialist registry (§104). Source of truth is ModuleRegistry.p0Descriptors in
+# Packages/KabinsizCore/Sources/SystemContracts/ModuleRegistry.swift; ContractTests checks this file for drift.
+# Any OCT id not listed here is unregistered and denied every capability.
+registry_version: 1
+modules:
+  - id: OCT-02
+    capabilities: [vault.delete]
+  - id: OCT-05
+    capabilities: [photos.readUserSelected]
+  - id: OCT-07
+    capabilities: [body.readExact, body.writeManual]
+  - id: OCT-08
+    capabilities: [avatar.readRenderSnapshot]
+  - id: OCT-09
+    capabilities: [catalog.readLicensed]
+  - id: OCT-12
+    capabilities: [body.readExact, catalog.readLicensed]
+  - id: OCT-14
+    capabilities: [wardrobe.read]
+  - id: OCT-16
+    capabilities: [weather.fetch]
+  - id: OCT-18
+    capabilities: [wardrobe.read, wardrobe.write]
+  - id: OCT-19
+    capabilities: [travel.readPrivate, wardrobe.read]
+  - id: OCT-20
+    capabilities: [learning.updateLocal]
+  - id: OCT-23
+    capabilities: [catalog.readLicensed, network.productOnly]
+  - id: OCT-24
+    capabilities: [diagnostics.readRedacted]

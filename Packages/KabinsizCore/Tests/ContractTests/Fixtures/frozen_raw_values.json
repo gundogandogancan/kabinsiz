@@ -1,0 +1,6 @@
+{
+  "DataClassification": ["LOCAL_PRIVATE", "LOCAL_SENSITIVE", "PUBLIC_PRODUCT", "REDACTED_DIAGNOSTIC", "SYNTHETIC_FIXTURE"],
+  "Capability": ["avatar.readRenderSnapshot", "body.readExact", "body.writeManual", "catalog.readLicensed", "diagnostics.readRedacted", "learning.updateLocal", "model.activateSigned", "network.productOnly", "photos.readUserSelected", "retail.writeTenant", "travel.readPrivate", "vault.delete", "vault.export", "wardrobe.read", "wardrobe.write", "weather.fetch"],
+  "FaultCode": ["CANCELLED", "CAPABILITY_NOT_GRANTED", "DATA_RIGHTS_MISSING", "DUPLICATE_EVENT", "EGRESS_BLOCKED", "INVALID_TRANSITION", "MODULE_FAILED", "OFFLINE", "POLICY_DENIED", "RESOURCE_DENIED", "SCHEMA_INVALID", "SCHEMA_NEWER", "STALE_REVISION", "STORAGE_CORRUPTED", "TIMED_OUT", "UNKNOWN_CLASSIFICATION", "UNKNOWN_MODULE"],
+  "TaskState": ["AUTHORIZED", "BLOCKED_POLICY", "CANCELLED", "COMPLETED", "CREATED", "DEGRADED", "FAILED", "PARTIAL", "RUNNING", "SCHEDULED", "TIMED_OUT"]
+}

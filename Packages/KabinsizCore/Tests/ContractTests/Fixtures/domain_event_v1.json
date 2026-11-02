@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "event_id": "5B1F2E1A-7C3D-4E5F-9A0B-1C2D3E4F5A6B",
+  "event_type": "wardrobe.item.categorized",
+  "occurred_at_utc": "2026-11-03T10:15:30Z",
+  "trace_id": "t-9f8e7d",
+  "causation_id": null,
+  "source_module": "OCT-05",
+  "entity_kind": "wardrobe_item",
+  "entity_local_id": "item-0042",
+  "revision": 4,
+  "payload_classification": "LOCAL_PRIVATE",
+  "provenance": {"source_kind": "user_selected_photo", "model_version": "garment-v0", "confidence": 0.74},
+  "payload": {"category": "shirt", "needs_user_confirmation": true},
+  "ttl_seconds": null
+}

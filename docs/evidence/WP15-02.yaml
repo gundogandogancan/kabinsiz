@@ -1,0 +1,42 @@
+evidence_schema: 1
+work_package: WP15-02
+status: PASS   # macOS unit tests only; see blocked_reasons
+commit_sha: null   # filled by the commit that adds this file; see git log
+branch: main
+implementation_paths:
+  - Packages/KabinsizCore/Sources/SystemContracts/
+unit_test_command: "cd Packages/KabinsizCore && swift test"
+unit_test_exit_code: 0
+unit_test_count: 113   # all package tests after review fixes
+ui_test_command: "scripts/check.sh"
+ui_test_exit_code: 0
+hardware: "Apple M5 Mac, macOS 26.4; iPhone 17 simulator iOS 26.5 (SIMULATOR_ONLY)"
+benchmarks: []
+privacy_egress_capture: null   # static scan only
+security_threat_cases:
+  - V15-T-ORC-08 stale revision rejected
+  - V15-T-ORC-10 terminal state immutable
+  - V15-T-AGT-01 garment vision denied network
+  - V15-T-AGT-03 retail gateway denied private resources
+  - V15-T-AGT-04 unknown module default deny
+  - V15-T-AGT-05 no escalation, duplicate registration refused
+  - V15-T-AGT-06 (partial) verified envelope needs evidence ids
+mutation_checks:
+  - "revision guard <= changed to <: ORC-08 test failed as expected"
+  - "'waist' removed from forbidden egress fields: egress test failed as expected"
+visual_artifacts: []
+accessibility_checks: []
+independent_reviewer: "AG-12 subagent (same model family)"
+review_independence_level: INTERNAL_SELF_REVIEW
+review_findings: 13   # AG-12: 4 x P1, 9 x P2; all fixed, each with a counterexample test
+review_fixes:
+  - "P1 #1 weather coordinate now looked up from bundled table at request time; Destination stores none"
+  - "P1 #2 dates encoded with fractional seconds; 10.2/10.7 s round-trip test"
+  - "P1 #3 egress per-purpose allowlists, ASCII field names, DNS host check"
+  - "P1 #4 verified only on clean completion; IDs resolved via validate(citing:now:)"
+  - "P2 #5-#13 fixed: failure states, path traversal, classification in lists, per-type version key, strict keys, scan by full path + code patterns, in-flight guard, full §104 descriptor, stable set encoding"
+open_p0: []
+open_p1: []
+blocked_reasons:
+  - "REAL_DEVICE_BLOCKED: no iPhone connected"
+raw_artifact_index: null

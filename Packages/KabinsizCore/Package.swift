@@ -11,6 +11,7 @@ let package = Package(
         .library(name: "TravelEngine", targets: ["TravelEngine"]),
         .library(name: "FitPassport", targets: ["FitPassport"]),
         .library(name: "ShoppingCopilot", targets: ["ShoppingCopilot"]),
+        .library(name: "SystemContracts", targets: ["SystemContracts"]),
     ],
     targets: [
         .target(name: "DomainContracts"),
@@ -18,6 +19,8 @@ let package = Package(
         .target(name: "LocalStore", dependencies: ["DomainContracts"]),
         .target(name: "TravelEngine", dependencies: ["DomainContracts", "WardrobeDomain"]),
         .target(name: "FitPassport", dependencies: ["DomainContracts"]),
+        // v1.5 §133.3 shared contracts: events, work orders, registry, egress, evidence, budgets, faults.
+        .target(name: "SystemContracts", dependencies: ["DomainContracts"]),
         .target(
             name: "ShoppingCopilot",
             dependencies: ["DomainContracts", "WardrobeDomain", "FitPassport"],
@@ -26,6 +29,11 @@ let package = Package(
         .testTarget(
             name: "KabinsizCoreTests",
             dependencies: ["DomainContracts", "WardrobeDomain", "LocalStore", "TravelEngine", "FitPassport", "ShoppingCopilot"]
+        ),
+        .testTarget(
+            name: "ContractTests",
+            dependencies: ["SystemContracts", "DomainContracts"],
+            resources: [.copy("Fixtures")]
         ),
     ]
 )

@@ -113,7 +113,8 @@ public protocol WeatherProvider: Sendable {
     func snapshots(for destination: Destination, dates: [LocalDate]) async -> [WeatherSnapshot]
 }
 
-/// Default provider while WeatherKit is `BLOCKED_EXTERNAL`: every day is `NO_DATA`.
+/// Default provider for every plan: every day is `NO_DATA`. Live weather only arrives through an explicit
+/// user request in the app (egress register EG-001).
 public struct NoDataWeatherProvider: WeatherProvider {
     public let name = "NONE"
     public init() {}

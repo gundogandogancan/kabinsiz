@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "destination_host": "catalog.example-partner.test",
+  "method": "GET",
+  "endpoint_path": "/v1/products/resolve",
+  "classification": "PUBLIC_PRODUCT",
+  "purpose": "PRODUCT_LOOKUP",
+  "fields": ["gtin", "country", "locale"],
+  "consent_basis": "EXPLICIT_USER_ACTION",
+  "user_visible_effect": "Taradığın ürünün bilgisi getirilir",
+  "retention": "CACHE_TTL",
+  "requires_tls": true
+}

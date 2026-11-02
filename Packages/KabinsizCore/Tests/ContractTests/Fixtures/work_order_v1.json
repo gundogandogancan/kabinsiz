@@ -1,0 +1,18 @@
+{
+  "work_order_version": 1,
+  "id": "WP15-04-VAULT",
+  "requester": "DEV-01",
+  "assignee": "DEV-10",
+  "problem": "Protect private body data at rest",
+  "dependencies": ["WP15-02"],
+  "allowed_paths": ["Packages/KabinsizCore/Sources/Vault/**", "Packages/KabinsizCore/Tests/SecurityTests/**"],
+  "prohibited_paths": ["apps/ios/Kabinsiz/Features/**", ".env"],
+  "allowed_data_classes": ["SYNTHETIC_FIXTURE", "LOCAL_PRIVATE"],
+  "external_access": "forbidden",
+  "interfaces": ["KeyStore", "VaultCrypto", "VaultRecordV1"],
+  "deliverables": ["CODE", "UNIT_TEST", "THREAT_MODEL", "EVIDENCE"],
+  "acceptance_tests": ["V15-T-CRY-01", "V15-T-CRY-02"],
+  "quality_gate": "G-CITADEL",
+  "max_scope": "one testable vertical slice",
+  "status": "NOT_STARTED"
+}

@@ -116,7 +116,8 @@ final class AppModel {
     // MARK: Travel
 
     func weatherProvider(for trip: Trip) -> any WeatherProvider {
-        // WeatherKit is BLOCKED_EXTERNAL. Only the labelled demo trip gets synthetic weather.
+        // Planning never requests weather on its own. The labelled demo gets synthetic weather; real trips get
+        // live weather only through `fetchLiveWeather`, which the user triggers.
         trip.isSyntheticDemo ? DemoTrip.syntheticWeather(start: trip.dates[0]) : NoDataWeatherProvider()
     }
 
@@ -187,6 +188,36 @@ final class AppModel {
 
     func rejectReplan(tripID: String) { pendingReplans[tripID] = nil }
 
+    /// Last result of a live forecast request, shown under the button. Not persisted.
+    private(set) var weatherStatus: [String: String] = [:]
+    /// Trips with a forecast request in flight; the button is disabled so taps cannot stack requests.
+    private(set) var weatherInFlight: Set<String> = []
+
+    /// Explicit user tap only (§112.2). Sends the destination's city-centre point to Apple Weather and,
+    /// like any weather change, shows a diff to approve instead of rewriting the plan.
+    func fetchLiveWeather(tripID: String) async {
+        guard let trip = trip(id: tripID), !trip.isSyntheticDemo, !weatherInFlight.contains(tripID) else { return }
+        guard CityDirectory.cityCenter(for: trip.destination) != nil else {
+            weatherStatus[tripID] = "Bu şehrin konumu kayıtlı değil; hava tahmini alınamıyor."
+            return
+        }
+        weatherStatus[tripID] = "Tahmin isteniyor…"
+        weatherInFlight.insert(tripID)
+        defer { weatherInFlight.remove(tripID) }
+        do {
+            let snapshots = try await AppleWeatherProvider().fetch(destination: trip.destination, dates: trip.dates)
+            let live = snapshots.filter { $0.evidence != .noData }.count
+            weatherStatus[tripID] = live == 0
+                ? "Seyahat günlerin tahmin aralığının dışında. Tarih yaklaşınca tekrar dene."
+                : "\(trip.dates.count) günün \(live) günü için tahmin alındı."
+            // The trip may have been deleted while the request was in flight.
+            guard self.trip(id: tripID) != nil else { weatherStatus[tripID] = nil; return }
+            if live > 0 { proposeReplan(tripID: tripID, weather: Dictionary(uniqueKeysWithValues: snapshots.map { ($0.localDate, $0) })) }
+        } catch {
+            weatherStatus[tripID] = "Hava tahmini alınamadı. Planın değişmedi."
+        }
+    }
+
     func choose(_ candidate: OutfitCandidate, tripID: String) {
         guard var plan = plans[tripID], let trip = trip(id: tripID) else { return }
         plan.choose(candidate)
@@ -227,6 +258,7 @@ final class AppModel {
         plans[id] = nil
         packingLists[id] = nil
         pendingReplans[id] = nil
+        weatherStatus[id] = nil
         persistTrips()
         save(["plan-\(id)", "packing-\(id)"]) {
             try await $0.delete(collection: "plan-\(id)")
@@ -244,6 +276,7 @@ final class AppModel {
         plans = [:]
         packingLists = [:]
         pendingReplans = [:]
+        weatherStatus = [:]
         // Explicit user request: this is the one path allowed to remove unreadable files too.
         unreadable = []
         loadError = nil

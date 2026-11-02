@@ -86,11 +86,36 @@ struct StoreAndPrivacyTests {
         }
         #expect(files.count > 10)
         #expect(files.contains { $0.path.contains("apps/ios/Kabinsiz") }, "app sources were not scanned")
-        let forbidden = ["URLSession", "import Network", "NWConnection", "CFNetwork", "URLRequest"]
+        // Code patterns, not bare words, so comments may name a framework. `import WeatherKit` also matches
+        // `@preconcurrency import WeatherKit`; ` WeatherKit.` matches `import struct WeatherKit.X`.
+        let forbidden = ["URLSession", "import Network", "NWConnection", "CFNetwork", "URLRequest",
+                         "import WeatherKit", " WeatherKit.", "WeatherService",
+                         "AsyncImage", "CLLocationManager", "CLGeocoder", "MKLocalSearch", "WKWebView", "openURL"]
+        // Egress register: full repo-relative paths, so a same-named file elsewhere gets no exemption.
+        let allowed: [String: Set<String>] = ["apps/ios/Kabinsiz/Services/AppleWeatherProvider.swift": ["import WeatherKit", "WeatherService", "AsyncImage"]]
         for file in files {
+            let relative = String(file.standardizedFileURL.path.dropFirst(repo.standardizedFileURL.path.count + 1))
             let text = try String(contentsOf: file, encoding: .utf8)
-            for word in forbidden { #expect(!text.contains(word), "\(file.lastPathComponent) contains \(word)") }
+            for word in forbidden where !(allowed[relative]?.contains(word) ?? false) {
+                #expect(!text.contains(word), "\(relative) contains \(word)")
+            }
         }
+    }
+
+    @Test("Weather requests only ever use the bundled city centre, never a stored or device coordinate")
+    func weatherUsesDirectoryOnly() throws {
+        let barcelona = try #require(CityDirectory.search("Barselona").first { $0.country == "İspanya" })
+        let center = try #require(CityDirectory.cityCenter(for: barcelona))
+        #expect(abs(center.latitude - 41.39) < 0.05 && abs(center.longitude - 2.17) < 0.05)
+        // Same city name, other country → other point; manual entries → none.
+        let venezuela = try #require(CityDirectory.search("Barselona").first { $0.country == "Venezuela" })
+        #expect(CityDirectory.cityCenter(for: venezuela) != center)
+        #expect(CityDirectory.cityCenter(for: CityDirectory.manual(city: "Barselona", country: "İspanya")) == nil)
+        // A saved trip carries no coordinate at all, so editing the file cannot inject one.
+        let json = try #require(String(data: JSONEncoder().encode(barcelona), encoding: .utf8))
+        #expect(!json.contains("lat") && !json.contains("center"))
+        // Every bundled city has a centre.
+        #expect(CityDirectory.entries.allSatisfy { CityDirectory.cityCenter(for: $0) != nil })
     }
 
     @Test("T-V13-018 fit passport fields do not appear in the product catalog contract")
