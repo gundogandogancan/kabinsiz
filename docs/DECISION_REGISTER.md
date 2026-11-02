@@ -10,6 +10,8 @@
 | D-001 | Ürün adı "Kabinsiz", iç kod adı WEARFORM; kamuya ilan yok | KULLANICI KARARI | 2026-11-03 sohbet |
 | D-002 | Kamera/barkod yerine P0'da manuel ürün kodu girişi (§60.3 fallback) | GEÇİCİ | Cihaz yok, kamera simülatörde test edilemez |
 | D-003 | 3D önizleme P0 dışı; 2D kart fallback (§44.4) | GEÇİCİ | Blender/asset/lisans yok |
+| D-004 | Kanonik anayasa v1.5. Yeni iş v1.5 §122 DAG sırasıyla; mevcut travel/shopping kodu korunur, yeni travel özelliği P1'e kadar yok | KABUL | Kullanıcı "sıraya koy" 2026-11-03; docs/audit/V15_QUEUE_AND_CONFLICT_MAP.md |
+| D-005 | D-003 gözden geçirilecek: v1.5 §133.1 ilk kanıt gövde kaydırıcıları + 3D mesh istiyor. Blender olmadan prosedürel mesh ile başlanır | AÇIK | v1.5 §122/§133 |
 
 ## Açık riskler
 
@@ -19,3 +21,5 @@
 | R-002 | Gerçek cihaz yok: G-TRV-DEVICE, T-V13-010 yapılamaz | AG-10 | BLOCKED_DEVICE |
 | R-003 | WeatherKit entitlement bilinmiyor | AG-13 | BLOCKED_EXTERNAL |
 | R-004 | Lisanslı katalog/beden tablosu yok, fit iddiası yapılamaz | AG-08 | BLOCKED_EXTERNAL |
+| R-005 | Blender bu Mac'te yok: WP15-07 rig/asset hattı | AG-04 | BLOCKED_TOOL |
+| R-006 | Yerel veri şifresiz JSON (v1.5 §111/§116 açığı) | AG-09 | AÇIK → WP15-04 |

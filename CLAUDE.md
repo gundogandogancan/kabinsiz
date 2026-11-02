@@ -4,9 +4,11 @@
 
 ## Bağlayıcı kaynak
 
-- **Kanonik:** `docs/constitution/WEARFORM_GOD_LEVEL_CLAUDE_MASTER_EXECUTION_CONSTITUTION_v1.3.md`. Bu dosya §§0–74'ü kapsar (taban + v1.1 + v1.2 Travel + v1.3 Fit Passport / Shopping Copilot / Trust).
-- **Okuma sırası (anayasa emri):** §0 → §§59–74 → §§23–38 → §§39–58 → §§1–22.
-- `docs/constitution/archive/` sadece geçmiş içindir. Çatışmada v1.3 kazanır (yalnız kendi kapsamında).
+- **Kanonik:** `docs/constitution/WEARFORM_GOD_LEVEL_CLAUDE_MASTER_EXECUTION_CONSTITUTION_v1.5.md`. Bu dosya §§0–135'i kapsar (taban + v1.1 + v1.2 Travel + v1.3 Fit Passport / Shopping / Trust + v1.4 Evidence & Engineering §§75–100 + v1.5 Octopus / CITADEL §§101–135). v1.5 = v1.3 + v1.4 eki + v1.5 eki; yalnız başlık satırları farklı (difflib ile doğrulandı, 2026-11-03).
+- **Okuma sırası (v1.5 emri):** §§101–135 → §0 → §§75–100 → eski ürün bölümleri (§§59–74, §§39–58, §§23–38, §§1–22) gerektikçe.
+- **Öncelik (v1.5):** hukuk/platform/güvenlik → rıza/mahremiyet değişmezleri → v1.5 §§101–135 → §§0–100 (daha sıkı güvenlik kuralı korunur) → repo kanıtı → ADR.
+- **Sıradaki iş:** `docs/audit/V15_QUEUE_AND_CONFLICT_MAP.md`.
+- `docs/constitution/archive/` sadece geçmiş içindir. Çatışmada v1.5 kazanır.
 - Karar hiyerarşisi: güvenlik/hukuk/platform → kullanıcının açık kararları → anayasanın değişmez ilkeleri → teknik varsayımlar → ADR.
 
 ## Çalışma kuralları (özet; ayrıntı anayasada)
