@@ -1,0 +1,70 @@
+name: Kabinsiz
+options:
+  bundleIdPrefix: app.kabinsiz
+  deploymentTarget:
+    iOS: "18.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    DEVELOPMENT_TEAM: ""
+    CODE_SIGN_STYLE: Automatic
+packages:
+  KabinsizCore:
+    path: ../../Packages/KabinsizCore
+targets:
+  Kabinsiz:
+    type: application
+    platform: iOS
+    sources:
+      - path: Kabinsiz
+    dependencies:
+      - package: KabinsizCore
+        product: DomainContracts
+      - package: KabinsizCore
+        product: WardrobeDomain
+      - package: KabinsizCore
+        product: LocalStore
+      - package: KabinsizCore
+        product: TravelEngine
+      - package: KabinsizCore
+        product: FitPassport
+      - package: KabinsizCore
+        product: ShoppingCopilot
+    info:
+      path: Kabinsiz/Info.plist
+      properties:
+        CFBundleDisplayName: Kabinsiz
+        UILaunchScreen:
+          UIColorName: SurfaceBase
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        ITSAppUsesNonExemptEncryption: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.kabinsiz.ios
+        TARGETED_DEVICE_FAMILY: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: ""
+        ENABLE_PREVIEWS: YES
+  KabinsizUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: KabinsizUITests
+    dependencies:
+      - target: Kabinsiz
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.kabinsiz.ios.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: Kabinsiz
+schemes:
+  Kabinsiz:
+    build:
+      targets:
+        Kabinsiz: all
+        KabinsizUITests: [test]
+    test:
+      targets:
+        - KabinsizUITests

@@ -4,9 +4,9 @@
 
 ## Bağlayıcı kaynak
 
-- **Kanonik:** `docs/constitution/WEARFORM_GOD_LEVEL_CLAUDE_MASTER_EXECUTION_CONSTITUTION_v1.2.md`. Bu dosya §§0–58'i kapsar (taban + v1.1 + v1.2 Travel).
-- **Okuma sırası (anayasa emri):** §0 → §§39–58 → §§23–38 → §§1–22.
-- `docs/constitution/archive/` sadece geçmiş içindir. Çatışmada v1.2 kazanır.
+- **Kanonik:** `docs/constitution/WEARFORM_GOD_LEVEL_CLAUDE_MASTER_EXECUTION_CONSTITUTION_v1.3.md`. Bu dosya §§0–74'ü kapsar (taban + v1.1 + v1.2 Travel + v1.3 Fit Passport / Shopping Copilot / Trust).
+- **Okuma sırası (anayasa emri):** §0 → §§59–74 → §§23–38 → §§39–58 → §§1–22.
+- `docs/constitution/archive/` sadece geçmiş içindir. Çatışmada v1.3 kazanır (yalnız kendi kapsamında).
 - Karar hiyerarşisi: güvenlik/hukuk/platform → kullanıcının açık kararları → anayasanın değişmez ilkeleri → teknik varsayımlar → ADR.
 
 ## Çalışma kuralları (özet; ayrıntı anayasada)

@@ -1,0 +1,313 @@
+[
+ {
+  "code": "KB-TEE-01-WHT",
+  "modelCode": "KB-TEE-01",
+  "brandID": "ornek-a",
+  "brandName": "Örnek Marka A",
+  "name": "Basic tişört",
+  "category": "top",
+  "colorName": "beyaz",
+  "isNeutralColor": true,
+  "formalityLow": 0,
+  "formalityHigh": 1,
+  "catalogRevision": 1,
+  "sizeChart": {
+   "revision": 1,
+   "provenance": "SYNTHETIC_DEMO_ONLY",
+   "rows": [
+    {
+     "size": "S",
+     "chestCm": [
+      86,
+      94
+     ],
+     "waistCm": null
+    },
+    {
+     "size": "M",
+     "chestCm": [
+      94,
+      102
+     ],
+     "waistCm": null
+    },
+    {
+     "size": "L",
+     "chestCm": [
+      102,
+      110
+     ],
+     "waistCm": null
+    },
+    {
+     "size": "XL",
+     "chestCm": [
+      110,
+      118
+     ],
+     "waistCm": null
+    }
+   ]
+  },
+  "materialClaims": [
+   {
+    "property": "breathable",
+    "source": "SYNTHETIC_DEMO_ONLY"
+   }
+  ],
+  "isSponsored": false,
+  "provenance": "SYNTHETIC_DEMO_ONLY"
+ },
+ {
+  "code": "KB-JKT-01-NVY",
+  "modelCode": "KB-JKT-01",
+  "brandID": "ornek-a",
+  "brandName": "Örnek Marka A",
+  "name": "Hafif yağmurluk",
+  "category": "outerwear",
+  "colorName": "lacivert",
+  "isNeutralColor": true,
+  "formalityLow": 1,
+  "formalityHigh": 2,
+  "catalogRevision": 2,
+  "sizeChart": {
+   "revision": 2,
+   "provenance": "SYNTHETIC_DEMO_ONLY",
+   "rows": [
+    {
+     "size": "S",
+     "chestCm": [
+      86,
+      94
+     ],
+     "waistCm": null
+    },
+    {
+     "size": "M",
+     "chestCm": [
+      94,
+      102
+     ],
+     "waistCm": null
+    },
+    {
+     "size": "L",
+     "chestCm": [
+      102,
+      110
+     ],
+     "waistCm": null
+    },
+    {
+     "size": "XL",
+     "chestCm": [
+      110,
+      118
+     ],
+     "waistCm": null
+    }
+   ]
+  },
+  "materialClaims": [
+   {
+    "property": "waterResistant",
+    "source": "SYNTHETIC_DEMO_ONLY"
+   }
+  ],
+  "isSponsored": false,
+  "provenance": "SYNTHETIC_DEMO_ONLY"
+ },
+ {
+  "code": "KB-JKT-01-OLV",
+  "modelCode": "KB-JKT-01",
+  "brandID": "ornek-a",
+  "brandName": "Örnek Marka A",
+  "name": "Hafif yağmurluk",
+  "category": "outerwear",
+  "colorName": "haki",
+  "isNeutralColor": true,
+  "formalityLow": 1,
+  "formalityHigh": 2,
+  "catalogRevision": 2,
+  "sizeChart": {
+   "revision": 2,
+   "provenance": "SYNTHETIC_DEMO_ONLY",
+   "rows": [
+    {
+     "size": "S",
+     "chestCm": [
+      86,
+      94
+     ],
+     "waistCm": null
+    },
+    {
+     "size": "M",
+     "chestCm": [
+      94,
+      102
+     ],
+     "waistCm": null
+    },
+    {
+     "size": "L",
+     "chestCm": [
+      102,
+      110
+     ],
+     "waistCm": null
+    },
+    {
+     "size": "XL",
+     "chestCm": [
+      110,
+      118
+     ],
+     "waistCm": null
+    }
+   ]
+  },
+  "materialClaims": [
+   {
+    "property": "waterResistant",
+    "source": "SYNTHETIC_DEMO_ONLY"
+   }
+  ],
+  "isSponsored": false,
+  "provenance": "SYNTHETIC_DEMO_ONLY"
+ },
+ {
+  "code": "KB-JNS-02-BLU",
+  "modelCode": "KB-JNS-02",
+  "brandID": "ornek-a",
+  "brandName": "Örnek Marka A",
+  "name": "Düz kesim jean",
+  "category": "bottom",
+  "colorName": "mavi",
+  "isNeutralColor": true,
+  "formalityLow": 0,
+  "formalityHigh": 2,
+  "catalogRevision": 1,
+  "sizeChart": {
+   "revision": 1,
+   "provenance": "SYNTHETIC_DEMO_ONLY",
+   "rows": [
+    {
+     "size": "30",
+     "chestCm": null,
+     "waistCm": [
+      74,
+      80
+     ]
+    },
+    {
+     "size": "32",
+     "chestCm": null,
+     "waistCm": [
+      80,
+      86
+     ]
+    },
+    {
+     "size": "34",
+     "chestCm": null,
+     "waistCm": [
+      86,
+      92
+     ]
+    }
+   ]
+  },
+  "materialClaims": [],
+  "isSponsored": false,
+  "provenance": "SYNTHETIC_DEMO_ONLY"
+ },
+ {
+  "code": "KB-SHR-03-NVY",
+  "modelCode": "KB-SHR-03",
+  "brandID": "ornek-a",
+  "brandName": "Örnek Marka A",
+  "name": "Oxford gömlek",
+  "category": "top",
+  "colorName": "lacivert",
+  "isNeutralColor": true,
+  "formalityLow": 1,
+  "formalityHigh": 3,
+  "catalogRevision": 1,
+  "sizeChart": null,
+  "materialClaims": [],
+  "isSponsored": false,
+  "provenance": "SYNTHETIC_DEMO_ONLY"
+ },
+ {
+  "code": "KB-SNK-04-WHT",
+  "modelCode": "KB-SNK-04",
+  "brandID": "ornek-a",
+  "brandName": "Örnek Marka A",
+  "name": "Günlük sneaker",
+  "category": "shoes",
+  "colorName": "beyaz",
+  "isNeutralColor": true,
+  "formalityLow": 0,
+  "formalityHigh": 2,
+  "catalogRevision": 1,
+  "sizeChart": null,
+  "materialClaims": [],
+  "isSponsored": true,
+  "provenance": "SYNTHETIC_DEMO_ONLY"
+ },
+ {
+  "code": "OB-DRS-01-RED",
+  "modelCode": "OB-DRS-01",
+  "brandID": "ornek-b",
+  "brandName": "Örnek Marka B",
+  "name": "Midi elbise",
+  "category": "dress",
+  "colorName": "kırmızı",
+  "isNeutralColor": false,
+  "formalityLow": 2,
+  "formalityHigh": 3,
+  "catalogRevision": 1,
+  "sizeChart": {
+   "revision": 1,
+   "provenance": "SYNTHETIC_DEMO_ONLY",
+   "rows": [
+    {
+     "size": "S",
+     "chestCm": [
+      86,
+      94
+     ],
+     "waistCm": null
+    },
+    {
+     "size": "M",
+     "chestCm": [
+      94,
+      102
+     ],
+     "waistCm": null
+    },
+    {
+     "size": "L",
+     "chestCm": [
+      102,
+      110
+     ],
+     "waistCm": null
+    },
+    {
+     "size": "XL",
+     "chestCm": [
+      110,
+      118
+     ],
+     "waistCm": null
+    }
+   ]
+  },
+  "materialClaims": [],
+  "isSponsored": false,
+  "provenance": "SYNTHETIC_DEMO_ONLY"
+ }
+]
