@@ -20,6 +20,13 @@ Kod: `Packages/KabinsizCore/Sources/SystemContracts/`. Testler: `Tests/ContractT
 | `DeletionReceipt` | `schema_version` = 1 | §116.3 | Yalnız sayı ve tür; kayıt ID'si sızamaz (tür adında rakam yok); erişilemeyen kopyalar her zaman listelenir | V15-T-CRY-10 |
 | `VaultRecordV1` / `VaultIndex` / `KeyRegistry` | `formatVersion` = 1 | §111.2, §116 | AEAD + bağlı AAD; index commit noktası; anahtar baytı yazdırılmaz | V15-T-CRY-01..05, SEC-10 |
 | `FaultCode` | ham değerler donmuş | §103, §113.4 | Kullanıcı mesajı özel veri içermez | `frozenRawValues` |
+| `TaskGraph` / `TaskNode` | — | §103 | Benzersiz ID, bilinen bağımlılık, döngü yok, boş yetki yok; seviyeler sırayla, seviye içi eşzamanlı. Düğüm yalnız adını verdiği bağlamı ve üst düğüm çıktısını görür | graph validation, `minimisedInputs`, V15-T-ORC-01 |
+| `OctopusCoordinator` | — | §103, §103.1 | Önce tüm düğümler yetkilendirilir (yetki + her bağlam okuması), sonra bütçe; grant her yolda bırakılır; süre/iptal yarışı (modül iptali yok sayarsa terk edilir); yedek → `DEGRADED` + kısıt; devre kesici; latest-wins hattı; anahtarlı birleştirme | V15-T-ORC-01..06, 09 |
+| `ResourceGovernor` / `BudgetGovernor` | — | §113 | Öncelik bütçede olmalı; ağ yalnız ağa izin veren katmanda; ağır slot sınırı (P0 hariç) | governor testi |
+| `BodyProfile` | `BodyProfile.schemaVersion` = 1 | §108, §123 | Uzunluk bir kez, 0,1 mm tamsayı olarak saklanır; her değer kaynak etiketli; güvenli aralık + omuz/boy bağı; NaN/∞ reddedilir; her kabul edilen değişiklik yeni revizyon | V15-T-BOD-02, 03, 04 |
+| `AvatarSnapshot` / `Silhouette` | kasada `schemaVersion` = 1 | §102.3, §108.3 | Yalnız revizyon + istasyon geometrisi; ölçü değeri, kaynak, yüz/saç yok; monoton eğri, katlanma/sivri uç yok | V15-T-BOD-02, 09 |
+| `BodyEventPayload` (`DomainEventV1`) | olay `schema_version` = 1 | §105 | Yalnız tür (COMMITTED/DELETED) + parametre adı; değer yok. `BodyProjection` tekrar/eski/sırasız olayları yok sayar, silinmiş gövdeyi diriltmez | V15-T-ORC-07, `eventsCarryNoValues` |
+| `BodyStore` / `VaultBodyStore` | — | §111, §116 | `body-profile` (BODY, LOCAL_SENSITIVE) + türetilmiş `avatar-cache`; revizyon yalnız artar; silme zincirleme + makbuz; geçersiz kayıt okunamaz sayılır, üzerine yazılmaz | V15-T-ORC-08, V15-T-BOD-10 |
 
 ## Uyumluluk kuralları
 

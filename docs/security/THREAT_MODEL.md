@@ -33,6 +33,11 @@ Durum: `TESTED` (macOS birim testleri + simülatör). Kriptografi uzmanı incele
 | T16 | Aynı klasörde iki kasa örneği veya silme sonrası eski örnek | Süreç başına klasör kaydı (`alreadyOpen`); `deleteAll` ve `close` örneği kapatır (`closed`); uygulamada `load` tek seferdir ve kayıt kuyruğunun başında çalışır | `singleInstance`, `deleteEverything` | Başka süreç (ör. ileride bir uzantı) bu kilidi görmez |
 | T17 | Rıza kaydı okunamaz veya kasa açılamaz | Hava izni kapalı başlar (fail closed); kullanıcıya hata gösterilir | AppModel `closedLedger` (UI testi yok) | — |
 | T15 | Rıza geri alınırken yolda istek | Geri alma epoch'u; dönen cevap atılır | `revokeDuringFlight` | Ağa giden paket geri çağrılamaz |
+| T18 | Renderer vücut ölçülerini okur ya da sızdırır | Koordinatör her düğümün `reads` bağlamını registry'ye karşı denetler; OCT-08 yalnız `AvatarSnapshot` görür (ölçü değeri ve kaynak etiketi yok) | V15-T-ORC-09, V15-T-BOD-09 | Snapshot yarı genişlikleri ölçülerden türetilir; tersine çevrilebilir (yaklaşık). Bu yüzden `LOCAL_SENSITIVE` ve kasada |
+| T19 | Eski bir yazım yeni gövdenin üzerine yazar | Revizyonlar yalnız artar; depo `revision <= son` ise `staleRevision`; başarısız commit revizyonunu "yakar" | V15-T-ORC-08, `lateWriteDoesNotWedge` | Süreç yeniden başlarsa depo sayacı kayıttan okunur |
+| T20 | "Tümünü sil" sonrası kuyruktaki kaydırıcı commit'i yeni kasaya yazar | Silmeden önce stüdyo `close()` ile kapanır; kapalıyken commit reddedilir; silmeden sonra `load()` geçmişi temizler | `closeAndReload` (paket), UI `testVaultSurvivesRelaunchAndDeletes` | Uygulama düzeyinde eşzamanlı sürükleme + silme UI testi yok |
+| T21 | Geri al, silinmiş gövde değerlerini geri getirir | Silme ve `load()` geri-al geçmişini sıfırlar; geçmiş diske yazılmaz | `deleteCascades`, `closeAndReload`, UI testi (yeniden başlatmada yinele kapalı) | — |
+| T22 | Olay günlüğünden ölçü sızar | `BodyEventPayload` yalnız tür + parametre adı taşır, değer yok; günlük süreç içi, 500 olay sınırlı | `eventsCarryNoValues` | Parametre adı (ör. "bel") hangi ölçünün değiştiğini söyler |
 
 ## Bilinçli kalan riskler
 

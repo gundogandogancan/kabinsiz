@@ -4,8 +4,8 @@ Her domain'in tek bir kanonik sahibi var. "Kod" sütunu bugün gerçekten var ol
 
 | Domain | Kanonik kaynak | Sahip modül | Veri sınıfı | Kod (bugün) | Yazabilen | Çıkabilir mi? |
 |---|---|---|---|---|---|---|
-| Vücut ölçüleri | Kullanıcının girdiği / onayladığı değerler | OCT-07 Body Geometry | LOCAL_SENSITIVE | `FitPassport.UserMeasurements` (göğüs/bel) | Kullanıcı (MyModelView) | Hayır |
-| Avatar geometrisi | Ölçülerin deterministik dönüşümü | OCT-07 → OCT-08 okur | LOCAL_SENSITIVE | — (WP15-07/08) | Yalnız OCT-07 | Hayır |
+| Vücut ölçüleri | Kullanıcının girdiği / onayladığı değerler (kaynak etiketli: `NEUTRAL_START`, `SLIDER_SHAPED`, `USER_MEASURED`) | OCT-07 Body Geometry | LOCAL_SENSITIVE | `BodyGeometry.BodyProfile` (kasa kaydı `body-profile`); beden önerisi yalnız `measuredCentimeters` okur | Yalnız `Octopus.BodyStudio` (kullanıcı komutuyla) | Hayır |
+| Avatar geometrisi | Ölçülerin deterministik dönüşümü | OCT-07 → OCT-08 okur | LOCAL_SENSITIVE | `BodyGeometry.AvatarSnapshot` (2D siluet; kasa kaydı `avatar-cache`, `body-profile`'dan türetilmiş). 3D mesh WP15-07/08 | Yalnız OCT-07 | Hayır |
 | Dolap | Kullanıcının onayladığı parça | OCT-18 Wardrobe Steward | LOCAL_PRIVATE | `WardrobeDomain.Wardrobe` | Kullanıcı | Hayır |
 | Seyahat | Kullanıcının oluşturduğu seyahat | OCT-19 Capsule Travel | LOCAL_PRIVATE | `TravelEngine.Trip`, `TripPlan`, `PackingList` | Kullanıcı, planlayıcı | Yalnız şehir merkezi → hava, açık dokunuşla |
 | Hava | Zaman damgalı sağlayıcı | OCT-16 Weather Context | PUBLIC (veri) / LOCAL_PRIVATE (istek) | `WeatherSnapshot`, `AppleWeatherProvider` | Sağlayıcı | İstek: bkz. EGRESS_REGISTER |

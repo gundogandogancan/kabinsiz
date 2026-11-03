@@ -1,8 +1,10 @@
+import BodyGeometry
 import DomainContracts
 import FitPassport
 import Foundation
 import LocalStore
 import Observation
+import Octopus
 import ShoppingCopilot
 import SystemContracts
 import TravelEngine
@@ -14,7 +16,8 @@ import WardrobeDomain
 enum Records {
     static let wardrobe = VaultRecordSpec(id: "wardrobe", type: "wardrobe", domain: .wardrobe)
     static let passport = VaultRecordSpec(id: "fit-passport", type: "fit-passport", domain: .preferences)
-    static let measurements = VaultRecordSpec(id: "measurements", type: "measurements", domain: .body, classification: .localSensitive)
+    /// Pre-WP15-05 chest/waist record. Only read once, to move its values into the body profile.
+    static let legacyMeasurements = VaultRecordSpec(id: "measurements", type: "measurements", domain: .body, classification: .localSensitive)
     static let trips = VaultRecordSpec(id: "trips", type: "trips", domain: .travel)
     static let consent = VaultRecordSpec(id: "consent", type: "consent", domain: .preferences)
     static func plan(_ tripID: String) -> VaultRecordSpec { VaultRecordSpec(id: "plan-\(tripID)", type: "plan", domain: .travel) }
@@ -44,7 +47,25 @@ struct VaultLocation: Sendable {
 final class AppModel {
     private(set) var wardrobe = Wardrobe()
     var passport = FitPassport()
-    var measurements = UserMeasurements()
+    /// Committed body truth (OCT-07), mirrored from the studio after every commit. Nil = no body yet.
+    private(set) var body: BodyProfile?
+    private(set) var bodyStatus: BodyStudio.Status = .noProfile
+    /// What the screen draws; replaced by every preview and commit.
+    private(set) var bodyScene: PreviewScene?
+    private(set) var bodyLimitations: [String] = []
+    private(set) var bodyMessage: String?
+    private(set) var canUndoBody = false
+    private(set) var canRedoBody = false
+    private(set) var lastBodyDeletionReceipt: DeletionReceipt?
+    private var bodyStudio: BodyStudio?
+    /// Bumped by every commit, undo, redo, delete and reload. A preview started under an older generation is
+    /// dropped when it returns, so it can never repaint over newer truth (§105.3).
+    private var bodyGeneration = 0
+    /// Size advice reads typed measurements only; slider shapes and starting values never reach it (§123 A.5).
+    var measurements: UserMeasurements {
+        let measured = body?.measuredCentimeters ?? [:]
+        return UserMeasurements(chestCm: measured[.chest], waistCm: measured[.waist])
+    }
     private(set) var trips: [Trip] = []
     private(set) var plans: [String: TripPlan] = [:]
     private(set) var packingLists: [String: PackingList] = [:]
@@ -118,7 +139,6 @@ final class AppModel {
 
         wardrobe = await read(Wardrobe.self, Records.wardrobe, Wardrobe.schemaVersion, from: vault) ?? Wardrobe()
         passport = await read(FitPassport.self, Records.passport, FitPassport.schemaVersion, from: vault) ?? FitPassport()
-        measurements = await read(UserMeasurements.self, Records.measurements, 1, from: vault) ?? UserMeasurements()
         trips = await read([Trip].self, Records.trips, Trip.schemaVersion, from: vault) ?? []
         for trip in trips {
             plans[trip.id] = await read(TripPlan.self, Records.plan(trip.id), TripPlan.schemaVersion, from: vault)
@@ -129,6 +149,7 @@ final class AppModel {
         let ledger = unreadable.contains(Records.consent.id) ? Self.closedLedger : (stored ?? ConsentLedger())
         gate = CitadelGate(registry: .p0(), ledger: ledger)
         weatherConsent = ledger.state(.weatherFetch)
+        await openBodyStudio(vault: vault)
         if !unreadable.isEmpty {
             loadError = "Bazı kayıtlar okunamadı (\(unreadable.sorted().joined(separator: ", "))). Silinmediler ve üzerlerine yazılmayacak."
         }
@@ -153,7 +174,7 @@ final class AppModel {
         }
         await move(Wardrobe.self, Wardrobe.schemaVersion, Records.wardrobe)
         await move(FitPassport.self, FitPassport.schemaVersion, Records.passport)
-        await move(UserMeasurements.self, 1, Records.measurements)
+        await move(UserMeasurements.self, 1, Records.legacyMeasurements)
         await move([Trip].self, Trip.schemaVersion, Records.trips)
         let tripIDs = ((try? await vault.get([Trip].self, id: Records.trips.id, currentVersion: Trip.schemaVersion)) ?? nil)?.map(\.id) ?? []
         for id in tripIDs {
@@ -203,17 +224,131 @@ final class AppModel {
     }
 
     func persistPassport() {
-        let value = passport, m = measurements
-        save([Records.passport.id, Records.measurements.id]) {
-            try await $0.put(value, Records.passport, schemaVersion: FitPassport.schemaVersion)
-            try await $0.put(m, Records.measurements, schemaVersion: 1)
+        let value = passport
+        save([Records.passport.id]) { try await $0.put(value, Records.passport, schemaVersion: FitPassport.schemaVersion) }
+    }
+
+    /// Clears try-on history only. The body profile has its own delete (V15-T-BOD-10).
+    func resetPassport() {
+        passport.reset()
+        persistPassport()
+    }
+
+    // MARK: Body (§133 step 5: slider → revision → preview → local save)
+
+    private func currentVault() -> Vault? { vault }
+
+    private func openBodyStudio(vault: Vault) async {
+        let store = VaultBodyStore { [weak self] in await self?.currentVault() }
+        let studio = BodyStudio(coordinator: OctopusCoordinator(registry: .p0()), store: store)
+        bodyStudio = studio
+        await studio.load()
+        await migrateLegacyMeasurements(into: studio, vault: vault)
+        await syncBody(from: studio)
+        await redrawCommitted(studio)
+    }
+
+    /// Draws the committed body through the coordinator, so the device budget picks the detail (BOD-08).
+    private func redrawCommitted(_ studio: BodyStudio) async {
+        guard let envelope = await studio.currentScene() else { bodyScene = nil; return }
+        bodyScene = envelope.value
+        bodyLimitations = envelope.limitations
+    }
+
+    /// The old chest/waist record becomes typed measurements on a neutral body, then is removed. Values
+    /// outside the safe range are not invented into range; they are dropped and the user is told.
+    private func migrateLegacyMeasurements(into studio: BodyStudio, vault: Vault) async {
+        guard await vault.contains(Records.legacyMeasurements.id) else { return }
+        guard await studio.status == .noProfile,
+              let old = try? await vault.get(UserMeasurements.self, id: Records.legacyMeasurements.id, currentVersion: 1)
+        else { return } // unreadable or a body already exists: leave the old record for the user to decide
+        let values: [(BodyParameter, Double)] = [(.chest, old.chestCm), (.waist, old.waistCm)].compactMap { p, v in v.map { (p, $0) } }
+        // Out of range is decided here, before anything is written; any other failure keeps the old record.
+        let neutral = BodyProfile.neutral()
+        let valid = values.filter { (try? neutral.applying(.measured($0.0, $0.1, .centimeters))) != nil }
+        let dropped = valid.count < values.count
+        if !valid.isEmpty {
+            guard await studio.createNeutral().value != nil else { return }
+            for (p, cm) in valid where await studio.commit(.measured(p, cm, .centimeters)).value == nil { return }
+        }
+        do { _ = try await vault.delete(Records.legacyMeasurements.id) } catch { return }
+        if dropped { bodyMessage = "Eski ölçülerinden biri güvenli aralığın dışındaydı ve taşınmadı." }
+    }
+
+    private func syncBody(from studio: BodyStudio) async {
+        body = await studio.profile
+        bodyStatus = await studio.status
+        canUndoBody = await studio.canUndo
+        canRedoBody = await studio.canRedo
+        if bodyStatus == .unreadable {
+            bodyMessage = "Kayıtlı vücut profili okunamadı. Silinmedi ve üzerine yazılmayacak; istersen silebilirsin."
         }
     }
 
-    func resetPassport() {
-        passport.reset()
-        measurements = UserMeasurements()
-        persistPassport()
+    private func apply(_ envelope: DecisionEnvelope<PreviewScene>?, from studio: BodyStudio) async {
+        bodyGeneration += 1
+        await syncBody(from: studio)
+        guard let envelope else { return }
+        if let scene = envelope.value {
+            bodyScene = scene
+            bodyLimitations = envelope.limitations
+            bodyMessage = nil
+        } else if let fault = envelope.fault {
+            bodyMessage = fault == .storageCorrupted
+                ? "Vücut profili şu an değiştirilemiyor. Hiçbir şey kaydedilmedi."
+                : "Bu değer kaydedilmedi: \(fault.userMessage)"
+            await redrawCommitted(studio)
+        }
+    }
+
+    func createNeutralBody(unit: LengthUnit) async {
+        guard let studio = bodyStudio else { return }
+        await apply(await studio.createNeutral(unit: unit), from: studio)
+    }
+
+    /// Live drag: latest-wins, nothing saved. A superseded preview changes nothing on screen.
+    func previewBody(_ edit: BodyEdit) async {
+        guard let studio = bodyStudio else { return }
+        let generation = bodyGeneration
+        guard let envelope = await studio.preview(edit), let scene = envelope.value,
+              generation == bodyGeneration, bodyStatus == .ready else { return }
+        bodyScene = scene
+        bodyLimitations = envelope.limitations
+    }
+
+    func commitBody(_ edit: BodyEdit) async {
+        guard let studio = bodyStudio else { return }
+        await apply(await studio.commit(edit), from: studio)
+    }
+
+    func undoBody() async {
+        guard let studio = bodyStudio else { return }
+        await apply(await studio.undo(), from: studio)
+    }
+
+    func redoBody() async {
+        guard let studio = bodyStudio else { return }
+        await apply(await studio.redo(), from: studio)
+    }
+
+    func setBodyUnit(_ unit: LengthUnit) async {
+        guard let studio = bodyStudio else { return }
+        await apply(await studio.setUnit(unit), from: studio)
+    }
+
+    func deleteBody() async {
+        guard let studio = bodyStudio else { return }
+        bodyGeneration += 1
+        switch await studio.deleteProfile() {
+        case .success(let receipt):
+            lastBodyDeletionReceipt = receipt
+            bodyScene = nil
+            bodyLimitations = []
+            bodyMessage = nil
+        case .failure(let fault):
+            bodyMessage = "Vücut profili silinemedi: \(fault.userMessage)"
+        }
+        await syncBody(from: studio)
     }
 
     // MARK: Travel
@@ -386,7 +521,13 @@ final class AppModel {
     func deleteAllData() {
         wardrobe = Wardrobe()
         passport = FitPassport()
-        measurements = UserMeasurements()
+        body = nil
+        bodyScene = nil
+        bodyLimitations = []
+        bodyMessage = nil
+        canUndoBody = false
+        canRedoBody = false
+        lastBodyDeletionReceipt = nil
         trips = []
         plans = [:]
         packingLists = [:]
@@ -399,8 +540,11 @@ final class AppModel {
         loadError = nil
         guard let location else { return }
         let previous = lastSave
+        let studio = bodyStudio
         lastSave = Task {
             await previous?.value
+            // Body commits run in the studio's own queue: close it first so none lands in the fresh vault.
+            await studio?.close()
             do {
                 let receipt: DeletionReceipt
                 if let vault = self.vault {
@@ -409,6 +553,11 @@ final class AppModel {
                     self.vault = result.fresh
                     // Plaintext files left from before v1.5 are ones that failed to migrate; the user asked for everything to go.
                     if let legacy = location.legacyDirectory { try? FileManager.default.removeItem(at: legacy) }
+                    if let studio {
+                        self.bodyGeneration += 1
+                        await studio.load()
+                        await self.syncBody(from: studio)
+                    }
                 } else {
                     // The vault could not be opened (lost key): reset it without reading it. Plaintext files that
                     // were never migrated are kept and moved into the new vault, since they are still readable.

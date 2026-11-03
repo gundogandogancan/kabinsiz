@@ -13,6 +13,8 @@ let package = Package(
         .library(name: "ShoppingCopilot", targets: ["ShoppingCopilot"]),
         .library(name: "SystemContracts", targets: ["SystemContracts"]),
         .library(name: "Vault", targets: ["Vault"]),
+        .library(name: "BodyGeometry", targets: ["BodyGeometry"]),
+        .library(name: "Octopus", targets: ["Octopus"]),
     ],
     targets: [
         .target(name: "DomainContracts"),
@@ -24,6 +26,10 @@ let package = Package(
         .target(name: "SystemContracts", dependencies: ["DomainContracts"]),
         // v1.5 §111/§116 encrypted PrivateVault: CryptoKit AES-GCM, Keychain KEK, per-domain keys.
         .target(name: "Vault", dependencies: ["SystemContracts", "LocalStore"]),
+        // v1.5 §108/§133.1 body truth + neutral covered 2D silhouette (3D mesh is WP15-07/08).
+        .target(name: "BodyGeometry"),
+        // v1.5 §103 OctopusCoordinator: task DAG, policy, budget, timeouts, latest-wins; body journey.
+        .target(name: "Octopus", dependencies: ["DomainContracts", "SystemContracts", "BodyGeometry", "Vault"]),
         .target(
             name: "ShoppingCopilot",
             dependencies: ["DomainContracts", "WardrobeDomain", "FitPassport"],
@@ -37,6 +43,10 @@ let package = Package(
             name: "ContractTests",
             dependencies: ["SystemContracts", "DomainContracts"],
             resources: [.copy("Fixtures")]
+        ),
+        .testTarget(
+            name: "OctopusTests",
+            dependencies: ["SystemContracts", "BodyGeometry", "Octopus", "Vault"]
         ),
         .testTarget(
             name: "SecurityTests",

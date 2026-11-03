@@ -37,6 +37,10 @@ targets:
         product: SystemContracts
       - package: KabinsizCore
         product: Vault
+      - package: KabinsizCore
+        product: BodyGeometry
+      - package: KabinsizCore
+        product: Octopus
       - sdk: WeatherKit.framework
     info:
       path: Kabinsiz/Info.plist

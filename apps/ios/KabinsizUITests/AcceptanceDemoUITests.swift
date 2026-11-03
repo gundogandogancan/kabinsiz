@@ -113,7 +113,7 @@ final class AcceptanceDemoUITests: XCTestCase {
         let delete = app.buttons["deleteAllData"]
         for _ in 0..<6 where !delete.isHittable { app.swipeUp() }
         delete.tap()
-        app.buttons["Dolap, seyahatler ve Fit Passport silinsin"].firstMatch.tap()
+        app.buttons["Dolap, vücut profili, seyahatler ve Fit Passport silinsin"].firstMatch.tap()
         let receipt = app.descendants(matching: .any)["deletionReceipt"].firstMatch
         for _ in 0..<6 where !receipt.exists { app.swipeUp() }
         XCTAssertTrue(receipt.waitForExistence(timeout: 5))
@@ -125,6 +125,93 @@ final class AcceptanceDemoUITests: XCTestCase {
         app.buttons["Dolabım"].tap()
         XCTAssertTrue(app.buttons["loadSyntheticCloset"].waitForExistence(timeout: 5), "wardrobe must be empty after delete-all")
         XCTAssertFalse(garment.exists)
+    }
+
+    /// §133.1 first proof (WP15-05, SIMULATOR_ONLY): neutral body → slider → typed measurement → undo →
+    /// relaunch shows the same values → delete removes the body and its drawing.
+    func testBodyStudioJourney() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTestVault", "body-\(UUID().uuidString)"]
+        app.launch()
+        app.buttons["Benim Modelim"].tap()
+        app.buttons["createNeutralBody"].tap()
+
+        let waist = app.sliders["slider-WAIST"]
+        XCTAssertTrue(waist.waitForExistence(timeout: 5))
+        XCTAssertEqual(app.staticTexts["value-WAIST"].label, "82 cm")
+        XCTAssertEqual(waist.label, "Bel çevresi")
+        XCTAssertTrue((waist.value as? String)?.hasSuffix("santimetre") == true, "spoken value must name the unit")
+        XCTAssertTrue(app.descendants(matching: .any)["bodySilhouette"].exists)
+        attach(app, "08b-body-neutral-start")
+
+        bringIntoView(waist, in: app)
+        waist.adjust(toNormalizedSliderPosition: 0.2)
+        let shaped = app.staticTexts["value-WAIST"]
+        XCTAssertTrue(wait(shaped, NSPredicate(format: "label != '82 cm'")))
+        sleep(1) // commit debounce
+        let draggedLabel = shaped.label
+        attach(app, "09-body-studio-slider")
+
+        let field = app.textFields["measurementValue"]
+        for _ in 0..<6 where !field.isHittable { app.swipeUp() }
+        field.tap()
+        field.typeText("90")
+        app.buttons["saveMeasurement"].tap()
+        for _ in 0..<6 where !shaped.isHittable { app.swipeDown() }
+        XCTAssertTrue(wait(shaped, NSPredicate(format: "label == '90 cm'")))
+        XCTAssertFalse(waist.isEnabled, "a typed measurement is not moved by a stray touch")
+        XCTAssertTrue(app.buttons["unlock-WAIST"].exists)
+        attach(app, "10-body-studio-measured")
+
+        let undo = app.buttons["bodyUndo"]
+        for _ in 0..<8 where !undo.isHittable { app.swipeDown() }
+        undo.tap()
+        for _ in 0..<6 where !shaped.exists { app.swipeUp() }
+        XCTAssertTrue(wait(shaped, NSPredicate(format: "label == %@", draggedLabel)))
+        sleep(1)
+        app.terminate()
+
+        app.launch()
+        app.buttons["Benim Modelim"].tap()
+        XCTAssertTrue(shaped.waitForExistence(timeout: 5))
+        XCTAssertEqual(shaped.label, draggedLabel, "the saved body must come back from the encrypted vault")
+        let redo = app.buttons["bodyRedo"]
+        for _ in 0..<8 where !redo.isHittable { app.swipeDown() }
+        XCTAssertFalse(redo.isEnabled, "undo history is per session, never persisted")
+
+        let delete = app.buttons["deleteBody"]
+        for _ in 0..<10 where !delete.isHittable { app.swipeUp() }
+        delete.tap()
+        app.buttons["Vücut profilini ve çizimini sil"].firstMatch.tap()
+        let create = app.buttons["createNeutralBody"]
+        for _ in 0..<10 where !create.exists { app.swipeDown() }
+        XCTAssertTrue(create.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["bodyDeletionReceipt"].exists)
+        attach(app, "11-body-deleted")
+        sleep(1)
+        app.terminate()
+
+        app.launch()
+        app.buttons["Benim Modelim"].tap()
+        XCTAssertTrue(app.buttons["createNeutralBody"].waitForExistence(timeout: 5), "deleted body must stay deleted")
+        XCTAssertFalse(app.sliders["slider-WAIST"].exists)
+    }
+
+    /// Small drags in either direction until the element sits in the middle band of the screen. Big
+    /// swipes overshoot in a List and lazily unload the row.
+    private func bringIntoView(_ element: XCUIElement, in app: XCUIApplication) {
+        let screen = app.frame
+        for _ in 0..<15 {
+            if element.exists, element.isHittable, element.frame.minY > screen.minY + 160, element.frame.maxY < screen.maxY - 160 { return }
+            let below = !element.exists || element.frame.midY > screen.midY
+            let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: below ? 0.65 : 0.35))
+            let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: below ? 0.45 : 0.55))
+            start.press(forDuration: 0.05, thenDragTo: end)
+        }
+    }
+
+    private func wait(_ element: XCUIElement, _ predicate: NSPredicate, timeout: TimeInterval = 5) -> Bool {
+        XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: predicate, object: element)], timeout: timeout) == .completed
     }
 
     private func attach(_ app: XCUIApplication, _ name: String) {

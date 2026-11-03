@@ -1,36 +1,15 @@
 import FitPassport
 import SwiftUI
 
-/// "Benim Modelim": avatar placeholder, Fit Passport, measurements, privacy and deletion.
+/// "Benim Modelim": body studio, Fit Passport, privacy and deletion.
 struct MyModelView: View {
     @Environment(AppModel.self) private var model
     @State private var confirmDeleteAll = false
-    @State private var chest = ""
-    @State private var waist = ""
 
     var body: some View {
         @Bindable var model = model
         List {
-            Section {
-                VStack(alignment: .leading, spacing: 6) {
-                    Label("3D model bu sürümde yok", systemImage: "cube.transparent").font(.headline)
-                    Text("Nötr avatar ve oran düzenleyici sonraki aşamada. Şimdilik kararlar 2D kartlarla.")
-                        .font(.subheadline).foregroundStyle(Token.textSecondary)
-                }
-            }
-
-            Section {
-                TextField("Göğüs (cm)", text: $chest).keyboardType(.decimalPad)
-                TextField("Bel (cm)", text: $waist).keyboardType(.decimalPad)
-                Button("Ölçüleri kaydet") {
-                    model.measurements = UserMeasurements(chestCm: Double(chest.replacingOccurrences(of: ",", with: ".")), waistCm: Double(waist.replacingOccurrences(of: ",", with: ".")))
-                    model.persistPassport()
-                }
-            } header: {
-                Text("Ölçülerim (isteğe bağlı)")
-            } footer: {
-                Text("Zorunlu değil. Sadece bu telefonda kalır ve yalnız beden tablosu olan ürünlerde kullanılır.")
-            }
+            BodyStudioSection()
 
             Section {
                 Toggle("Denemelerimi önerilerde kullan", isOn: $model.passport.learningEnabled)
@@ -58,7 +37,7 @@ struct MyModelView: View {
 
             Section {
                 Label("Hesap yok, sunucu yok", systemImage: "lock")
-                Label("Dolap, seyahat ve deneme kayıtları yalnız bu cihazda, şifreli kasada", systemImage: "lock.iphone")
+                Label("Dolap, vücut, seyahat ve deneme kayıtları yalnız bu cihazda, şifreli kasada", systemImage: "lock.iphone")
                 Toggle(isOn: Binding(
                     get: { model.weatherConsent != .revoked },
                     set: { allowed in Task { await model.setWeatherAllowed(allowed) } }
@@ -88,12 +67,8 @@ struct MyModelView: View {
         .scrollContentBackground(.hidden)
         .background(Token.surfaceBase)
         .navigationTitle("Benim Modelim")
-        .onAppear {
-            chest = model.measurements.chestCm.map { String(format: "%.0f", $0) } ?? ""
-            waist = model.measurements.waistCm.map { String(format: "%.0f", $0) } ?? ""
-        }
         .confirmationDialog("Tüm veriler silinsin mi?", isPresented: $confirmDeleteAll, titleVisibility: .visible) {
-            Button("Dolap, seyahatler ve Fit Passport silinsin", role: .destructive) { model.deleteAllData() }
+            Button("Dolap, vücut profili, seyahatler ve Fit Passport silinsin", role: .destructive) { model.deleteAllData() }
         } message: {
             Text("Bu işlem geri alınamaz.")
         }

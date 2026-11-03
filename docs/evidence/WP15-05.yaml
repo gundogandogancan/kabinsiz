@@ -1,0 +1,109 @@
+evidence_schema: 1
+work_package: WP15-05
+title: "Octopus core: coordinator, task DAG, event contracts; one journey slider -> body revision -> preview -> local save"
+status: PASS   # macOS unit tests + iPhone 17 simulator; see partial / not_started
+commit_sha: null   # filled by the commit that adds this file; see git log
+branch: main
+spec: "v1.5 §103, §103.1, §103.2, §105, §108, §109, §123 Journey A, §127.1, §127.7, §133.1 (inside the v2.1 master)"
+implementation_paths:
+  - Packages/KabinsizCore/Sources/Octopus/
+  - Packages/KabinsizCore/Sources/BodyGeometry/
+  - Packages/KabinsizCore/Sources/SystemContracts/ModuleRegistry.swift
+  - apps/ios/Kabinsiz/App/AppModel.swift
+  - apps/ios/Kabinsiz/Features/Profile/BodyStudioView.swift
+  - apps/ios/Kabinsiz/Features/Profile/MyModelView.swift
+unit_test_command: "cd Packages/KabinsizCore && swift test"
+unit_test_exit_code: 0
+unit_test_count: 194   # whole package; 39 in OctopusTests
+ui_test_command: "scripts/check.sh"
+ui_test_exit_code: 0
+ui_tests:
+  - "testBodyStudioJourney PASS (§133.1 first proof): neutral body -> waist slider -> typed waist 90 cm (source USER_MEASURED, slider locked) -> undo -> relaunch shows the slider value from the encrypted vault, redo disabled -> delete body -> receipt -> relaunch still empty"
+  - "testVaultSurvivesRelaunchAndDeletes, testDemoTripFlow, testScanDecisionCard still PASS"
+hardware: "Apple M5 Mac, macOS 26.4; iPhone 17 simulator iOS 26.5 (SIMULATOR_ONLY)"
+benchmarks: []   # no latency claims; registry deadlineMs are targets (D-013), measured on device in WP15-06/WP15-18
+coordinator_cases:
+  - "V15-T-ORC-01 PASS: bounded DAG run, upstream outputs flow, grant released"
+  - "V15-T-ORC-02 PASS: 10 identical calls run once; cached within TTL; rerun after TTL"
+  - "V15-T-ORC-03 PASS: superseded preview returns nil, never a stale scene (coordinator lane + studio)"
+  - "V15-T-ORC-04 PASS: cancel releases grant, abandons a module that ignores cancellation, downstream never runs; a save in progress is not cancelled by the caller"
+  - "V15-T-ORC-05 PASS: deadline -> labelled fallback, DEGRADED, confidence PARTIAL; no fallback -> TIMED_OUT"
+  - "V15-T-ORC-06 PASS: crash isolated, sibling completes, breaker opens after 3 and closes after cooldown"
+  - "V15-T-ORC-07 PASS: replay twice and shuffled gives the same projection; a late commit never resurrects a deleted body"
+  - "V15-T-ORC-08 PASS: store refuses older, equal and mismatched revisions; a failed commit burns its revision"
+  - "V15-T-ORC-09 PASS: renderer reading the body profile -> POLICY_DENIED before anything runs; unregistered module denied"
+body_cases:
+  - "V15-T-BOD-01 PASS: waist slider -> coherent scene for the committed revision; only waist changed; preview saves nothing; relaunch reads the same profile"
+  - "V15-T-BOD-02 PASS: 243 extreme combinations are a valid shape or refused out of range (27, shoulder/height link, D-012); 5 000 random in-range drags all valid"
+  - "V15-T-BOD-03 PASS: three undos restore exact values (new revision, never a rewind); redo; new edit clears redo"
+  - "V15-T-BOD-04 PASS: 32 in stored once as 8128 tenths of mm; unit switches never change it"
+  - "V15-T-BOD-06 PASS: graph capabilities = bodyReadExact, bodyWriteManual, avatarReadRenderSnapshot; no photo, no network; works on offline and survival budgets"
+  - "V15-T-BOD-07 PASS: broken or slow renderer -> values-only fallback, labelled; body still saved"
+  - "V15-T-BOD-08 PASS: 2D budget -> station anchors only, same controls"
+  - "V15-T-BOD-09 PASS: fixed structural stations; snapshot JSON has no values, sources, face, hair or traits"
+  - "V15-T-BOD-10 PASS: delete removes body-profile and derived avatar-cache; receipt counts only; new body continues above the old revision"
+  - "Non-finite input (NaN, inf) refused instead of trapping (found by the range test)"
+partial:
+  - "Preview is a 2D front silhouette (D-010). 3D neutral mesh, morph targets and 360° manual rotation are WP15-07/08"
+  - "V15-T-BOD-05 (photo-to-measurement hypothesis) not in scope: no photo intake yet"
+  - "§109 accessibility: slider label + spoken value with unit ('Bel çevresi', '… santimetre') asserted in UI test; full VoiceOver pass on device is REAL_DEVICE_BLOCKED"
+  - "Thermal / low-power signals into the governor: WP15-06"
+not_started:
+  - "V15-T-ORC-10 covered earlier by TaskState tests (WP15-02); not re-run against the coordinator on device"
+mutation_checks:
+  - "ORC-09 read check removed: rendererCannotReadBody failed as expected"
+  - "grant never released: boundedRun failed as expected"
+  - "latest-wins id check removed: latestWins failed as expected"
+  - "coalescing never reuses: coalescing failed as expected"
+  - "breaker never opens: crashIsolationAndBreaker failed as expected"
+  - "fallback ignored: rendererFallback failed as expected"
+  - "projection guard removed: replayIdempotent failed as expected"
+  - "store revision guard removed: staleRevisionRefused failed as expected"
+  - "load keeps undo history: closeAndReload failed as expected (test strengthened after the first run let it survive)"
+  - "close does not block commits: closeAndReload failed as expected"
+  - "failed commit does not burn revision: lateWriteDoesNotWedge failed as expected"
+  - "commits not serialized: serializedCommits failed as expected"
+  - "shoulder/height link removed: extremeCombinations failed as expected"
+  - "full outline under 2D budget: lowerLOD failed as expected"
+  - "deleted body kept in studio: deleteCascades failed as expected"
+  - "after review: skips re-arm breaker / breaker per module: breakerPerNodeNoRearm failed as expected"
+  - "after review: mustComplete ignored: mustCompleteIsAwaited failed as expected"
+  - "after review: self-cancelling module cancels run: selfCancellingModule failed as expected"
+  - "after review: no resync after failed write: lateWriteDoesNotWedge failed as expected"
+  - "after review: delete does not cancel preview: deleteCancelsPreview failed as expected"
+  - "after review: create allowed over a body: createOnlyFromEmpty failed as expected"
+  - "after review: avatar cache LOCAL_PRIVATE: avatarCacheIsSensitive failed as expected"
+ui_bugs_found_by_tests:
+  - "Slider draft hid a typed measurement after commit (drafts now cleared on matching commit, typed value, undo, redo)"
+  - "Picker + text field + button in one List row sent every tap to the picker; split into rows"
+visual_artifacts:
+  - docs/evidence/screenshots/SIMULATOR_ONLY-08b-body-neutral-start.png
+  - docs/evidence/screenshots/SIMULATOR_ONLY-09-body-studio-slider.png
+  - docs/evidence/screenshots/SIMULATOR_ONLY-10-body-studio-measured.png
+  - docs/evidence/screenshots/SIMULATOR_ONLY-11-body-deleted.png
+accessibility_checks:
+  - "UI test: slider accessibilityLabel = parameter name, accessibilityValue ends with the spoken unit"
+independent_reviewer: "AG-12 subagent (same model family)"
+review_independence_level: INTERNAL_SELF_REVIEW
+review_findings: 16   # 3 x P1, 13 x P2; no P0
+review_fixes:
+  - "P1-1 writes and deletes are must-complete (never abandoned for a deadline or cancellation); store claims the revision before its first await; after any failed write or delete the studio re-reads the store"
+  - "P1-2 avatar-cache is LOCAL_SENSITIVE (geometry gives the measurements back); doc comment corrected; recoverability test"
+  - "P1-3 breaker keyed per module+node, skips do not re-arm it, half-open probe after cooldown"
+  - "P2 stale previews: app generation counter drops older previews; delete and close cancel the preview lane"
+  - "P2 a module throwing CancellationError is a module failure (fallback applies, finished write counts); only the caller cancels a run"
+  - "P2 createNeutral only from empty"
+  - "P2 legacy migration decides out-of-range before writing; any other failure keeps the old record"
+  - "P2 typed measurement locks its slider; 'Kaydırıcıyla şekillendir' turns it back into a shape on purpose (leaves size advice)"
+  - "P2 committed scene drawn through the coordinator (budget decides LOD) instead of a direct render"
+  - "P2 coordinator state changes go through the guarded TaskState machine"
+  - "P2 VoiceOver: drawing reads the values (not a revision), fallback says the drawing is unavailable, slider hint names the half-cm step"
+residual_risks:
+  - "Revision floor does not survive delete + relaunch (in-memory); harmless today because the event journal is in-memory too (THREAT_MODEL T19)"
+  - "Upstream node outputs are not policy-checked; graphs are built in code, not from input"
+  - "Only COMMITTED and DELETED body events are emitted; MorphRequested/MorphValidated/SceneRendered (§105.2) are not separate events yet"
+  - "UI test drags waist only and does not run with network denied; package tests cover offline budgets"
+  - "No arm control yet (spec lists shoulder/arm/torso); comes with the 3D mesh (WP15-07/08)"
+  - "No side-by-side compare view; ORC-07 has no real process restart (journal is in-process by §105.3)"
+open_p0: []
+open_p1: []
