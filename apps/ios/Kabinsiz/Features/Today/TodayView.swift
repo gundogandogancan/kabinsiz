@@ -33,7 +33,6 @@ struct TodayView: View {
         .navigationTitle("Bugün")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(removing: .title)
-        .navigationDestination(for: String.self) { TripSummaryView(tripID: $0).scanAction() }
         .sheet(isPresented: $showWizard) { TripWizardView() }
     }
 

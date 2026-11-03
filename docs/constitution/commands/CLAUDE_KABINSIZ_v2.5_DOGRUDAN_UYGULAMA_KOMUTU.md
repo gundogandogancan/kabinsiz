@@ -1,0 +1,13 @@
+# Claude Code — Kabinsiz v2.5 Başlatma Komutu
+
+`https://github.com/gundogandogancan/kabinsiz` reposunu aç. Yanımda verdiğim **`KABINSIZ_GOD_LEVEL_CLAUDE_MASTER_EXECUTION_CONSTITUTION_v2.5.md`** ve özellikle **`KABINSIZ_GOD_LEVEL_v2.5_LIVING_WORLD_AND_LIVE_MIRROR_EXECUTION.md`** belgelerini oku. Mevcut `main` HEAD'ini yeniden doğrula. Önceki kodu, mahremiyet/egress/vault/fit doğruluk kurallarını bozma.
+
+**En üst ürün kararı:** Ana ekran kart/dashbord değil, oyun hissi veren **Living Fashion World**. Kullanıcı kendi 360° modelini **günlük kombinini giymiş** halde, şehrine özgü sokak sahnesinde görecek. Gerçek yağmur varsa görsel yağmur, yere çarpma/ıslak zemin ve doğru ışık bulunacak. Modelin üzerindeki üst/alt/ayakkabı/çanta/kemer/aksesuar doğrudan dokunarak değiştirilir. **“Yeni kombin oluştur” modeli aynı ekranda, hazır 3D asset'lerden mümkün olan en kısa sürede yeniden giydirir.** Gerçek hava yoksa sahte canlı hava yazma.
+
+**Ayrı Live Mirror:** Mağazadan barkod/fotoğraf veya internetten link/screenshot ile seçilen ürün, kullanıcının **gerçek kamera akışı** üzerinde denenir. Kamera-only veya nötr avatar deneyimini Live Mirror başarı sayma. Yerel AVFoundation+Vision+Core ML+Metal hattını kur; giysi takibi, occlusion, hareket ve negatif durumları test et. Fotogerçekçi Decart Lucy V-TON bulut modunu yalnız açık kullanıcı izni, DPA/lisans, ücret ve veri güvenliği doğrulanınca opsiyonel etkinleştir; production default OFF. VTON görünümü fiziksel fit kanıtı değildir.
+
+**İlk çalıştırılacak iş:** V25-00 gerçeklik denetimi → V25-01 sıcak Quiet Atelier UI → V25-02 360° avatarı Home'a entegre et → V25-03 bir özgün/lisanslı gerçek 3D üst/alt giydir → V25-04 üstü seç/değiştir + undo → V25-05 pilot İstanbul/Barcelona sahne → V25-06 hava efekti → V25-07 cached yeni kombin. Sonra V25-10/11 gerçek ürün ve Live Mirror. İlk iş güncellemesi yalnız yorum değil, derlenebilir kod + test + gerçek simülatör screenshot'ı içermeli.
+
+**Sert kapı:** En son raporlanan repo HEAD `ba760594` idi; o an 360 nötr model kodu ve Mirror kontratları vardı, ama giyinmiş Home World ve gerçek kamera VTON kanıtı yoktu. Bunları yeniden doğrula. Gerçek cihazda test yapılmadan `DEVICE_VERIFIED`, kıyafet asset'i yokken SKU'ya özel fit, cloud izin olmadan AI Mirror veya cache ölçümü yokken “saniyesinde” deme.
+
+**Çıktı formatı:** (1) HEAD + bulgular + 10 ana engel; (2) düzeltilen kaynak dosyalar/commit; (3) test exit kodu, gerçek screenshot ve varsa gerçek iPhone video; (4) latency/FPS/RAM/thermal p50-p95 ölçümleri; (5) `TESTED` / `SIMULATOR_ONLY` / `DEVICE_VERIFIED` / `BLOCKED_EXTERNAL` durumları; (6) sonraki en yüksek engel. Kod değişikliği için ayrı branch kullan; main'e onaysız merge etme.

@@ -9,6 +9,9 @@ import SystemContracts
 struct ScanView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scannedCode) private var scannedCode
+    /// Dene passes this: a found product can go straight on the model or into the mirror.
+    var onTryOn: ((CatalogProduct) -> Void)?
     @State private var code = ""
     @State private var resolution: ProductResolution?
 
@@ -18,7 +21,7 @@ struct ScanView: View {
                 VStack(alignment: .leading, spacing: Token.Space.card) {
                     Card {
                         Text("Ürün kodunu yaz").font(.headline)
-                        Text("Etiketteki ürün kodunu gir. Kamera ile tarama bu sürümde yok.")
+                        Text("Etiketteki ürün kodunu gir. Barkod kamerası destekleyen iPhone'larda Dene ekranında.")
                             .font(.subheadline).foregroundStyle(Token.textSecondary)
                         TextField("ör. KB-TEE-01-WHT", text: $code)
                             .textInputAutocapitalization(.characters)
@@ -43,7 +46,7 @@ struct ScanView: View {
                         }
                     }
 
-                    if let resolution { ResolutionView(resolution: resolution) { code = $0.code; resolve() } }
+                    if let resolution { ResolutionView(resolution: resolution, onTryOn: onTryOn) { code = $0.code; resolve() } }
                 }
                 .padding(.horizontal, Token.Space.gutter)
                 .padding(.vertical, Token.Space.card)
@@ -52,6 +55,9 @@ struct ScanView: View {
             .navigationTitle("Denemeye değer mi?")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Kapat") { dismiss() } } }
+            .onAppear {
+                if let scannedCode, code.isEmpty { code = scannedCode; resolve() }
+            }
         }
     }
 
@@ -63,12 +69,21 @@ struct ScanView: View {
 private struct ResolutionView: View {
     @Environment(AppModel.self) private var model
     let resolution: ProductResolution
+    let onTryOn: ((CatalogProduct) -> Void)?
     let pick: (CatalogProduct) -> Void
 
     var body: some View {
         switch resolution {
         case .found(let product):
             DecisionCardView(card: DecisionComposer.compose(product: product, passport: model.passport, measurements: model.measurements, wardrobe: model.wardrobe))
+            if let onTryOn {
+                Button { onTryOn(product) } label: {
+                    Label("Dene'de kullan", systemImage: "camera.viewfinder").frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(Atelier.brand)
+                .accessibilityIdentifier("scanUseInTryOn")
+            }
         case .ambiguous(let options):
             Card {
                 Text("Hangisi?").font(.headline)

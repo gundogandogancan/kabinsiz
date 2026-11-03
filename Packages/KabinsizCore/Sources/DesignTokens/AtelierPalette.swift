@@ -78,29 +78,31 @@ public enum AtelierPalette {
         RGB(table[appearance]![role]!)
     }
 
-    // Light "Atelier Linen" and dark "After Hours" are the §03.1/§03.2 values. Roles §03 leaves open
+    // Light "Fildişi" and dark "Espresso" follow the brand board (2026-11-03: Fildişi #F7F1E7, Taş #D6C4B3,
+    // Zeytin #7A8461, Bakır #B3714E, Espresso #2B1E18), deepened where text sits on them so every pair
+    // still meets AA. Earlier values were the §03.1/§03.2 "Atelier Linen" / "After Hours". Roles §03 leaves open
     // (dark sand/avatar/status, on-brand, control border) and every Increase Contrast value are ADR-009 choices,
     // checked by `AtelierContrastRules`.
     private static let light: [ColorRole: UInt32] = [
-        .canvas: 0xF8F6F1, .surfacePrimary: 0xFFFCF8, .surfaceSecondary: 0xF0EAE2, .surfaceSand: 0xE8DED1,
-        .borderSoft: 0xD9D0C4, .borderControl: 0x8C8174, .textPrimary: 0x26221E, .textSecondary: 0x5C544C,
-        .brandPrimary: 0x654632, .brandSecondary: 0x62684B, .accentCopper: 0x9C6048, .avatarNeutral: 0xA8A49F,
-        .statusSuccess: 0x35694B, .statusWarning: 0x825A1C, .statusDanger: 0x9E3B3D, .onBrand: 0xFFFCF8,
+        .canvas: 0xF7F1E7, .surfacePrimary: 0xFFFBF4, .surfaceSecondary: 0xF1E8DA, .surfaceSand: 0xE6D8C6,
+        .borderSoft: 0xDCCDBB, .borderControl: 0x8C7A6A, .textPrimary: 0x2B1E18, .textSecondary: 0x5E4E43,
+        .brandPrimary: 0x93562F, .brandSecondary: 0x5D6845, .accentCopper: 0x9A5D3C, .avatarNeutral: 0xA8A49F,
+        .statusSuccess: 0x35694B, .statusWarning: 0x825A1C, .statusDanger: 0x9E3B3D, .onBrand: 0xFFFBF4,
     ]
     private static let dark: [ColorRole: UInt32] = [
-        .canvas: 0x151411, .surfacePrimary: 0x201D19, .surfaceSecondary: 0x2A251F, .surfaceSand: 0x332D26,
-        .borderSoft: 0x494238, .borderControl: 0x8A7F72, .textPrimary: 0xF6F0E7, .textSecondary: 0xC4B9AC,
-        .brandPrimary: 0xC99D7A, .brandSecondary: 0xADB598, .accentCopper: 0xD4A18B, .avatarNeutral: 0x8E8A85,
-        .statusSuccess: 0x8CC7A1, .statusWarning: 0xE0B36A, .statusDanger: 0xEE9A9C, .onBrand: 0x1A1612,
+        .canvas: 0x1B1410, .surfacePrimary: 0x2B1E18, .surfaceSecondary: 0x35271F, .surfaceSand: 0x3F2F26,
+        .borderSoft: 0x524036, .borderControl: 0x948272, .textPrimary: 0xF7F1E7, .textSecondary: 0xCDBDAE,
+        .brandPrimary: 0xD8A07A, .brandSecondary: 0xB3BB97, .accentCopper: 0xDDA585, .avatarNeutral: 0x8E8A85,
+        .statusSuccess: 0x8CC7A1, .statusWarning: 0xE0B36A, .statusDanger: 0xEE9A9C, .onBrand: 0x1B1410,
     ]
     private static let lightIncreased = light.merging([
-        .textPrimary: 0x1C1915, .textSecondary: 0x4A433C, .borderSoft: 0xA0968A, .borderControl: 0x6E655B,
-        .brandPrimary: 0x553A28, .brandSecondary: 0x4F543B, .accentCopper: 0x7A4632,
+        .textPrimary: 0x1F1511, .textSecondary: 0x46392F, .borderSoft: 0xA0968A, .borderControl: 0x6E655B,
+        .brandPrimary: 0x6A3A1E, .brandSecondary: 0x434D30, .accentCopper: 0x6E3F2B,
         .statusSuccess: 0x285239, .statusWarning: 0x6A4914, .statusDanger: 0x832E30,
     ]) { $1 }
     private static let darkIncreased = dark.merging([
-        .textPrimary: 0xFBF7F1, .textSecondary: 0xDDD3C7, .borderSoft: 0x6A6156, .borderControl: 0xA89D90,
-        .brandPrimary: 0xDDB896, .brandSecondary: 0xC3CAAF, .accentCopper: 0xE6BBA8,
+        .textPrimary: 0xFBF7F1, .textSecondary: 0xE4D8CB, .borderSoft: 0x6A6156, .borderControl: 0xA89D90,
+        .brandPrimary: 0xEEC9A8, .brandSecondary: 0xCDD3B6, .accentCopper: 0xF0C8B0,
         .statusSuccess: 0xA6DDB9, .statusWarning: 0xF0C985, .statusDanger: 0xF5B5B6,
     ]) { $1 }
 
@@ -245,4 +247,19 @@ private extension Double {
 
 private extension String {
     func leftPadded(to n: Int) -> String { String(repeating: "0", count: max(0, n - count)) + self }
+}
+
+/// v2.8 Figma role names → code roles (ADR-011 Karar 4). The values stay the brand board's; Figma
+/// variables are generated from this map once Figma can be written to (BLOCKED_EXTERNAL_FIGMA).
+public enum FigmaTokenMap {
+    public static let colorRoles: [String: ColorRole] = [
+        "canvas": .canvas, "surface": .surfacePrimary, "sand": .surfaceSand, "stone": .borderSoft,
+        "ink": .textPrimary, "secondaryInk": .textSecondary, "espresso": .brandPrimary, "olive": .brandSecondary,
+        "copper": .accentCopper, "hairline": .borderSoft, "success": .statusSuccess, "warning": .statusWarning,
+        "danger": .statusDanger,
+    ]
+    /// Scene scrim: not a palette role, a fixed dark used under text that sits on the 3D scene.
+    public static let scrim = RGB(0x221913)
+    /// Names that are not colour roles in code, with the reason.
+    public static let unmapped: [String: String] = ["scrim": "fixed scene scrim, see FigmaTokenMap.scrim"]
 }

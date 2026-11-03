@@ -1,0 +1,216 @@
+{
+  "$schema": "https://design-tokens.github.io/community-group/format/",
+  "meta": {
+    "project": "Kabinsiz",
+    "version": "2.8",
+    "status": "design proposal, not imported in Figma",
+    "date": "2026-11-03"
+  },
+  "colors": {
+    "canvas": {
+      "$type": "color",
+      "light": "#F8F6F1",
+      "dark": "#17130F"
+    },
+    "surface": {
+      "$type": "color",
+      "light": "#FFFCF8",
+      "dark": "#27201B"
+    },
+    "sand": {
+      "$type": "color",
+      "light": "#E9DED0",
+      "dark": "#3A3028"
+    },
+    "stone": {
+      "$type": "color",
+      "light": "#D7C6B4",
+      "dark": "#54463B"
+    },
+    "ink": {
+      "$type": "color",
+      "light": "#2B211B",
+      "dark": "#F6F0E9"
+    },
+    "secondaryInk": {
+      "$type": "color",
+      "light": "#65584E",
+      "dark": "#D1C3B7"
+    },
+    "espresso": {
+      "$type": "color",
+      "light": "#654632",
+      "dark": "#C89A76"
+    },
+    "olive": {
+      "$type": "color",
+      "light": "#686D4F",
+      "dark": "#A9AE8F"
+    },
+    "copper": {
+      "$type": "color",
+      "light": "#A76D49",
+      "dark": "#D89A70"
+    },
+    "hairline": {
+      "$type": "color",
+      "light": "#E6DCD1",
+      "dark": "#4A3E35"
+    },
+    "scrim": {
+      "$type": "color",
+      "light": "#221913",
+      "dark": "#221913"
+    },
+    "success": {
+      "$type": "color",
+      "light": "#43694B",
+      "dark": "#A3C6A7"
+    },
+    "warning": {
+      "$type": "color",
+      "light": "#926328",
+      "dark": "#F0C187"
+    },
+    "danger": {
+      "$type": "color",
+      "light": "#9D4238",
+      "dark": "#EDAA9E"
+    }
+  },
+  "radii": {
+    "small": {
+      "$type": "dimension",
+      "$value": "10px"
+    },
+    "chip": {
+      "$type": "dimension",
+      "$value": "14px"
+    },
+    "card": {
+      "$type": "dimension",
+      "$value": "22px"
+    },
+    "sheet": {
+      "$type": "dimension",
+      "$value": "28px"
+    },
+    "hero": {
+      "$type": "dimension",
+      "$value": "30px"
+    },
+    "pill": {
+      "$type": "dimension",
+      "$value": "999px"
+    }
+  },
+  "spacing": {
+    "s0": {
+      "$type": "dimension",
+      "$value": "4px"
+    },
+    "s1": {
+      "$type": "dimension",
+      "$value": "8px"
+    },
+    "s2": {
+      "$type": "dimension",
+      "$value": "12px"
+    },
+    "s3": {
+      "$type": "dimension",
+      "$value": "16px"
+    },
+    "s4": {
+      "$type": "dimension",
+      "$value": "20px"
+    },
+    "s5": {
+      "$type": "dimension",
+      "$value": "24px"
+    },
+    "s6": {
+      "$type": "dimension",
+      "$value": "32px"
+    },
+    "s7": {
+      "$type": "dimension",
+      "$value": "40px"
+    },
+    "s8": {
+      "$type": "dimension",
+      "$value": "48px"
+    }
+  },
+  "type": {
+    "display": {
+      "family": "New York",
+      "fallback": "system serif",
+      "size": 36,
+      "weight": "regular",
+      "lineHeight": 42
+    },
+    "title": {
+      "family": "New York",
+      "fallback": "system serif",
+      "size": 27,
+      "weight": "medium",
+      "lineHeight": 34
+    },
+    "section": {
+      "family": "SF Pro",
+      "size": 20,
+      "weight": "semibold",
+      "lineHeight": 26
+    },
+    "body": {
+      "family": "SF Pro",
+      "size": 16,
+      "weight": "regular",
+      "lineHeight": 24
+    },
+    "secondary": {
+      "family": "SF Pro",
+      "size": 14,
+      "weight": "regular",
+      "lineHeight": 20
+    },
+    "caption": {
+      "family": "SF Pro",
+      "size": 12,
+      "weight": "medium",
+      "lineHeight": 17
+    },
+    "micro": {
+      "family": "SF Pro",
+      "size": 11,
+      "weight": "semibold",
+      "lineHeight": 15
+    }
+  },
+  "layout": {
+    "baseViewport": {
+      "width": 393,
+      "height": 852
+    },
+    "otherViewports": [
+      {
+        "width": 402,
+        "height": 874
+      },
+      {
+        "width": 440,
+        "height": 956
+      }
+    ],
+    "horizontalGutter": 20,
+    "minTarget": 44,
+    "sceneMaxControlOverlayFraction": 0.12
+  },
+  "motion": {
+    "swapMs": 180,
+    "sheetMs": 250,
+    "crossfadeMs": 350,
+    "reducedMotion": true
+  }
+}

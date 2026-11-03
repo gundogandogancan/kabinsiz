@@ -4,11 +4,11 @@
 
 ## Bağlayıcı kaynak
 
-- **Kanonik:** `docs/constitution/KABINSIZ_GOD_LEVEL_CLAUDE_MASTER_EXECUTION_CONSTITUTION_v2.1.md` = v1.5 + v1.6..v2.1 ekleri; yalnız başlık/ayraç satırları farklı (difflib, 2026-11-03; ayrıntı `docs/audit/V21_QUEUE_AND_CONFLICT_MAP.md` §1). Ekler ayrıca `docs/constitution/addenda/`; v1.5 ve öncesi `docs/constitution/archive/`. v1.6 ana metni hiç yok (yalnız ek).
-- **Okuma sırası (v2.1 emri):** LM21-00, -01, -06, -07, -14, -16 → v2.0 güvenlik/avatar/ürün doğruluğu/Quiet Atelier → V19-00, V19-20, V19-22 → V18-00..son → v1.7 BÖLÜM C → v1.6 BÖLÜM B → v1.5 BÖLÜM A gerektikçe (önce §§101–135).
-- **Öncelik:** hukuk/KVKK/platform → kullanıcı rızası ve yerel-öncelikli mahremiyet → güvenlik/kanıt ve v1.9 fail-closed → v2.1 LM21 (yalnız canlı ayna konularında) → v2.0 UI → v1.8 → v1.7 → v1.6 → v1.5 → kanıtlı repo durumu → eski ADR. Daha sıkı güvenlik kuralı her zaman kazanır; daha zayıf yeni kural eski güvenlik kontrolünü geçersiz kılamaz; çatışma ADR ile çözülür. Bulut VTON asla varsayılan değil: açık rıza + sağlayıcı sözleşmesi/DPA + maliyet sınırı + gerçek iPhone testi olmadan kapalı (`BLOCKED_EXTERNAL`).
-- **Sıradaki iş:** `docs/audit/V21_QUEUE_AND_CONFLICT_MAP.md` (V15 haritasının yerini aldı).
-- `docs/constitution/archive/` sadece geçmiş içindir. Çatışmada v2.1 öncelik zinciri geçerlidir.
+- **Kanonik:** `docs/constitution/KABINSIZ_GOD_LEVEL_CLAUDE_MASTER_EXECUTION_CONSTITUTION_v2.8.md` (v2.7 birleşik ana + v2.8 Figma/sabah-hazır bölümü; önce PART I v2.8'i oku). Ekler `docs/constitution/addenda/` (v1.6..v2.8; v2.6 Tara ve Dene, v2.7 True 3D Digital Twin, v2.8 Figma All Screens & Morning Ready), başlangıç komutları `docs/constitution/commands/` (son: `CLAUDE_START_HERE_v2.8.md`), eski ana dosyalar (v2.1, v2.4, v2.5, v2.6, v2.7) `docs/constitution/archive/`. Figma token taslağı `docs/design/figma/`. Live Mirror atlası `docs/design/LIVE_MIRROR_SCREEN_ATLAS.md`.
+- **Okuma sırası (v2.8 emri):** v2.8 komutu → v2.8 eki (§02 IA, §05 sabah hazır, §06 sahne kuralları, §11 WP, §12 testler) → v2.7 eki (dijital ikiz, foto→dolap, Blender giysi) → v2.6 eki (Tara ve Dene, Decart kapalı) → gerektikçe eski bölümler.
+- **Öncelik:** hukuk/KVKK/platform → kullanıcı rızası ve yerel-öncelikli mahremiyet → güvenlik/kanıt ve v1.9 fail-closed → **kullanıcının açık kararları** (ör. 2026-11-03 marka panosu/ikon, "Figma'yı sonra bağlayacağız") → v2.8 → v2.7 → v2.6 → v2.5 → v2.4 → … → kanıtlı repo durumu → eski ADR. Daha sıkı güvenlik kuralı her zaman kazanır; çatışma ADR ile çözülür (son: `docs/adr/ADR-011-v28-canon-nav-and-morning-ready.md`). Bulut VTON (Decart dahil) asla varsayılan değil: açık rıza + sözleşme/DPA + maliyet sınırı + gerçek iPhone testi olmadan kapalı (`BLOCKED_EXTERNAL`). Figma: View koltuğu → `BLOCKED_EXTERNAL_FIGMA`; Figma dosyası varmış gibi yazma.
+- **Sıradaki iş:** `docs/audit/V28_REALITY.md` (V25_REALITY'nin devamı). Kod `v25/living-world` branch'inde; main'e kullanıcı onayı olmadan birleşmez.
+- `docs/constitution/archive/` sadece geçmiş içindir. Çatışmada v2.8 öncelik zinciri geçerlidir.
 - Araştırma: `docs/research/VTON_LANDSCAPE_2026-11.md` (VTON/avatar modelleri ve lisans hükümleri: NC lisanslılar ve SMPL/SMPL-X ticari kullanılamaz).
 - Karar hiyerarşisi: güvenlik/hukuk/platform → kullanıcının açık kararları → anayasanın değişmez ilkeleri → teknik varsayımlar → ADR.
 

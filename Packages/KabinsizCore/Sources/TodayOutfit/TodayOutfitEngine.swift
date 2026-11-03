@@ -16,6 +16,14 @@ public struct TodayLook: Codable, Hashable, Sendable, Identifiable {
     public let unsupportedClaims: [String]
     public let candidateID: String
     public var id: String { outfit.id }
+
+    public init(outfit: DressedOutfit, reasons: [String], gaps: [String], unsupportedClaims: [String], candidateID: String) {
+        self.outfit = outfit
+        self.reasons = reasons
+        self.gaps = gaps
+        self.unsupportedClaims = unsupportedClaims
+        self.candidateID = candidateID
+    }
     public var isSyntheticDemo: Bool { outfit.isSynthetic }
 }
 
@@ -35,6 +43,14 @@ public struct TodayLooks: Codable, Hashable, Sendable {
     public let looks: [TodayLook]
     /// Changes whenever the pool the looks came from changes; a cache with another revision is stale.
     public let poolRevision: String
+
+    public init(localDate: LocalDate, mood: TodayOutfitEngine.Mood, source: Source, looks: [TodayLook], poolRevision: String) {
+        self.localDate = localDate
+        self.mood = mood
+        self.source = source
+        self.looks = looks
+        self.poolRevision = poolRevision
+    }
 }
 
 public struct TodayOutfitEngine: Sendable {

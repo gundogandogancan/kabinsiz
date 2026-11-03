@@ -629,15 +629,17 @@ struct StatePanel: View {
 
 // MARK: K-017 NativeTabScaffold
 
-/// The three P0 sections (v2.0 §06). "Tara" is an action, never a tab.
+/// The P0 sections (v2.0 §06 as amended by ADR-010 for v2.5): the live mirror gets its own place;
+/// "Tara" stays an action, never a tab.
 enum AtelierTab: String, CaseIterable, Identifiable {
-    case today, wardrobe, me
+    case today, wardrobe, tryOn, me
     var id: String { rawValue }
 
     var title: String {
         switch self {
         case .today: "Bugün"
         case .wardrobe: "Dolabım"
+        case .tryOn: "Dene"
         case .me: "Ben"
         }
     }
@@ -646,6 +648,7 @@ enum AtelierTab: String, CaseIterable, Identifiable {
         switch self {
         case .today: "sun.max"
         case .wardrobe: "hanger"
+        case .tryOn: "camera.viewfinder"
         case .me: "person.crop.circle"
         }
     }

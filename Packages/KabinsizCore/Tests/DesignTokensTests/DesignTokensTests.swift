@@ -13,21 +13,23 @@ struct DesignTokensTests {
         #expect(RGB(0x0A0B0C).description == "#0A0B0C")
     }
 
-    @Test("v2.0 §03.1 and §03.2 values are used exactly, and §03.1's stated ratios hold")
+    @Test("Brand board values (ADR-010, 2026-11-03) are used exactly, and the key ratios hold")
     func specValues() {
-        let light: [(ColorRole, UInt32)] = [(.canvas, 0xF8F6F1), (.surfacePrimary, 0xFFFCF8), (.surfaceSecondary, 0xF0EAE2), (.surfaceSand, 0xE8DED1),
-                                            (.borderSoft, 0xD9D0C4), (.textPrimary, 0x26221E), (.textSecondary, 0x5C544C), (.brandPrimary, 0x654632),
-                                            (.brandSecondary, 0x62684B), (.accentCopper, 0x9C6048), (.avatarNeutral, 0xA8A49F),
+        // The user's brand board replaced v2.0 §03.1/§03.2: Fildişi canvas, Espresso ink, Bakır brand
+        // (deepened from #B3714E so ivory text on it meets AA).
+        let light: [(ColorRole, UInt32)] = [(.canvas, 0xF7F1E7), (.surfacePrimary, 0xFFFBF4), (.surfaceSecondary, 0xF1E8DA), (.surfaceSand, 0xE6D8C6),
+                                            (.borderSoft, 0xDCCDBB), (.textPrimary, 0x2B1E18), (.textSecondary, 0x5E4E43), (.brandPrimary, 0x93562F),
+                                            (.brandSecondary, 0x5D6845), (.accentCopper, 0x9A5D3C), (.avatarNeutral, 0xA8A49F),
                                             (.statusSuccess, 0x35694B), (.statusWarning, 0x825A1C), (.statusDanger, 0x9E3B3D)]
         for (role, hex) in light { #expect(AtelierPalette.color(role, .light) == RGB(hex), "\(role)") }
-        let dark: [(ColorRole, UInt32)] = [(.canvas, 0x151411), (.surfacePrimary, 0x201D19), (.surfaceSecondary, 0x2A251F), (.borderSoft, 0x494238),
-                                           (.textPrimary, 0xF6F0E7), (.textSecondary, 0xC4B9AC), (.brandPrimary, 0xC99D7A),
-                                           (.brandSecondary, 0xADB598), (.accentCopper, 0xD4A18B)]
+        let dark: [(ColorRole, UInt32)] = [(.canvas, 0x1B1410), (.surfacePrimary, 0x2B1E18), (.surfaceSecondary, 0x35271F), (.borderSoft, 0x524036),
+                                           (.textPrimary, 0xF7F1E7), (.textSecondary, 0xCDBDAE), (.brandPrimary, 0xD8A07A),
+                                           (.brandSecondary, 0xB3BB97), (.accentCopper, 0xDDA585)]
         for (role, hex) in dark { #expect(AtelierPalette.color(role, .dark) == RGB(hex), "\(role)") }
         let canvas = AtelierPalette.color(.canvas, .light)
-        #expect(abs(AtelierPalette.color(.brandPrimary, .light).contrast(with: canvas) - 7.85) < 0.01)
-        #expect(abs(AtelierPalette.color(.textSecondary, .light).contrast(with: canvas) - 6.88) < 0.01)
-        #expect(abs(AtelierPalette.color(.accentCopper, .light).contrast(with: canvas) - 4.65) < 0.01)
+        #expect(abs(AtelierPalette.color(.brandPrimary, .light).contrast(with: canvas) - 5.17) < 0.01)
+        #expect(abs(AtelierPalette.color(.textSecondary, .light).contrast(with: canvas) - 7.06) < 0.01)
+        #expect(abs(AtelierPalette.color(.accentCopper, .light).contrast(with: canvas) - 4.67) < 0.01)
     }
 
     @Test("UI20-T-003: every allowed pair passes in light, dark and both Increase Contrast variants")
@@ -93,5 +95,19 @@ struct DesignTokensTests {
         }
         #expect(try String(contentsOf: url, encoding: .utf8) == report)
         #expect(!report.contains("FAIL"))
+    }
+
+    @Test("UI28-T030: every v2.8 Figma colour role maps to a code role; the scrim keeps text legible")
+    func figmaTokenMap() throws {
+        let url = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().appendingPathComponent("docs/design/figma/KABINSIZ_FIGMA_DESIGN_TOKENS_v2.8.json")
+        let json = try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any]
+        let colors = try #require(json?["colors"] as? [String: Any])
+        for name in colors.keys {
+            #expect(FigmaTokenMap.colorRoles[name] != nil || FigmaTokenMap.unmapped[name] != nil, "unmapped Figma role \(name)")
+        }
+        // White text over the scrim reads at AAA.
+        #expect(RGB(0xFFFFFF).contrast(with: FigmaTokenMap.scrim) >= 7)
     }
 }

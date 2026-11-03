@@ -1,0 +1,62 @@
+evidence_schema: 1
+work_package: UI28-00/02/03/04/06/07/08/16
+title: "v2.8 first slice: canon install + ADR-011, home with two strong actions and tap-to-sheet, front three-quarter start, morning-ready plan/cache/reconciler, weather freshness chip, one Dene journey"
+status: PARTIAL   # SIMULATOR_ONLY; Figma BLOCKED_EXTERNAL_FIGMA; device REAL_DEVICE_BLOCKED; real 3D city not started
+commit_sha: null   # filled by the commit that adds this file; see git log
+branch: v25/living-world
+spec: "v2.8 §02 (IA, home layout), §05 (morning ready), §06 (scene rules), §07 H01–H05, D01/D04, §12 UI28-T001…T018/T026/T030/T031/T034; v2.6 Tara ve Dene; ADR-011"
+decision: [D-029, D-030, D-031, D-032, D-033, D-034]
+implementation_paths:
+  - Packages/KabinsizCore/Sources/MorningReady/MorningReady.swift
+  - Packages/KabinsizCore/Sources/DesignTokens/AtelierPalette.swift   # FigmaTokenMap
+  - apps/ios/Kabinsiz/Features/World/HomeWorldView.swift
+  - apps/ios/Kabinsiz/Features/World/HomeWorldModel.swift
+  - apps/ios/Kabinsiz/Features/World/WorldSheets.swift
+  - apps/ios/Kabinsiz/Features/World/DressedAvatarView.swift
+  - apps/ios/Kabinsiz/Features/TryOn/TryOnHubView.swift
+  - apps/ios/Kabinsiz/App/KabinsizApp.swift
+  - apps/ios/Kabinsiz/App/MorningRefresh.swift
+unit_test_command: "cd Packages/KabinsizCore && swift test"
+unit_test_exit_code: 0
+unit_test_count: 324   # whole package, after sealing; 12 in MorningReadyTests, 9 in DesignTokensTests
+ui_test_command: "scripts/check.sh"
+ui_test_exit_code: 0
+ui_test_count: 14   # full gate 14/14 (gate3v28, before the at-rest sealing change); after sealing the 9 affected UI tests re-run 9/9 (build/v28-sealed-*.xcresult)
+screenshots:
+  - docs/evidence/screenshots/UI28/kabinsiz-v28-home.jpg   # H01 first launch, H02 garment sheet (scene lifted), H03 new look + undo note, H05 stale weather (labelled test reading)
+  - docs/evidence/screenshots/UI28/kabinsiz-v28-dene.jpg   # H04 city sheet, D01 Dene, code → product with source, '3D modelimde' on Bugün
+spec_cases:
+  - "UI28-T001 PASS (unit): first launch with no cache opens on three wearable looks"
+  - "UI28-T002 PASS (unit): the day is the chosen city's day (İstanbul 4 Nov vs Barcelona 3 Nov at 22:30 UTC)"
+  - "UI28-T003 PASS (unit): a cached plan for the same key is used as is; on-device time UNKNOWN"
+  - "UI28-T004 PASS (unit): with no background run the next day is computed in the foreground; old plan only a fallback"
+  - "UI28-T005 PASS (unit): a damaged cache file is discarded, recomputed, origin RECOVERED_FROM_CORRUPTION"
+  - "UI28-T006 PASS (unit): a look locked today survives a weather change; yesterday's lock does not hold"
+  - "UI28-T007 PASS (unit): a manual city plans in that city's clock with no location"
+  - "UI28-T008 PASS (unit + UI): no live reading → no rain drawn, chip 'Hava verisi yok'"
+  - "UI28-T009 PASS (unit + UI, labelled test reading): stale reading → 'Son bilinen tahmin · HH.mm · Test verisi'"
+  - "UI28-T010 PASS (unit): a weather change swaps to a whole wearable look in one step"
+  - "UI28-T011 CODED: start yaw 0.55 rad (31°, inside 20–35°); visual check on the neutral mannequin is weak because it has no face (B10)"
+  - "UI28-T012 PASS (UI): the stand-in body says 'Örnek beden · modelini oluştur'; no personal likeness is claimed"
+  - "UI28-T013 PASS (UI): a tap on the torso opens that garment's sheet; sideways drag still turns (testBody3DRotatesByHand)"
+  - "UI28-T014 SIMULATOR_VISUAL_VERIFIED: with the sheet up the scene lifts and the figure stays head to feet above the sheet (v28-H02 screenshot)"
+  - "UI28-T015 PASS (UI): no slot-* buttons and no side column on the home"
+  - "UI28-T016 PASS (UI): 'Yeni kombin' dresses the same 3D figure in the next prepared look; undo note restores"
+  - "UI28-T018 CODED: 'Yeni kombin' is not shown with fewer than two prepared looks"
+  - "UI28-T026 PASS (UI): AX-XXXL keeps newLook, Dene and the chip on screen without horizontal overflow"
+  - "UI28-T030 PASS (unit): every v2.8 Figma colour role maps to a code role; scrim gives ≥7:1 for white text"
+  - "UI28-T031 PASS (UI): code → decision card → 'Dene'de kullan' → product card with its source → '3D modelimde' dresses the figure on Bugün"
+  - "UI28-T034 PASS (UI, simulator): the mirror without a camera shows cameraFallbackCard, no imitation"
+  - "UI28-T035 CODED: AI video mode shown off; no cloud code path enabled"
+  - "UI28-T045 PASS (unit + UI): the morning plan and the look lock are AES-GCM sealed under their own Keychain key; delete-all destroys key and files (testVaultSurvivesRelaunchAndDeletes still green); a file under another key reads as damaged"
+hardware: "Apple M5 Mac, macOS 26.4; iPhone 17 simulator iOS 26.4 (SIMULATOR_ONLY)"
+benchmarks: []   # no device fps, cold start, swap latency or thermal claim; p95 targets UNKNOWN (device)
+blocked:
+  - "BLOCKED_EXTERNAL_FIGMA: Figma Starter plan with a View seat; no file, no link"
+  - "REAL_DEVICE_BLOCKED: all three paired iPhones 'unavailable' at 2026-11-03 21:1x"
+  - "BLOCKED_EXTERNAL: WeatherKit (R-003), licensed catalogue (R-004), cloud VTON"
+known_gaps:
+  - "City is a 2D Blender frame behind the 3D figure (labelled 'şehir Blender kadrajı'); real RealityKit city is UI28-05"
+  - "Neutral mannequin head has no face or hair (B10); personal twin needs consented photos (HUMAN_APPROVAL_PENDING)"
+  - "Photo → wardrobe and link intake say 'Bu sürümde yok'"
+  - "No dark-mode / Reduce Motion UI test of the new home yet; no independent design review"

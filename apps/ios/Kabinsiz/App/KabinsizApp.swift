@@ -1,3 +1,4 @@
+import BackgroundTasks
 import SwiftUI
 import Vault
 
@@ -17,22 +18,32 @@ struct KabinsizApp: App {
         return AppModel()
     }()
 
+    init() {
+        MorningRefresh.shared.register()
+    }
+
     var body: some Scene {
         WindowGroup {
             RootView()
                 .environment(model)
                 .task { await model.load() }
+                .onReceive(NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in
+                    MorningRefresh.shared.schedule()
+                }
                 .tint(Atelier.brand)
         }
     }
 }
 
-/// K-017 NativeTabScaffold (v2.0 §06 P0): `Bugün | Dolabım | Ben`. "Tara" is not a tab: it is the same
-/// toolbar action on every tab plus a visible button on Bugün. Each tab owns its NavigationStack, so
-/// its route survives tab switches and the scan sheet; the selected tab survives relaunch.
+/// K-017 NativeTabScaffold (ADR-011, v2.8 ADR-UI28-NAV): `Bugün | Dolabım | Dene | Ben`. Bugün is the
+/// living world; Dene is one journey for barcode/code, wardrobe and the live mirror (v2.6 "Tara ve
+/// Dene"), so there is no separate scan tab or toolbar button. Each tab owns its NavigationStack, so
+/// its route survives tab switches; the selected tab survives relaunch.
 struct RootView: View {
     @Environment(AppModel.self) private var model
-    @State private var showScan = false
+    @State private var world = HomeWorldModel()
+    @State private var router = TryOnRouter()
+    @State private var todayPath = NavigationPath()
     @SceneStorage("selectedTab") private var selected: AtelierTab = .today
 
     var body: some View {
@@ -50,13 +61,23 @@ struct RootView: View {
     private var tabs: some View {
         TabView(selection: $selected) {
             Tab(AtelierTab.today.title, systemImage: AtelierTab.today.symbol, value: AtelierTab.today) {
-                tab { TodayView(onScan: { showScan = true }, onOpenWardrobe: { selected = .wardrobe }, onOpenMe: { selected = .me }) }
+                NavigationStack(path: $todayPath) {
+                    HomeWorldView(onTryOn: { selected = .tryOn }, onOpenMe: { selected = .me },
+                                  onOpenWardrobe: { selected = .wardrobe }, onPlan: { todayPath.append(WorldRoute.plan) })
+                }
             }
             Tab(AtelierTab.wardrobe.title, systemImage: AtelierTab.wardrobe.symbol, value: AtelierTab.wardrobe) { tab { WardrobeView() } }
+            Tab(AtelierTab.tryOn.title, systemImage: AtelierTab.tryOn.symbol, value: AtelierTab.tryOn) {
+                tab { TryOnHubView(onShowOnModel: { todayPath = NavigationPath(); selected = .today }) }
+            }
             Tab(AtelierTab.me.title, systemImage: AtelierTab.me.symbol, value: AtelierTab.me) { tab { MyModelView() } }
         }
-        .environment(\.openScan) { showScan = true }
-        .sheet(isPresented: $showScan) { ScanView() }
+        .environment(world)
+        .environment(router)
+        .environment(\.openScan) {
+            selected = .tryOn
+            router.pending = .code
+        }
         .overlay(alignment: .top) {
             if let error = model.loadError {
                 StatusBadge(text: error, tone: .error)
@@ -65,32 +86,20 @@ struct RootView: View {
                     .padding(.top, 4)
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .kabinsizDidDeleteAll)) { _ in world.forgetAll() }
+        .onAppear {
+            MorningRefresh.shared.prepare = { [world, model] in
+                world.refresh(wardrobe: model.wardrobe, avatarRevision: model.heroIsStandIn ? "standin" : "body-\(model.body?.revision ?? 0)")
+            }
+        }
     }
 
     private func tab<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
-        NavigationStack { content().scanAction() }
+        NavigationStack { content() }
     }
 }
 
 extension EnvironmentValues {
-    /// Opens the global "Tara" sheet from any screen of any tab.
+    /// Opens Dene's code entry from any screen ("Ürünü Tara" buttons on older screens).
     @Entry var openScan: @MainActor () -> Void = {}
-}
-
-/// The same "Tara" toolbar action on every screen, pushed ones included, so it is never more than one tap away.
-private struct ScanToolbarAction: ViewModifier {
-    @Environment(\.openScan) private var openScan
-
-    func body(content: Content) -> some View {
-        content.toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button { openScan() } label: { Label("Tara", systemImage: "barcode.viewfinder") }
-                    .accessibilityIdentifier("scanButton")
-            }
-        }
-    }
-}
-
-extension View {
-    func scanAction() -> some View { modifier(ScanToolbarAction()) }
 }

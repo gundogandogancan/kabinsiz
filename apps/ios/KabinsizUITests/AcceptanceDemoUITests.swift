@@ -9,6 +9,12 @@ final class AcceptanceDemoUITests: XCTestCase {
         app.launchArguments = ["-resetForUITest"]
         app.launch()
 
+        // v2.8: travel opens from the city menu (ADR-011).
+        XCTAssertTrue(app.buttons["weatherChip"].waitForExistence(timeout: 10))
+        app.buttons["weatherChip"].tap()
+        XCTAssertTrue(app.buttons["worldPlan"].waitForExistence(timeout: 5))
+        app.buttons["worldPlan"].tap()
+        XCTAssertTrue(app.buttons["demoTripButton"].waitForExistence(timeout: 10))
         app.buttons["demoTripButton"].tap()
         let tile = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'tripTile-'")).firstMatch
         XCTAssertTrue(tile.waitForExistence(timeout: 10))
@@ -64,7 +70,10 @@ final class AcceptanceDemoUITests: XCTestCase {
         app.launch()
         app.tabBars.buttons["Dolabım"].tap()
         app.buttons["loadSyntheticCloset"].tap()
-        app.buttons["scanButton"].firstMatch.tap()
+        // v2.8: scanning lives in Dene (ADR-011); without a camera scanner the code entry is the way in.
+        app.tabBars.buttons["Dene"].tap()
+        XCTAssertTrue(app.buttons["mirrorScan"].waitForExistence(timeout: 5))
+        app.buttons["mirrorScan"].tap()
 
         let field = app.textFields["productCodeField"]
         XCTAssertTrue(field.waitForExistence(timeout: 5))
@@ -82,6 +91,25 @@ final class AcceptanceDemoUITests: XCTestCase {
         field.clearAndType("KB-JKT-01\n")
         XCTAssertTrue(app.otherElements["ambiguousCard"].waitForExistence(timeout: 5))
         attach(app, "07-ambiguous")
+
+        // D01: the found product goes into the same try-on session, labelled with its source.
+        field.tap()
+        field.clearAndType("KB-TEE-01-WHT\n")
+        let use = app.buttons["scanUseInTryOn"]
+        for _ in 0..<4 where !use.isHittable { app.swipeUp() }
+        use.tap()
+        let source = app.staticTexts["tryOnSource"]
+        XCTAssertTrue(source.waitForExistence(timeout: 5))
+        XCTAssertTrue(source.label.contains("KB-TEE-01-WHT"), source.label)
+        attach(app, "07b-dene-product-from-code")
+        let onModel = app.buttons["primary.tryOnModel"]
+        for _ in 0..<4 where !onModel.isHittable { app.swipeUp() }
+        onModel.tap()
+        XCTAssertTrue(app.tabBars.buttons["Bugün"].isSelected)
+        let avatar = app.descendants(matching: .any)["worldAvatar"]
+        XCTAssertTrue(avatar.waitForExistence(timeout: 5))
+        XCTAssertTrue((avatar.value as? String)?.contains("Üst:") == true)
+        attach(app, "07c-dene-on-model")
     }
 
     /// WP15-04 on the simulator: the real Keychain KEK and the encrypted vault survive a relaunch, the

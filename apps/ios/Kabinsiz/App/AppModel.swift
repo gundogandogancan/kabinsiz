@@ -347,6 +347,15 @@ final class AppModel {
     /// True while the figure on screen is the unsaved neutral stand-in, not the user's body.
     var heroIsStandIn: Bool { bodyStatus != .ready }
 
+    /// The body the home world dresses: the user's own when it is ready, else the neutral stand-in.
+    var heroSnapshot: AvatarSnapshot? {
+        guard governor.budget.maxVisualTier != .flat2D else { return nil }
+        if bodyStatus == .ready, let body, let snapshot = try? AvatarSnapshot.make(for: body) { return snapshot }
+        return Self.neutralSnapshot
+    }
+
+    private static let neutralSnapshot: AvatarSnapshot? = try? AvatarSnapshot.make(for: .neutral())
+
     /// Idle breathing/sway only when the budget has headroom (no thermal or Low Power note).
     var allowsLivelyMotion: Bool { deviceNote == nil && governor.budget.maxVisualTier != .flat2D }
 
@@ -579,6 +588,9 @@ final class AppModel {
 
     /// Wipes everything on this device (§11, §34). Separate from per-trip and passport deletion.
     func deleteAllData() {
+        // The morning plan and the day's lock name garments too: destroy their key and files.
+        MorningStore.eraseAll()
+        NotificationCenter.default.post(name: .kabinsizDidDeleteAll, object: nil)
         wardrobe = Wardrobe()
         passport = FitPassport()
         body = nil
@@ -666,4 +678,9 @@ final class AppModel {
             }
         }
     }
+}
+
+extension Notification.Name {
+    /// Posted when the user deletes everything, so views holding derived personal data drop it.
+    static let kabinsizDidDeleteAll = Notification.Name("app.kabinsiz.didDeleteAll")
 }
