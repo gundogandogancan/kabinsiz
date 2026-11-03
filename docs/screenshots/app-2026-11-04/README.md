@@ -1,0 +1,59 @@
+# Kabinsiz uygulama ekranları — 2026-11-04
+
+Hepsi iPhone 17 simülatöründe, UI testleri sırasında çekildi (`SIMULATOR_ONLY`). Gerçek iPhone görüntüsü yok (REAL_DEVICE_BLOCKED).
+Simülatörde kamera olmadığı için Canlı Ayna, çizilmiş bir figürle (fixture) gösteriliyor ve ekranda bu yazıyor. Örnek dolap ve ürünler sentetik.
+Kaynak testler: `apps/ios/KabinsizUITests/` (ScreenGalleryUITests, LiveMirrorUITests, AtelierNavigationUITests, AcceptanceDemoUITests, City3DUITests, ProductPhotoUITests).
+
+## Bugün: ana sahne ve kombin
+
+<img src="01-bugun/G01-bugun-ana-sahne.jpg" width="220" alt="G01-bugun-ana-sahne" title="G01-bugun-ana-sahne"> <img src="01-bugun/G15-neden-bu-kombin.jpg" width="220" alt="G15-neden-bu-kombin" title="G15-neden-bu-kombin"> <img src="01-bugun/UI28-05-why-scene.jpg" width="220" alt="UI28-05-why-scene" title="UI28-05-why-scene"> <img src="01-bugun/v28-H01-world-first-launch.jpg" width="220" alt="v28-H01-world-first-launch" title="v28-H01-world-first-launch"> <img src="01-bugun/v28-H02-garment-sheet.jpg" width="220" alt="v28-H02-garment-sheet" title="v28-H02-garment-sheet"> <img src="01-bugun/v28-H03-new-look.jpg" width="220" alt="v28-H03-new-look" title="v28-H03-new-look"> <img src="01-bugun/v28-home-axxxl.jpg" width="220" alt="v28-home-axxxl" title="v28-home-axxxl"> <img src="01-bugun/v32-S07-suggestions.jpg" width="220" alt="v32-S07-suggestions" title="v32-S07-suggestions">
+
+<sub>G01-bugun-ana-sahne · G15-neden-bu-kombin · UI28-05-why-scene · v28-H01-world-first-launch · v28-H02-garment-sheet · v28-H03-new-look · v28-home-axxxl · v32-S07-suggestions</sub>
+
+## Şehir, cadde ve hava
+
+<img src="02-sehir-hava/UI28-05-barcelona-dry.jpg" width="220" alt="UI28-05-barcelona-dry" title="UI28-05-barcelona-dry"> <img src="02-sehir-hava/UI28-05-frame-fallback.jpg" width="220" alt="UI28-05-frame-fallback" title="UI28-05-frame-fallback"> <img src="02-sehir-hava/UI28-05-istanbul-dry.jpg" width="220" alt="UI28-05-istanbul-dry" title="UI28-05-istanbul-dry"> <img src="02-sehir-hava/UI28-05-istanbul-rain-preview.jpg" width="220" alt="UI28-05-istanbul-rain-preview" title="UI28-05-istanbul-rain-preview"> <img src="02-sehir-hava/UI28-05-istanbul-sheet.jpg" width="220" alt="UI28-05-istanbul-sheet" title="UI28-05-istanbul-sheet"> <img src="02-sehir-hava/UI28-world-city-sheet.jpg" width="220" alt="UI28-world-city-sheet" title="UI28-world-city-sheet"> <img src="02-sehir-hava/UI28-world-paris-lookaround.jpg" width="220" alt="UI28-world-paris-lookaround" title="UI28-world-paris-lookaround"> <img src="02-sehir-hava/v28-H04-barcelona.jpg" width="220" alt="v28-H04-barcelona" title="v28-H04-barcelona"> <img src="02-sehir-hava/v28-H04-city-sheet.jpg" width="220" alt="v28-H04-city-sheet" title="v28-H04-city-sheet"> <img src="02-sehir-hava/v28-H04-rain-preview.jpg" width="220" alt="v28-H04-rain-preview" title="v28-H04-rain-preview"> <img src="02-sehir-hava/v28-H05-weather-live.jpg" width="220" alt="v28-H05-weather-live" title="v28-H05-weather-live"> <img src="02-sehir-hava/v28-H05-weather-stale.jpg" width="220" alt="v28-H05-weather-stale" title="v28-H05-weather-stale">
+
+<sub>UI28-05-barcelona-dry · UI28-05-frame-fallback · UI28-05-istanbul-dry · UI28-05-istanbul-rain-preview · UI28-05-istanbul-sheet · UI28-world-city-sheet · UI28-world-paris-lookaround · v28-H04-barcelona · v28-H04-city-sheet · v28-H04-rain-preview · v28-H05-weather-live · v28-H05-weather-stale</sub>
+
+## Dolabım
+
+<img src="03-dolabim/G02-dolabim-bos.jpg" width="220" alt="G02-dolabim-bos" title="G02-dolabim-bos"> <img src="03-dolabim/v32-S05-wardrobe-grid.jpg" width="220" alt="v32-S05-wardrobe-grid" title="v32-S05-wardrobe-grid">
+
+<sub>G02-dolabim-bos · v32-S05-wardrobe-grid</sub>
+
+## Dene: tara, kod, fotoğraf
+
+<img src="04-dene-tara/05-decision-card.jpg" width="220" alt="05-decision-card" title="05-decision-card"> <img src="04-dene-tara/06-not-found.jpg" width="220" alt="06-not-found" title="06-not-found"> <img src="04-dene-tara/07-ambiguous.jpg" width="220" alt="07-ambiguous" title="07-ambiguous"> <img src="04-dene-tara/07b-dene-product-from-code.jpg" width="220" alt="07b-dene-product-from-code" title="07b-dene-product-from-code"> <img src="04-dene-tara/07c-dene-on-model.jpg" width="220" alt="07c-dene-on-model" title="07c-dene-on-model"> <img src="04-dene-tara/G03-dene-tara.jpg" width="220" alt="G03-dene-tara" title="G03-dene-tara"> <img src="04-dene-tara/G04-kod-ekrani.jpg" width="220" alt="G04-kod-ekrani" title="G04-kod-ekrani"> <img src="04-dene-tara/G05-dene-katalog-urunu.jpg" width="220" alt="G05-dene-katalog-urunu" title="G05-dene-katalog-urunu"> <img src="04-dene-tara/SCAN-photo-barcode-found.jpg" width="220" alt="SCAN-photo-barcode-found" title="SCAN-photo-barcode-found"> <img src="04-dene-tara/SCAN-photo-ean-not-in-catalogue.jpg" width="220" alt="SCAN-photo-ean-not-in-catalogue" title="SCAN-photo-ean-not-in-catalogue"> <img src="04-dene-tara/SCAN-photo-nothing-read.jpg" width="220" alt="SCAN-photo-nothing-read" title="SCAN-photo-nothing-read"> <img src="04-dene-tara/SCAN-photo-qr-link-refused.jpg" width="220" alt="SCAN-photo-qr-link-refused" title="SCAN-photo-qr-link-refused"> <img src="04-dene-tara/SCAN-photo-text-found.jpg" width="220" alt="SCAN-photo-text-found" title="SCAN-photo-text-found"> <img src="04-dene-tara/v28-D01-dene.jpg" width="220" alt="v28-D01-dene" title="v28-D01-dene"> <img src="04-dene-tara/v32-S10-dene.jpg" width="220" alt="v32-S10-dene" title="v32-S10-dene">
+
+<sub>05-decision-card · 06-not-found · 07-ambiguous · 07b-dene-product-from-code · 07c-dene-on-model · G03-dene-tara · G04-kod-ekrani · G05-dene-katalog-urunu · SCAN-photo-barcode-found · SCAN-photo-ean-not-in-catalogue · SCAN-photo-nothing-read · SCAN-photo-qr-link-refused · SCAN-photo-text-found · v28-D01-dene · v32-S10-dene</sub>
+
+## Ürün detayı
+
+<img src="05-urun-detayi/G06-urun-detayi-katalog.jpg" width="220" alt="G06-urun-detayi-katalog" title="G06-urun-detayi-katalog"> <img src="05-urun-detayi/G07-urun-kumas-kimlik.jpg" width="220" alt="G07-urun-kumas-kimlik" title="G07-urun-kumas-kimlik"> <img src="05-urun-detayi/G08-urun-kimligi-magaza.jpg" width="220" alt="G08-urun-kimligi-magaza" title="G08-urun-kimligi-magaza"> <img src="05-urun-detayi/v32-S11-product-detail.jpg" width="220" alt="v32-S11-product-detail" title="v32-S11-product-detail"> <img src="05-urun-detayi/v32-S11-product-detail-facts.jpg" width="220" alt="v32-S11-product-detail-facts" title="v32-S11-product-detail-facts">
+
+<sub>G06-urun-detayi-katalog · G07-urun-kumas-kimlik · G08-urun-kimligi-magaza · v32-S11-product-detail · v32-S11-product-detail-facts</sub>
+
+## Canlı Ayna
+
+<img src="06-canli-ayna/G09-canli-ayna-katalog-urunu.jpg" width="220" alt="G09-canli-ayna-katalog-urunu" title="G09-canli-ayna-katalog-urunu"> <img src="06-canli-ayna/G10-canli-ayna-urun-sec.jpg" width="220" alt="G10-canli-ayna-urun-sec" title="G10-canli-ayna-urun-sec"> <img src="06-canli-ayna/G11-canli-ayna-baska-urun.jpg" width="220" alt="G11-canli-ayna-baska-urun" title="G11-canli-ayna-baska-urun"> <img src="06-canli-ayna/v28-D04-mirror-fallback.jpg" width="220" alt="v28-D04-mirror-fallback" title="v28-D04-mirror-fallback"> <img src="06-canli-ayna/v32-MIR-01-mirror-tracking.jpg" width="220" alt="v32-MIR-01-mirror-tracking" title="v32-MIR-01-mirror-tracking"> <img src="06-canli-ayna/v32-MIR-02-mirror-changed.jpg" width="220" alt="v32-MIR-02-mirror-changed" title="v32-MIR-02-mirror-changed"> <img src="06-canli-ayna/v32-MIR-03-mirror-captured.jpg" width="220" alt="v32-MIR-03-mirror-captured" title="v32-MIR-03-mirror-captured">
+
+<sub>G09-canli-ayna-katalog-urunu · G10-canli-ayna-urun-sec · G11-canli-ayna-baska-urun · v28-D04-mirror-fallback · v32-MIR-01-mirror-tracking · v32-MIR-02-mirror-changed · v32-MIR-03-mirror-captured</sub>
+
+## Benim Modelim ve gizlilik
+
+<img src="07-benim-modelim/08-deletion-receipt.jpg" width="220" alt="08-deletion-receipt" title="08-deletion-receipt"> <img src="07-benim-modelim/08b-body-neutral-start.jpg" width="220" alt="08b-body-neutral-start" title="08b-body-neutral-start"> <img src="07-benim-modelim/09-body-studio-slider.jpg" width="220" alt="09-body-studio-slider" title="09-body-studio-slider"> <img src="07-benim-modelim/10-body-studio-measured.jpg" width="220" alt="10-body-studio-measured" title="10-body-studio-measured"> <img src="07-benim-modelim/11-body-deleted.jpg" width="220" alt="11-body-deleted" title="11-body-deleted"> <img src="07-benim-modelim/12-body-studio-thermal-critical.jpg" width="220" alt="12-body-studio-thermal-critical" title="12-body-studio-thermal-critical"> <img src="07-benim-modelim/13-body-3d-front.jpg" width="220" alt="13-body-3d-front" title="13-body-3d-front"> <img src="07-benim-modelim/14-body-3d-side.jpg" width="220" alt="14-body-3d-side" title="14-body-3d-side"> <img src="07-benim-modelim/15-body-3d-back.jpg" width="220" alt="15-body-3d-back" title="15-body-3d-back"> <img src="07-benim-modelim/16-body-3d-dragged.jpg" width="220" alt="16-body-3d-dragged" title="16-body-3d-dragged"> <img src="07-benim-modelim/G12-benim-modelim.jpg" width="220" alt="G12-benim-modelim" title="G12-benim-modelim"> <img src="07-benim-modelim/G13-benim-modelim-3b-govde.jpg" width="220" alt="G13-benim-modelim-3b-govde" title="G13-benim-modelim-3b-govde"> <img src="07-benim-modelim/G14-gizlilik.jpg" width="220" alt="G14-gizlilik" title="G14-gizlilik"> <img src="07-benim-modelim/v32-S09-model-bar.jpg" width="220" alt="v32-S09-model-bar" title="v32-S09-model-bar">
+
+<sub>08-deletion-receipt · 08b-body-neutral-start · 09-body-studio-slider · 10-body-studio-measured · 11-body-deleted · 12-body-studio-thermal-critical · 13-body-3d-front · 14-body-3d-side · 15-body-3d-back · 16-body-3d-dragged · G12-benim-modelim · G13-benim-modelim-3b-govde · G14-gizlilik · v32-S09-model-bar</sub>
+
+## Seyahat
+
+<img src="08-seyahat/01-today-with-trip.jpg" width="220" alt="01-today-with-trip" title="01-today-with-trip"> <img src="08-seyahat/02-trip-summary.jpg" width="220" alt="02-trip-summary" title="02-trip-summary"> <img src="08-seyahat/03-replan-diff.jpg" width="220" alt="03-replan-diff" title="03-replan-diff"> <img src="08-seyahat/04-suitcase.jpg" width="220" alt="04-suitcase" title="04-suitcase">
+
+<sub>01-today-with-trip · 02-trip-summary · 03-replan-diff · 04-suitcase</sub>
+
+## Bileşen kataloğu (açık/koyu)
+
+<img src="09-bilesen-katalogu/ui20-catalog-dark-K-004.jpg" width="220" alt="ui20-catalog-dark-K-004" title="ui20-catalog-dark-K-004"> <img src="09-bilesen-katalogu/ui20-catalog-dark-K-008.jpg" width="220" alt="ui20-catalog-dark-K-008" title="ui20-catalog-dark-K-008"> <img src="09-bilesen-katalogu/ui20-catalog-dark-K-012.jpg" width="220" alt="ui20-catalog-dark-K-012" title="ui20-catalog-dark-K-012"> <img src="09-bilesen-katalogu/ui20-catalog-dark-K-016.jpg" width="220" alt="ui20-catalog-dark-K-016" title="ui20-catalog-dark-K-016"> <img src="09-bilesen-katalogu/ui20-catalog-dark-K-020.jpg" width="220" alt="ui20-catalog-dark-K-020" title="ui20-catalog-dark-K-020"> <img src="09-bilesen-katalogu/ui20-catalog-light-K-004.jpg" width="220" alt="ui20-catalog-light-K-004" title="ui20-catalog-light-K-004"> <img src="09-bilesen-katalogu/ui20-catalog-light-K-008.jpg" width="220" alt="ui20-catalog-light-K-008" title="ui20-catalog-light-K-008"> <img src="09-bilesen-katalogu/ui20-catalog-light-K-012.jpg" width="220" alt="ui20-catalog-light-K-012" title="ui20-catalog-light-K-012"> <img src="09-bilesen-katalogu/ui20-catalog-light-K-016.jpg" width="220" alt="ui20-catalog-light-K-016" title="ui20-catalog-light-K-016"> <img src="09-bilesen-katalogu/ui20-catalog-light-K-020.jpg" width="220" alt="ui20-catalog-light-K-020" title="ui20-catalog-light-K-020">
+
+<sub>ui20-catalog-dark-K-004 · ui20-catalog-dark-K-008 · ui20-catalog-dark-K-012 · ui20-catalog-dark-K-016 · ui20-catalog-dark-K-020 · ui20-catalog-light-K-004 · ui20-catalog-light-K-008 · ui20-catalog-light-K-012 · ui20-catalog-light-K-016 · ui20-catalog-light-K-020</sub>
