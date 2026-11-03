@@ -174,11 +174,48 @@ struct ShoppingAndFitTests {
     @Test("Synthetic chart match is labelled as synthetic")
     func chartMatch() throws {
         let card = DecisionComposer.compose(product: try product("KB-TEE-01-WHT"), passport: FitPassport(), measurements: UserMeasurements(chestCm: 98), wardrobe: closet)
-        #expect(card.size == .chartMatch(size: "M", chartProvenance: .syntheticDemo))
+        #expect(card.size == .chartMatch(size: "M", chartProvenance: .syntheticDemo, basedOn: [.chest], notInChart: []))
+        #expect(card.size.headline == "Göğüs ölçüne göre tabloda M")
         #expect(card.size.detail.contains("sentetik"))
         // A boundary value that sits in two rows is ambiguous, so no match.
         let edge = DecisionComposer.compose(product: try product("KB-TEE-01-WHT"), passport: FitPassport(), measurements: UserMeasurements(chestCm: 94), wardrobe: closet)
         guard case .abstain = edge.size else { Issue.record("boundary should abstain"); return }
+    }
+
+    @Test("V21-00 gap 1: a measurement the chart does not list is named, never silently counted as matching")
+    func chartMatchNamesUncheckedMeasurements() throws {
+        // The tee chart lists chest only. The user also typed a waist that the chart cannot judge.
+        let card = DecisionComposer.compose(product: try product("KB-TEE-01-WHT"), passport: FitPassport(),
+                                            measurements: UserMeasurements(chestCm: 98, waistCm: 120), wardrobe: closet)
+        #expect(card.size == .chartMatch(size: "M", chartProvenance: .syntheticDemo, basedOn: [.chest], notInChart: [.waist]))
+        #expect(card.size.headline == "Göğüs ölçüne göre tabloda M")
+        #expect(!card.size.headline.contains("Ölçülerine"))
+        #expect(card.size.detail.contains("Bel ölçün bu tabloda yok"))
+        #expect(card.size.detail.contains("sentetik"))
+        #expect(card.size.confidence == .heuristic)
+
+        // Only a waist, and the chart has no waist at all: nothing was compared, so abstain.
+        let waistOnly = DecisionComposer.compose(product: try product("KB-TEE-01-WHT"), passport: FitPassport(),
+                                                 measurements: UserMeasurements(waistCm: 80), wardrobe: closet)
+        guard case .abstain = waistOnly.size else { Issue.record("nothing compared must abstain"); return }
+        // Even a one-row chart must not "match" when nothing could be compared.
+        let oneRow = SizeChart(revision: 1, rows: [.init(size: "TEK", chestCm: 80...120, waistCm: nil)], provenance: .syntheticDemo)
+        guard case .abstain = SizeAdvisor.advice(passport: FitPassport(), brandID: nil, category: .top, catalogRevision: nil, chart: oneRow,
+                                                  measurements: UserMeasurements(waistCm: 80)) else { Issue.record("one-row chart matched nothing"); return }
+
+        // Both measurements in the chart and both in range: plain wording.
+        let both = SizeChart(revision: 1, rows: [
+            .init(size: "S", chestCm: 84...92, waistCm: 70...78),
+            .init(size: "M", chestCm: 92.5...100, waistCm: 78.5...86),
+        ], provenance: .syntheticDemo)
+        let full = SizeAdvisor.advice(passport: FitPassport(), brandID: nil, category: .top, catalogRevision: nil, chart: both,
+                                      measurements: UserMeasurements(chestCm: 96, waistCm: 82))
+        #expect(full == .chartMatch(size: "M", chartProvenance: .syntheticDemo, basedOn: [.chest, .waist], notInChart: []))
+        #expect(full.headline == "Ölçülerine göre tabloda M")
+        // One measurement out of every row: no size, even if the other one fits.
+        let split = SizeAdvisor.advice(passport: FitPassport(), brandID: nil, category: .top, catalogRevision: nil, chart: both,
+                                       measurements: UserMeasurements(chestCm: 96, waistCm: 120))
+        guard case .abstain = split else { Issue.record("a waist outside every row must not match"); return }
     }
 
     // MARK: Shopping guard

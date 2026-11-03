@@ -22,6 +22,8 @@ public actor OctopusCoordinator {
     private struct LaneTicket {
         let id: UUID
         let cancel: @Sendable () -> Void
+        /// Resolves once the lane's task has fully stopped and released its grant.
+        let done: @Sendable () async -> Void
     }
 
     private struct CoalescedEntry {
@@ -75,6 +77,10 @@ public actor OctopusCoordinator {
             return finish(.resourceDenied)
         }
         defer { governor.release(grant) }
+        // The governor may take the grant back when the tier drops (V15-T-DEV-03): in-flight nodes stop at
+        // once, writes (`mustComplete`) still land, and the run reports RESOURCE_DENIED, never a result.
+        let preempt = PreemptSignal()
+        governor.watch(grant) { preempt.fire() }
         for id in graph.nodes.map(\.id) { move(id, to: .scheduled) }
 
         // 3. Levels in order, nodes in a level concurrently.
@@ -82,6 +88,7 @@ public actor OctopusCoordinator {
         var limitations: [String] = []
         for level in graph.levels {
             if Task.isCancelled { return finish(.cancelled) }
+            if preempt.isFired { return finish(.resourceDenied, as: .cancelled) }
             var jobs: [(TaskNode, TaskInputs, Bool)] = []
             for node in level {
                 move(node.id, to: .running)
@@ -96,7 +103,7 @@ public actor OctopusCoordinator {
                 for (node, inputs, open) in jobs {
                     group.addTask {
                         if open { return (node.id, .failure(.moduleFailed)) }
-                        return (node.id, await Self.execute(node, inputs: inputs))
+                        return (node.id, await Self.execute(node, inputs: inputs, preempt: preempt))
                     }
                 }
                 var all: [String: Result<SendableBox, FaultCode>] = [:]
@@ -106,6 +113,7 @@ public actor OctopusCoordinator {
             // Only the caller's cancellation cancels the run. A module that throws CancellationError on its
             // own is a module failure: its fallback applies and finished siblings (a write) still count.
             if Task.isCancelled { return finish(.cancelled) }
+            if preempt.isFired { return finish(.resourceDenied, as: .cancelled) }
             for node in level {
                 switch results[node.id]! {
                 case .success(let box):
@@ -129,6 +137,7 @@ public actor OctopusCoordinator {
 
         // 4. A run cancelled after its last task never reports a result (V15-T-ORC-04).
         if Task.isCancelled { return finish(.cancelled) }
+        if preempt.isFired { return finish(.resourceDenied, as: .cancelled) }
         let value: Value
         do { value = try assemble(outputs) } catch { return finish(.moduleFailed) }
         let envelope = limitations.isEmpty
@@ -155,7 +164,7 @@ public actor OctopusCoordinator {
 
     /// Races the work against its deadline and the caller's cancellation. Returns as soon as one wins;
     /// a module that ignores cancellation is abandoned, not awaited, so it cannot hang the run.
-    static func execute(_ node: TaskNode, inputs: TaskInputs) async -> Result<SendableBox, FaultCode> {
+    static func execute(_ node: TaskNode, inputs: TaskInputs, preempt: PreemptSignal = PreemptSignal()) async -> Result<SendableBox, FaultCode> {
         if node.mustComplete {
             // Unstructured, so neither the deadline nor the caller's cancellation can cut a write short.
             let work = Task { try await node.work(inputs) }
@@ -182,6 +191,7 @@ public actor OctopusCoordinator {
                         race.finish(.failure(.timedOut))
                     } catch {}
                 }
+                preempt.onFire { race.finish(.failure(.resourceDenied)) }
                 race.onFinish { worker.cancel(); timer.cancel() }
             }
         } onCancel: {
@@ -194,14 +204,32 @@ public actor OctopusCoordinator {
     /// Runs `operation` in `lane`, cancelling whatever ran there before. Returns `nil` if a newer call
     /// superseded this one, so a stale preview can never be shown (V15-T-ORC-03).
     public func latest<R: Sendable>(lane: String, _ operation: @escaping @Sendable () async -> R) async -> R? {
-        lanes[lane]?.cancel()
+        let previous = lanes[lane]
+        previous?.cancel()
         let id = UUID()
-        let task = Task { await operation() }
-        lanes[lane] = LaneTicket(id: id, cancel: { task.cancel() })
+        // The newer call starts only after the superseded one has stopped, so it never finds the heavy
+        // slot still held by the work it replaced (V15-T-DEV-08). A cancelled run returns promptly; only
+        // a must-complete write is waited for, which keeps writes in order.
+        let task = Task<R?, Never> {
+            await previous?.done()
+            if Task.isCancelled { return nil }
+            return await operation()
+        }
+        lanes[lane] = LaneTicket(id: id, cancel: { task.cancel() }, done: { _ = await task.value })
         let result = await withTaskCancellationHandler { await task.value } onCancel: { task.cancel() }
         guard lanes[lane]?.id == id else { return nil }
         lanes[lane] = nil
         return Task.isCancelled ? nil : result
+    }
+
+    /// Drops every finished or in-flight coalesced entry (memory warning, drill 8). In-flight work keeps
+    /// running for the callers already waiting on it; the next caller simply starts fresh. Returns the
+    /// number of entries dropped.
+    @discardableResult
+    public func evictCaches() -> Int {
+        let count = coalescedWork.count
+        coalescedWork.removeAll()
+        return count
     }
 
     /// Cancels whatever runs in `lane` (a deleted body must not be repainted by a preview in flight).
@@ -224,6 +252,34 @@ public actor OctopusCoordinator {
         let value = await task.value
         if coalescedWork[key]?.id == id { coalescedWork[key]?.expiresAt = clock().addingTimeInterval(ttl) }
         return value
+    }
+}
+
+/// Set once when the governor takes a run's grant back. Handlers registered later run at once.
+final class PreemptSignal: @unchecked Sendable {
+    private let lock = NSLock()
+    private var fired = false
+    private var handlers: [@Sendable () -> Void] = []
+
+    var isFired: Bool { lock.withLock { fired } }
+
+    func fire() {
+        let run: [@Sendable () -> Void] = lock.withLock {
+            guard !fired else { return [] }
+            fired = true
+            defer { handlers.removeAll() }
+            return handlers
+        }
+        run.forEach { $0() }
+    }
+
+    func onFire(_ handler: @escaping @Sendable () -> Void) {
+        let now: Bool = lock.withLock {
+            if fired { return true }
+            handlers.append(handler)
+            return false
+        }
+        if now { handler() }
     }
 }
 

@@ -58,6 +58,13 @@ final class AppModel {
     private(set) var canRedoBody = false
     private(set) var lastBodyDeletionReceipt: DeletionReceipt?
     private var bodyStudio: BodyStudio?
+    /// The single §113 governor: thermal, Low Power, memory, lock and network decide what may run.
+    let governor = DeviceResourceGovernor()
+    private var deviceMonitor: DeviceSignalMonitor?
+    /// One calm sentence when the phone limits work (hot, low memory, offline); nil otherwise. No numbers.
+    private(set) var deviceNote: String?
+    /// §116.1 DerivedEphemeral scratch space; swept at launch so a killed import leaves no plaintext.
+    private(set) var ephemeral: EphemeralArea?
     /// Bumped by every commit, undo, redo, delete and reload. A preview started under an older generation is
     /// dropped when it returns, so it can never repaint over newer truth (§105.3).
     private var bodyGeneration = 0
@@ -108,6 +115,7 @@ final class AppModel {
     func load() async {
         if !loadStarted {
             loadStarted = true
+            startDeviceGovernor()
             let previous = lastSave
             lastSave = Task {
                 await previous?.value
@@ -234,13 +242,38 @@ final class AppModel {
         persistPassport()
     }
 
+    // MARK: Device (§113)
+
+    private func startDeviceGovernor() {
+        let monitor = DeviceSignalMonitor(governor: governor)
+        deviceMonitor = monitor
+        governor.observe { [weak self] decision in
+            Task { @MainActor in self?.deviceNote = decision.userNote }
+        }
+        monitor.start()
+        deviceNote = governor.decision.userNote
+        if let root = try? FileManager.default.url(for: .cachesDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+            .appendingPathComponent("Kabinsiz-ephemeral", isDirectory: true) {
+            ephemeral = try? EphemeralArea(root: root) { EphemeralArea.systemFreeSpace(at: root) }
+            ephemeral?.sweepOrphans()
+        }
+    }
+
+    /// Body writes wait while the phone is locked instead of failing half-way (V15-T-DEV-10).
+    private func untilVaultReachable() async {
+        try? await governor.untilProtectedDataAvailable()
+    }
+
     // MARK: Body (§133 step 5: slider → revision → preview → local save)
 
     private func currentVault() -> Vault? { vault }
 
     private func openBodyStudio(vault: Vault) async {
         let store = VaultBodyStore { [weak self] in await self?.currentVault() }
-        let studio = BodyStudio(coordinator: OctopusCoordinator(registry: .p0()), store: store)
+        let coordinator = OctopusCoordinator(registry: .p0(), governor: governor)
+        // Only rebuildable work is evictable; the studio's pending commits and undo history never are.
+        governor.registerEvictable("octopus.coalesced") { await coordinator.evictCaches() }
+        let studio = BodyStudio(coordinator: coordinator, store: store)
         bodyStudio = studio
         await studio.load()
         await migrateLegacyMeasurements(into: studio, vault: vault)
@@ -303,6 +336,7 @@ final class AppModel {
 
     func createNeutralBody(unit: LengthUnit) async {
         guard let studio = bodyStudio else { return }
+        await untilVaultReachable()
         await apply(await studio.createNeutral(unit: unit), from: studio)
     }
 
@@ -318,26 +352,31 @@ final class AppModel {
 
     func commitBody(_ edit: BodyEdit) async {
         guard let studio = bodyStudio else { return }
+        await untilVaultReachable()
         await apply(await studio.commit(edit), from: studio)
     }
 
     func undoBody() async {
         guard let studio = bodyStudio else { return }
+        await untilVaultReachable()
         await apply(await studio.undo(), from: studio)
     }
 
     func redoBody() async {
         guard let studio = bodyStudio else { return }
+        await untilVaultReachable()
         await apply(await studio.redo(), from: studio)
     }
 
     func setBodyUnit(_ unit: LengthUnit) async {
         guard let studio = bodyStudio else { return }
+        await untilVaultReachable()
         await apply(await studio.setUnit(unit), from: studio)
     }
 
     func deleteBody() async {
         guard let studio = bodyStudio else { return }
+        await untilVaultReachable()
         bodyGeneration += 1
         switch await studio.deleteProfile() {
         case .success(let receipt):

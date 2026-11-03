@@ -7,6 +7,12 @@ public struct SizeChart: Codable, Hashable, Sendable {
         public let size: String
         public let chestCm: ClosedRange<Double>?
         public let waistCm: ClosedRange<Double>?
+
+        public init(size: String, chestCm: ClosedRange<Double>?, waistCm: ClosedRange<Double>?) {
+            self.size = size
+            self.chestCm = chestCm
+            self.waistCm = waistCm
+        }
     }
 
     public let revision: Int
@@ -31,6 +37,20 @@ public struct UserMeasurements: Codable, Hashable, Sendable {
     }
 }
 
+/// A body measurement a size chart can list.
+public enum ChartMeasure: String, Codable, CaseIterable, Comparable, Sendable {
+    case chest, waist
+
+    public var displayName: String {
+        switch self {
+        case .chest: "Göğüs"
+        case .waist: "Bel"
+        }
+    }
+
+    public static func < (a: Self, b: Self) -> Bool { a.rawValue < b.rawValue }
+}
+
 /// What the card may say about size. There is no percentage anywhere by design (T-V13-019).
 public enum SizeAdvice: Hashable, Sendable {
     /// Not enough data. `reason` is user-facing Turkish.
@@ -39,15 +59,17 @@ public enum SizeAdvice: Hashable, Sendable {
     case history(size: String, outcome: FitOutcome)
     /// At least two consistent records for this brand + category.
     case likely(size: String, basedOn: Int)
-    /// The chart lists the user's measurement in this size.
-    case chartMatch(size: String, chartProvenance: Provenance)
+    /// Every measurement in `basedOn` falls in this size's row and in no other row. `notInChart` are
+    /// measurements the user gave that the chart cannot judge; the card names them instead of letting
+    /// "your measurements" imply they were checked (V21-00 gap 1).
+    case chartMatch(size: String, chartProvenance: Provenance, basedOn: Set<ChartMeasure>, notInChart: Set<ChartMeasure>)
 
     public var confidence: ConfidenceKind {
         switch self {
         case .abstain: .abstain
         case .history: .partial
         case .likely: .heuristic
-        case .chartMatch(_, let p): p == .licensedCatalog ? .verifiedFacts : .heuristic
+        case let .chartMatch(_, p, _, notInChart): p == .licensedCatalog && notInChart.isEmpty ? .verifiedFacts : .heuristic
         }
     }
 
@@ -56,7 +78,10 @@ public enum SizeAdvice: Hashable, Sendable {
         case .abstain: "Yeterli veri yok"
         case let .history(size, outcome): "Daha önce \(size) aldın: \(outcome.displayName.lowercased())"
         case let .likely(size, _): "\(size) daha olası"
-        case let .chartMatch(size, _): "Ölçülerine göre tabloda \(size)"
+        case let .chartMatch(size, _, basedOn, notInChart):
+            notInChart.isEmpty && basedOn.count > 1
+                ? "Ölçülerine göre tabloda \(size)"
+                : "\(basedOn.sorted().map(\.displayName).joined(separator: " ve ")) ölçüne göre tabloda \(size)"
         }
     }
 
@@ -65,7 +90,11 @@ public enum SizeAdvice: Hashable, Sendable {
         case .abstain(let reason): reason
         case .history: "Tek bir deneme sonucu var. Kesin beden önerisi için yeterli değil."
         case let .likely(_, n): "Bu markada aynı türde \(n) deneme kaydına dayanıyor."
-        case let .chartMatch(_, p): p.isSynthetic ? "Örnek (sentetik) beden tablosu. Gerçek ürün tablosu değil." : "Markanın beden tablosu."
+        case let .chartMatch(_, p, _, notInChart):
+            [
+                notInChart.isEmpty ? nil : "\(notInChart.sorted().map(\.displayName).joined(separator: " ve ")) ölçün bu tabloda yok; karşılaştırılmadı.",
+                p.isSynthetic ? "Örnek (sentetik) beden tablosu. Gerçek ürün tablosu değil." : "Markanın beden tablosu.",
+            ].compactMap { $0 }.joined(separator: " ")
         }
     }
 }
@@ -116,7 +145,7 @@ public enum SizeAdvisor {
             }
         }
         if let chart, let match = chartMatch(chart: chart, measurements: measurements) {
-            return .chartMatch(size: match, chartProvenance: chart.provenance)
+            return .chartMatch(size: match.size, chartProvenance: chart.provenance, basedOn: match.basedOn, notInChart: match.notInChart)
         }
         if chart == nil {
             return .abstain(reason: "Bu ürünün beden tablosu yok. Kabinde denemeden kesin beden alma.")
@@ -124,16 +153,29 @@ public enum SizeAdvisor {
         return .abstain(reason: "Ölçü girmedin veya ölçün tablodaki aralıklara uymuyor.")
     }
 
-    /// A size matches only if every measurement the user gave falls in that row's ranges.
-    static func chartMatch(chart: SizeChart, measurements: UserMeasurements?) -> String? {
-        guard let m = measurements, m.chestCm != nil || m.waistCm != nil else { return nil }
-        let matches = chart.rows.filter { row in
-            var ok = true
-            var checked = false
-            if let chest = m.chestCm, let range = row.chestCm { ok = ok && range.contains(chest); checked = true }
-            if let waist = m.waistCm, let range = row.waistCm { ok = ok && range.contains(waist); checked = true }
-            return ok && checked
+    /// A size matches only if every measurement the user gave *and the row lists* falls in that row's
+    /// ranges, at least one was compared, and exactly one row matches. Measurements the matching row does
+    /// not list are returned as `notInChart`, so the card can say what was not checked.
+    static func chartMatch(chart: SizeChart, measurements: UserMeasurements?) -> (size: String, basedOn: Set<ChartMeasure>, notInChart: Set<ChartMeasure>)? {
+        guard let m = measurements else { return nil }
+        let given: [(ChartMeasure, Double)] = [(.chest, m.chestCm), (.waist, m.waistCm)].compactMap { k, v in v.map { (k, $0) } }
+        guard !given.isEmpty else { return nil }
+        func range(_ row: SizeChart.Row, _ k: ChartMeasure) -> ClosedRange<Double>? {
+            switch k {
+            case .chest: row.chestCm
+            case .waist: row.waistCm
+            }
         }
-        return matches.count == 1 ? matches[0].size : nil
+        let matches: [(SizeChart.Row, Set<ChartMeasure>)] = chart.rows.compactMap { row in
+            var checked: Set<ChartMeasure> = []
+            for (k, value) in given {
+                guard let r = range(row, k) else { continue }
+                guard r.contains(value) else { return nil }
+                checked.insert(k)
+            }
+            return checked.isEmpty ? nil : (row, checked)
+        }
+        guard matches.count == 1, let (row, basedOn) = matches.first else { return nil }
+        return (row.size, basedOn, Set(given.map(\.0)).subtracting(basedOn))
     }
 }

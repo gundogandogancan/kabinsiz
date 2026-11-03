@@ -1,0 +1,95 @@
+evidence_schema: 1
+work_package: WP15-06
+title: "Device resource governor + fault injection: thermal, Low Power, memory, battery, lock, network, disk, background expiry"
+status: PASS   # macOS unit tests + iPhone 17 simulator with injected faults; real thermal/battery behaviour is REAL_DEVICE_BLOCKED
+commit_sha: null   # filled by the commit that adds this file; see git log
+branch: main
+spec: "v1.5 §113, §113.1, §113.4 drills 1-8, §116.1 DerivedEphemeral; V15-T-DEV-01..10 (inside the v2.1 master)"
+implementation_paths:
+  - Packages/KabinsizCore/Sources/Octopus/DeviceSignals.swift
+  - Packages/KabinsizCore/Sources/Octopus/DeviceGovernor.swift
+  - Packages/KabinsizCore/Sources/Octopus/EphemeralArea.swift
+  - Packages/KabinsizCore/Sources/Octopus/BackgroundWindow.swift
+  - Packages/KabinsizCore/Sources/Octopus/ResourceGovernor.swift
+  - Packages/KabinsizCore/Sources/Octopus/OctopusCoordinator.swift
+  - apps/ios/Kabinsiz/Services/DeviceSignalMonitor.swift
+  - apps/ios/Kabinsiz/App/AppModel.swift
+  - apps/ios/Kabinsiz/Features/Profile/BodyStudioView.swift
+unit_test_command: "cd Packages/KabinsizCore && swift test"
+unit_test_exit_code: 0
+unit_test_count: 211   # whole package; 16 in DeviceGovernorTests, 1 new size-advice test
+ui_test_command: "scripts/check.sh"
+ui_test_exit_code: 0
+ui_tests:
+  - "testThermalCriticalKeepsBodyStudioUsable PASS: launched with -deviceFault thermalCritical (DEBUG-only injection) -> calm note without digits, % or degrees -> waist slider still shapes and saves -> value survives relaunch"
+  - "testBodyStudioJourney, testVaultSurvivesRelaunchAndDeletes, testDemoTripFlow, testScanDecisionCard still PASS"
+hardware: "Apple M5 Mac, macOS 26.4; iPhone 17 simulator iOS 26.5 (SIMULATOR_ONLY). Simulator thermal state is always nominal; faults are injected"
+benchmarks: []   # thresholds are hypotheses (D-016); no latency, fps or battery claims
+signals_read:
+  - "ProcessInfo.thermalState (coarse level only; unknown future states map to SERIOUS)"
+  - "ProcessInfo.isLowPowerModeEnabled + NSProcessInfoPowerStateDidChange"
+  - "UIApplication.didReceiveMemoryWarningNotification (fades after 60 s, no OS 'calm' event exists)"
+  - "UIApplication.isProtectedDataAvailable + protectedData will/did notifications; background/foreground"
+  - "NWPathMonitor reachability only (D-017); no connection API"
+  - "volumeAvailableCapacityForImportantUsage"
+  - "battery: monitoring OFF -> unavailable (no feature needs it); policy caps at BALANCED"
+device_cases:
+  - "V15-T-DEV-01 PASS: thermal serious -> CONSERVE: physics and background inference off, camera cadence lower, 2D anchors; body commit still saves; note says 'ısındı' with no numbers"
+  - "V15-T-DEV-02 PASS: thermal critical -> SURVIVAL: P1 and heavy refused, camera paused, heavy model -> manual entry; P0 slider/save works"
+  - "V15-T-DEV-03 PASS: Low Power mid-inference -> lowest-priority heavy run taken back (RESOURCE_DENIED, node CANCELLED, never a value); the P1 run finishes; a taken-back run's must-complete write still lands once; no grant leaks"
+  - "V15-T-DEV-04 PASS: battery -1, NaN or >1 stays unavailable; blocks TURBO; reason codes carry no values"
+  - "V15-T-DEV-05 PASS: memory warning evicts the coordinator cache only; a commit held in flight lands; undo history kept; tier recovers only after calm + hysteresis"
+  - "V15-T-DEV-06 PASS: temp reservations respect a free-space floor including pending reservations; unknown free space -> small cap; over-capacity write refused; refusal is retryable"
+  - "V15-T-DEV-07 PASS: background expiry cancels work, runs the checkpoint once, reports stoppedAtCheckpoint; a late finish after expiry is not trusted as complete"
+  - "V15-T-DEV-08 PASS: a new scan supersedes the old one; it waits for the old run to stop (including a must-complete save that still holds the heavy slot) instead of being refused; writes stay in order"
+  - "V15-T-DEV-09 PASS: no Neural Engine -> first validated fallback unit; unvalidated GPU never chosen; none validated -> manual"
+  - "V15-T-DEV-10 PASS: locked -> new P0 refused, nothing written; a P0 save already running finishes; deferred write waits and lands once after unlock; waiting is cancellable"
+drills:
+  - "1 phone warms during scan: DEV-01 (cadence 15 -> 2 -> paused; values are hypotheses)"
+  - "2 killed mid-import: orphanSweep (next launch deletes leftovers, keeps live files; folder excluded from backup)"
+  - "3 locked during encryption: DEV-10 (wait, no partial write); real file protection REAL_DEVICE_BLOCKED"
+  - "4 low disk: DEV-06"
+  - "5 battery unknown: DEV-04"
+  - "6 background suspended: DEV-07 (BackgroundWindow not yet wrapped around app saves; see residual risks)"
+  - "7 Neural Engine unsupported: DEV-09 (planner only; no Core ML model ships yet)"
+  - "8 memory warning: DEV-05"
+other_cases:
+  - "Tier table: 144 signal combinations each give a valid DeviceBudget; P0 allowed in every foreground tier"
+  - "Hysteresis: alternating serious/nominal every 5 s never steps up; 20 s steady nominal does"
+  - "Take-back order: disallowed priority, lost network, heavy above slots; P0 never; watching an already taken-back grant fires at once"
+mutation_checks:
+  - "no take-back: lowPowerRebudgets failed as expected"
+  - "P0 taken back: lockedDefers failed as expected"
+  - "no hysteresis: hysteresis failed as expected"
+  - "unknown battery allows turbo: batteryUnknown failed as expected"
+  - "preemption ignored by the deadline race: lowPowerRebudgets failed as expected"
+  - "latest-wins does not wait for the superseded run: newScanPreemptsOld failed as expected (survived the first test version; test strengthened with a must-complete save holding the slot)"
+  - "no eviction: memoryWarning failed as expected"
+  - "memory calm ignored: memoryWarning failed as expected"
+  - "disk floor ignores pending reservations: diskBounded failed as expected"
+  - "sweep removes live files: orphanSweep failed as expected"
+  - "late finish trusted as complete: backgroundExpiry failed as expected"
+  - "unvalidated compute unit used: computeFallback failed as expected"
+  - "locked does not wait: lockedDefers failed as expected"
+  - "offline keeps network: policyTable failed as expected"
+  - "memory critical only CONSERVE: policyTable failed as expected"
+also_fixed_in_this_change:
+  - "V21-00 gap 1 (STOP_THE_LINE class, D-018): chart match no longer counts a measurement the chart does not list. Card names what was compared ('Göğüs ölçüne göre tabloda M') and what was not ('Bel ölçün bu tabloda yok; karşılaştırılmadı'); nothing comparable -> abstain; missing measure -> never verifiedFacts. Test chartMatchNamesUncheckedMeasurements; mutations 'unchecked measure dropped' and 'empty comparison matches' both killed (the second only after adding a one-row chart case)"
+  - "Lower-detail silhouette (station anchors only) was drawn with straight lines and read as a needle in the thermal-critical screenshot; anchors are now joined by a clamped Catmull-Rom curve (same anchors, no invented shape)"
+guard_found_by_existing_tests:
+  - "The WP15-03 static network scan flagged `import Network` in the new monitor; narrow per-file exemption (D-017) and NWListener/NWBrowser/NWEndpoint added to the forbidden list"
+visual_artifacts:
+  - docs/evidence/screenshots/SIMULATOR_ONLY-12-body-studio-thermal-critical.png
+accessibility_checks:
+  - "Device note is plain text in the list (VoiceOver reads it in order); no colour-only signal"
+independent_reviewer: null
+review_independence_level: INTERNAL_SELF_REVIEW
+residual_risks:
+  - "All thresholds (battery 10/20 %, 20 s recovery, 60 s memory calm, camera 15/8/2) are hypotheses until measured on the paired iPhones (13 Pro Max, 14 Pro Max, 16 Pro) in WP15-18"
+  - "Simulator never reports a non-nominal thermal state; real thermal transitions are REAL_DEVICE_BLOCKED"
+  - "App saves are not yet wrapped in beginBackgroundTask/BackgroundWindow; vault writes are atomic so suspension cannot corrupt, but a queued save can be delayed until the next launch"
+  - "EphemeralArea is wired and swept at launch but no feature writes temp files yet (camera import comes later)"
+  - "ComputePlanner has no real model to place yet; Core ML compute-unit fallback is untested on device"
+  - "Memory pressure 'critical' is never set by the iOS adapter (UIKit only sends warnings); a DispatchSource memory-pressure source can be added if measurements show it is needed"
+open_p0: []
+open_p1: []

@@ -88,7 +88,7 @@ struct StoreAndPrivacyTests {
         #expect(files.contains { $0.path.contains("apps/ios/Kabinsiz") }, "app sources were not scanned")
         // Code patterns, not bare words, so comments may name a framework. `import WeatherKit` also matches
         // `@preconcurrency import WeatherKit`; ` WeatherKit.` matches `import struct WeatherKit.X`.
-        let forbidden = ["URLSession", "import Network", "NWConnection", "CFNetwork", "URLRequest",
+        let forbidden = ["URLSession", "import Network", "NWConnection", "NWListener", "NWBrowser", "NWEndpoint", "CFNetwork", "URLRequest",
                          "import WeatherKit", " WeatherKit.", "WeatherService",
                          "AsyncImage", "CLLocationManager", "CLGeocoder", "MKLocalSearch", "WKWebView", "openURL",
                          // WP15-03: routes are fixed in SystemContracts; nothing else may add one or open URLs.
@@ -98,6 +98,8 @@ struct StoreAndPrivacyTests {
         let allowed: [String: Set<String>] = [
             weatherFile: ["import WeatherKit", "WeatherService", "AsyncImage"],
             "Packages/KabinsizCore/Sources/SystemContracts/CitadelGate.swift": ["EgressRoute(", "routes:"],
+            // WP15-06: `NWPathMonitor` only reads whether a path exists (OFFLINE tier); it opens no connection.
+            "apps/ios/Kabinsiz/Services/DeviceSignalMonitor.swift": ["import Network"],
         ]
         for file in files {
             let relative = String(file.standardizedFileURL.path.dropFirst(repo.standardizedFileURL.path.count + 1))

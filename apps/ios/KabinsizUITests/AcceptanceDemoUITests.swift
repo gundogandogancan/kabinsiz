@@ -199,6 +199,40 @@ final class AcceptanceDemoUITests: XCTestCase {
 
     /// Small drags in either direction until the element sits in the middle band of the screen. Big
     /// swipes overshoot in a List and lazily unload the row.
+    /// V15-T-DEV-02 on the simulator: with an injected thermal-critical signal the body studio says so
+    /// calmly, without numbers, and the user can still shape and save (SIMULATOR_ONLY fault injection).
+    func testThermalCriticalKeepsBodyStudioUsable() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTestVault", "hot-\(UUID().uuidString)", "-deviceFault", "thermalCritical"]
+        app.launch()
+        app.buttons["Benim Modelim"].tap()
+        app.buttons["createNeutralBody"].tap()
+
+        let note = app.staticTexts["deviceNote"]
+        XCTAssertTrue(note.waitForExistence(timeout: 5))
+        XCTAssertTrue(note.label.contains("ısındı"))
+        XCTAssertNil(note.label.rangeOfCharacter(from: CharacterSet.decimalDigits.union(CharacterSet(charactersIn: "%°"))), "no temperature or percentage")
+
+        // The note adds a row, so the waist slider may start below the fold (List rows load lazily).
+        let waist = app.sliders["slider-WAIST"]
+        bringIntoView(waist, in: app)
+        XCTAssertTrue(waist.waitForExistence(timeout: 5))
+        waist.adjust(toNormalizedSliderPosition: 0.8)
+        let shaped = app.staticTexts["value-WAIST"]
+        XCTAssertTrue(wait(shaped, NSPredicate(format: "label != '82 cm'")))
+        sleep(1) // commit debounce
+        let saved = shaped.label
+        XCTAssertFalse(app.staticTexts["bodyMessage"].exists, "the save must not be refused while hot")
+        attach(app, "12-body-studio-thermal-critical")
+
+        app.terminate()
+        app.launch()
+        app.buttons["Benim Modelim"].tap()
+        let relaunched = app.staticTexts["value-WAIST"]
+        bringIntoView(relaunched, in: app)
+        XCTAssertTrue(wait(relaunched, NSPredicate(format: "label == %@", saved)), "saved while hot survives relaunch")
+    }
+
     private func bringIntoView(_ element: XCUIElement, in app: XCUIApplication) {
         let screen = app.frame
         for _ in 0..<15 {

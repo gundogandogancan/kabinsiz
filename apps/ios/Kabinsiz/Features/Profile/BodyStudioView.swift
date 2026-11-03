@@ -74,6 +74,12 @@ struct BodyStudioSection: View {
                 .frame(height: 280)
                 .frame(maxWidth: .infinity)
                 .animation(reduceMotion ? nil : .smooth(duration: 0.28), value: model.bodyScene?.bodyRevision)
+            if let note = model.deviceNote {
+                // §113.1 "warn subtly": one quiet line; the controls below keep working.
+                Label(note, systemImage: "leaf")
+                    .font(.footnote).foregroundStyle(Token.textSecondary)
+                    .accessibilityIdentifier("deviceNote")
+            }
             if !model.bodyLimitations.isEmpty || model.bodyScene?.isFallback == true {
                 Label(model.bodyLimitations.first ?? "Şekil çizilemedi; değerler listede.", systemImage: "info.circle")
                     .font(.footnote).foregroundStyle(Token.textSecondary)
@@ -255,10 +261,13 @@ struct SilhouetteView: View {
             var path = Path()
             let right = scene.rightOutline.map { CGPoint(x: cx + $0.x * figure, y: top + $0.y * figure) }
             let left = scene.rightOutline.reversed().map { CGPoint(x: cx - $0.x * figure, y: top + $0.y * figure) }
+            // The full outline is dense, so straight segments read as a curve. The lower-detail tier sends
+            // only the station anchors; joined by straight lines they look like a needle, so they are drawn
+            // as a smooth curve instead (same anchors, no invented shape).
+            let smooth = scene.rightOutline.count < 16
             path.move(to: CGPoint(x: cx, y: top))
-            right.forEach { path.addLine(to: $0) }
-            path.addLine(to: CGPoint(x: cx, y: top + figure))
-            left.forEach { path.addLine(to: $0) }
+            Self.add([CGPoint(x: cx, y: top)] + right + [CGPoint(x: cx, y: top + figure)], to: &path, smooth: smooth, minX: cx, maxX: size.width)
+            Self.add([CGPoint(x: cx, y: top + figure)] + left + [CGPoint(x: cx, y: top)], to: &path, smooth: smooth, minX: 0, maxX: cx)
             path.closeSubpath()
             context.fill(path, with: .linearGradient(
                 Gradient(colors: [Token.accentWarm.opacity(0.55), Token.accentWarm.opacity(0.32)]),
@@ -288,5 +297,23 @@ struct SilhouetteView: View {
             : "Vücudunun ön görünüm çizimi")
         .accessibilityValue(summary)
         .accessibilityIdentifier("bodySilhouette")
+    }
+
+    /// Appends `points[1...]` to `path`, which already sits at `points[0]`. Smooth mode uses Catmull–Rom
+    /// segments as cubic Béziers, with control points clamped to one side of the centre line so the curve
+    /// can never cross it or bulge past the canvas.
+    static func add(_ points: [CGPoint], to path: inout Path, smooth: Bool, minX: CGFloat, maxX: CGFloat) {
+        guard points.count > 1 else { return }
+        guard smooth else {
+            points.dropFirst().forEach { path.addLine(to: $0) }
+            return
+        }
+        func clamp(_ p: CGPoint) -> CGPoint { CGPoint(x: min(max(p.x, minX), maxX), y: p.y) }
+        for i in 0..<(points.count - 1) {
+            let p0 = points[max(i - 1, 0)], p1 = points[i], p2 = points[i + 1], p3 = points[min(i + 2, points.count - 1)]
+            let c1 = clamp(CGPoint(x: p1.x + (p2.x - p0.x) / 6, y: p1.y + (p2.y - p0.y) / 6))
+            let c2 = clamp(CGPoint(x: p2.x - (p3.x - p1.x) / 6, y: p2.y - (p3.y - p1.y) / 6))
+            path.addCurve(to: p2, control1: c1, control2: c2)
+        }
     }
 }

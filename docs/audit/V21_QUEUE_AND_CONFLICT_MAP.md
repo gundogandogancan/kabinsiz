@@ -99,16 +99,16 @@ Durum sütunu: TESTED / IN_PROGRESS / KUYRUKTA / SPEC_ONLY / BLOCKED_EXTERNAL / 
 | 3 | WP15-03 (R17-01, WP19-01 egress kısmı) | CITADEL egress kapısı | 2 | TESTED | Dinamik ağ yakalama cihaz ister |
 | 4 | WP15-04 (R17-01, WP19-01 vault kısmı) | Şifreli vault | 2 | TESTED | CRY-06 cihaz; kriptografi uzmanı yok |
 | 5 | WP15-05 (R17-06 kısmı, WP19-02 kısmı) | Octopus koordinatör + kaydırıcı→gövde revizyonu→önizleme→yerel kayıt | 2,3,4 | TESTED (SIMULATOR_ONLY; `docs/evidence/WP15-05.yaml`) | 2D önizleme (D-010); 3D WP15-07/08 |
-| 6 | V21-00 (R17-00, R18-WP01, WP19-00, UI20-WP01, LM21-WP01) | Birleşik gerçeklik/boşluk raporu: V19-Q01..Q40, v2.0 12 soru, LM21 25 soru; `V19_REALITY_AND_GAP_REPORT.md`, `V19_REQUIREMENT_TRACEABILITY.md`, `V19_DEPENDENCY_DAG.md`, `V19_BENCHMARK_PROTOCOL.md` (V19-00, V19-21) | 5 bitince (HEAD kararlı) | KUYRUKTA (bu dosya çatışma kısmını karşılar) | Cihaz/SDK satırları `UNKNOWN` |
-| 7 | V21-01 (V19-17 canon ADR) | Canon değişikliği ADR'ı + `CLAUDE.md` güncellemesi + D-003 kapanışı (C-11) + LM21 iki motor ADR'ı (LM21-WP02) | 6 | KUYRUKTA | Bulut istisnası insan kararı |
-| 8 | WP15-06 (R17-06, WP19-01 termal, LM21-WP07 temeli) | Device governor + hata enjeksiyonu | 2 | KUYRUKTA | Gerçek termal ölçüm cihaz |
+| 6 | V21-00 (R17-00, R18-WP01, WP19-00, UI20-WP01, LM21-WP01) | Birleşik gerçeklik/boşluk raporu: V19-Q01..Q40, v2.0 12 soru, LM21 25 soru; `V19_REALITY_AND_GAP_REPORT.md`, `V19_REQUIREMENT_TRACEABILITY.md`, `V19_DEPENDENCY_DAG.md`, `V19_BENCHMARK_PROTOCOL.md` (V19-00, V19-21) | 5 bitince (HEAD kararlı) | TAMAM (10 belge; 54 EVIDENCE / 2 ASSUMPTION / 5 UNKNOWN / 16 BLOCKED) | Cihaz/SDK satırları `UNKNOWN` |
+| 7 | V21-01 (V19-17 canon ADR) | Canon değişikliği ADR'ı + `CLAUDE.md` güncellemesi + D-003 kapanışı (C-11) + LM21 iki motor ADR'ı (LM21-WP02) | 6 | TAMAM (ADR-006/007/008) | Bulut istisnası insan kararı (bayrak OFF) |
+| 8 | WP15-06 (R17-06, WP19-01 termal, LM21-WP07 temeli) | Device governor + hata enjeksiyonu | 2 | TESTED (simülatör + macOS; `docs/evidence/WP15-06.yaml`) | Gerçek termal ölçüm cihaz |
 | 9 | WP15-07/08 (BODY-3D, R17-06, WP19-07, UI20-WP07 kabuğu) | Nötr mesh + morph kaydırıcıları + RealityKit + 360° manuel döndürme + VoiceOver; V19-T-023..025, 028, R17-FIT-05 | 5,8 | KUYRUKTA | Cihaz perf `REAL_DEVICE_BLOCKED` |
 | 10 | R17-02 (R18-WP02, WP19-04/05 şema kısmı) | `ProductIdentityV1, ProductPhysicalSpecV1, FabricSpecV1, BodyProfileV2, RegionalFitV1, ThermalAdviceV1, VisualTryOnV1` + `BrandRegistry/CommerceGraph/Offer/ClaimEvidence` + golden fixture + göç | 2 (paralel dal) | KUYRUKTA | — |
 | 11 | R18-WP03 | `EvidenceCoverageGate`: kaynak çatışması, lisans TTL, fail-closed | 10 | KUYRUKTA | — |
 | 12 | LM21-WP03 | LiveMirror sözleşmeleri: `MirrorMode`, `MirrorStatus`, `MirrorSessionSpec`, hata/fidelity, revizyon koruması | 7,10 | KUYRUKTA | — |
 | 13 | UI20-WP02→WP03→WP04 | Token göç ADR'ı (C-14) → tipografi + 20 atomlu bileşen kataloğu (`K-001..K-020`) → 3 sekme/sheet/CTA IA | 6 | KUYRUKTA | Kontrast cihazda |
 | 14 | WP15-18 (R17-12, WP19-16 kısmı) | Bağımsız kalite kapısı: güvenlik negatif, perf, a11y | 1–9 | KUYRUKTA | — |
-| 15 | R17-05 (FIT-TRUTH, WP19-05) | Bitmiş giysi ölçüsü + bölgesel fit + abstain; FIT-01..04 düzeltmeleri `SizeAdvisor` | 10 | KUYRUKTA | Gerçek ölçü verisi yok → sentetik |
+| 15 | R17-05 (FIT-TRUTH, WP19-05) | Bitmiş giysi ölçüsü + bölgesel fit + abstain; FIT-01..04 düzeltmeleri `SizeAdvisor` | 10 | KUYRUKTA (V21-00 boşluk 1 öne alınıp kapatıldı: D-018) | Gerçek ölçü verisi yok → sentetik |
 | 16 | R17-04 (FABRIC-TRUTH, WP19-06) | Lif/bakım parser, yıkama °C ≠ giyim °C | 10 | KUYRUKTA | OCR cihaz kanıtı |
 | 17 | R17-09 (THERMAL) | ThermalComfortAdvisor + bakım | 16 | KUYRUKTA | Canlı WeatherKit PLA bekliyor |
 | 18 | R17-03 (CAT-IDENT, WP19-03) | Vision barkod/OCR + GTIN + varyant çözücü | 10, 3 | KUYRUKTA | Kamera ve S0–S3 p95 `REAL_DEVICE_BLOCKED`; gerçek katalog yok |

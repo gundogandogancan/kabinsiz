@@ -86,7 +86,7 @@ func node(
 }
 
 func studio(
-    store: any BodyStore = MemoryBodyStore(), governor: BudgetGovernor = BudgetGovernor(),
+    store: any BodyStore = MemoryBodyStore(), governor: any ResourceGovernor = BudgetGovernor(),
     renderDeadline: Duration = .milliseconds(500),
     renderer: @escaping @Sendable (AvatarSnapshot, VisualFidelityTier) async throws -> PreviewScene = { PreviewScene.render($0, maxTier: $1) }
 ) -> BodyStudio {

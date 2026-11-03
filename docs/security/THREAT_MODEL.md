@@ -38,6 +38,14 @@ Durum: `TESTED` (macOS birim testleri + simülatör). Kriptografi uzmanı incele
 | T20 | "Tümünü sil" sonrası kuyruktaki kaydırıcı commit'i yeni kasaya yazar | Silmeden önce stüdyo `close()` ile kapanır; kapalıyken commit reddedilir; silmeden sonra `load()` geçmişi temizler | `closeAndReload` (paket), UI `testVaultSurvivesRelaunchAndDeletes` | Uygulama düzeyinde eşzamanlı sürükleme + silme UI testi yok |
 | T21 | Geri al, silinmiş gövde değerlerini geri getirir | Silme ve `load()` geri-al geçmişini sıfırlar; geçmiş diske yazılmaz | `deleteCascades`, `closeAndReload`, UI testi (yeniden başlatmada yinele kapalı) | — |
 | T22 | Olay günlüğünden ölçü sızar | `BodyEventPayload` yalnız tür + parametre adı taşır, değer yok; günlük süreç içi, 500 olay sınırlı | `eventsCarryNoValues` | Parametre adı (ör. "bel") hangi ölçünün değiştiğini söyler |
+| T23 | Yerel aynada görüntü dışarı çıkar | Yerel modda ağ amacı yok; `CitadelGate` canlı video amacı tanımlamaz (ADR-008) | Statik tarama (WP15-03) + LM21-T ağ koşum testi | Dinamik ağ yakalama gerçek cihaz ister (`REAL_DEVICE_BLOCKED`) |
+| T24 | Bulut aynası izinsiz/otomatik açılır | Bayrak OFF, yalnız stub; otomatik mod yükseltme yok; ayrı rıza | LM21-WP11 (kuyrukta) | Bulut modu `BLOCKED_EXTERNAL` |
+| T25 | Kamera arka planda / kilitte açık kalır | Stop, arka plan, kilit, izin geri alma → track kapanır (LM21-07.8) | LM21-WP04 (kuyrukta) | Gerçek cihaz |
+| T26 | Ayna videosu kaydedilir veya yedeğe gider | Varsayılan kayıt yok; kayıt ikinci eylem + ayrı izin (LM21-07.7) | LM21-WP04/08 (kuyrukta) | — |
+| T27 | Telemetride görüntü/beden koordinatı | Yalnız toplulaştırılmış teknik ölçüm; ham görüntü, embed, koordinat yazılmaz (LM21-07.9) | Henüz telemetri yok | — |
+| T28 | Ağ yolu izleyicisi veri sızdırır | `NWPathMonitor` yalnız var/yok okur; bağlantı açan Network API'leri ağ taramasında yasak; dosya bazlı istisna (D-017) | `T-TRV-087 / T-V13-057` statik tarama | Statik tarama dinamik yakalamanın yerini tutmaz (`REAL_DEVICE_BLOCKED`) |
+| T29 | Kilitliyken kasa işi yarıda kalır ya da düz metin yedeğe düşer | Kilitte yeni P0 reddedilir; gövde yazıları `untilProtectedDataAvailable` ile kilit açılana kadar bekler; geçici dosyalar tam koruma + yedek dışı + açılışta süpürülür | `lockedDefers`, `orphanSweep` | Gerçek dosya koruması yalnız cihazda doğrulanır |
+| T30 | Cihaz durumu parmak izi / yanıltıcı sıcaklık iddiası | Kademe nedenleri yalnız kod (değer yok); kullanıcı notunda rakam, derece, yüzde yok; pil izlemesi kapalı | `notes`, `batteryUnknown` | — |
 
 ## Bilinçli kalan riskler
 
