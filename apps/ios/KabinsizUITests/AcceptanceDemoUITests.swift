@@ -136,13 +136,15 @@ final class AcceptanceDemoUITests: XCTestCase {
         app.buttons["Benim Modelim"].tap()
         app.buttons["createNeutralBody"].tap()
 
+        XCTAssertTrue(app.descendants(matching: .any)["body3D"].waitForExistence(timeout: 5), "a 3D-capable budget shows the neutral 3D body")
+        attach(app, "08b-body-neutral-start")
+        // The 3D view is tall, so the sliders start below the fold (List rows load lazily).
         let waist = app.sliders["slider-WAIST"]
+        bringIntoView(waist, in: app)
         XCTAssertTrue(waist.waitForExistence(timeout: 5))
         XCTAssertEqual(app.staticTexts["value-WAIST"].label, "82 cm")
         XCTAssertEqual(waist.label, "Bel çevresi")
         XCTAssertTrue((waist.value as? String)?.hasSuffix("santimetre") == true, "spoken value must name the unit")
-        XCTAssertTrue(app.descendants(matching: .any)["bodySilhouette"].exists)
-        attach(app, "08b-body-neutral-start")
 
         bringIntoView(waist, in: app)
         waist.adjust(toNormalizedSliderPosition: 0.2)
@@ -157,22 +159,23 @@ final class AcceptanceDemoUITests: XCTestCase {
         field.tap()
         field.typeText("90")
         app.buttons["saveMeasurement"].tap()
-        for _ in 0..<6 where !shaped.isHittable { app.swipeDown() }
+        bringIntoView(shaped, in: app)
         XCTAssertTrue(wait(shaped, NSPredicate(format: "label == '90 cm'")))
         XCTAssertFalse(waist.isEnabled, "a typed measurement is not moved by a stray touch")
         XCTAssertTrue(app.buttons["unlock-WAIST"].exists)
         attach(app, "10-body-studio-measured")
 
         let undo = app.buttons["bodyUndo"]
-        for _ in 0..<8 where !undo.isHittable { app.swipeDown() }
+        bringIntoView(undo, in: app, above: true)
         undo.tap()
-        for _ in 0..<6 where !shaped.exists { app.swipeUp() }
+        bringIntoView(shaped, in: app)
         XCTAssertTrue(wait(shaped, NSPredicate(format: "label == %@", draggedLabel)))
         sleep(1)
         app.terminate()
 
         app.launch()
         app.buttons["Benim Modelim"].tap()
+        bringIntoView(shaped, in: app)
         XCTAssertTrue(shaped.waitForExistence(timeout: 5))
         XCTAssertEqual(shaped.label, draggedLabel, "the saved body must come back from the encrypted vault")
         let redo = app.buttons["bodyRedo"]
@@ -210,6 +213,10 @@ final class AcceptanceDemoUITests: XCTestCase {
 
         let note = app.staticTexts["deviceNote"]
         XCTAssertTrue(note.waitForExistence(timeout: 5))
+        // SURVIVAL budget is 2D_CARD: the outline replaces the 3D body, and says so.
+        XCTAssertTrue(app.descendants(matching: .any)["bodySilhouette"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["body3D"].exists)
+        XCTAssertEqual(app.staticTexts["bodyFidelityLabel"].label, "Basit siluet. Görünüm, beden uyumunun kanıtı değildir.")
         XCTAssertTrue(note.label.contains("ısındı"))
         XCTAssertNil(note.label.rangeOfCharacter(from: CharacterSet.decimalDigits.union(CharacterSet(charactersIn: "%°"))), "no temperature or percentage")
 
@@ -233,11 +240,48 @@ final class AcceptanceDemoUITests: XCTestCase {
         XCTAssertTrue(wait(relaunched, NSPredicate(format: "label == %@", saved)), "saved while hot survives relaunch")
     }
 
-    private func bringIntoView(_ element: XCUIElement, in app: XCUIApplication) {
+    /// ADR-007: the user turns their neutral body by hand (drag, preset angles); it never turns by itself.
+    func testBody3DRotatesByHand() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTestVault", "turn-\(UUID().uuidString)"]
+        app.launch()
+        app.buttons["Benim Modelim"].tap()
+        app.buttons["createNeutralBody"].tap()
+
+        let model = app.descendants(matching: .any)["body3D"]
+        XCTAssertTrue(model.waitForExistence(timeout: 5))
+        XCTAssertEqual(app.staticTexts["bodyFidelityLabel"].label, "Nötr 3B model. Görünüm, beden uyumunun kanıtı değildir.")
+        XCTAssertTrue((model.value as? String)?.hasPrefix("Önden") == true)
+        sleep(2)
+        XCTAssertTrue((model.value as? String)?.hasPrefix("Önden") == true, "no auto-rotation")
+        attach(app, "13-body-3d-front")
+
+        app.buttons["bodyAngle-side"].tap()
+        XCTAssertTrue(wait(model, NSPredicate(format: "value BEGINSWITH 'Yandan'")))
+        sleep(1)
+        attach(app, "14-body-3d-side")
+        app.buttons["bodyAngle-back"].tap()
+        XCTAssertTrue(wait(model, NSPredicate(format: "value BEGINSWITH 'Arkadan'")))
+        sleep(1)
+        attach(app, "15-body-3d-back")
+
+        // A horizontal drag turns it; the angle follows the finger.
+        app.buttons["bodyAngle-front"].tap()
+        XCTAssertTrue(wait(model, NSPredicate(format: "value BEGINSWITH 'Önden'")))
+        let start = model.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.5))
+        start.press(forDuration: 0.05, thenDragTo: model.coordinate(withNormalizedOffset: CGVector(dx: 0.75, dy: 0.5)))
+        XCTAssertTrue(wait(model, NSPredicate(format: "NOT (value BEGINSWITH 'Önden')")), "drag must turn the body")
+        sleep(1)
+        attach(app, "16-body-3d-dragged")
+    }
+
+    /// Small drags until `element` sits comfortably on screen. A row that is not loaded yet has no frame,
+    /// so the caller says which way to look (`above` for rows higher up the list).
+    private func bringIntoView(_ element: XCUIElement, in app: XCUIApplication, above: Bool = false) {
         let screen = app.frame
         for _ in 0..<15 {
             if element.exists, element.isHittable, element.frame.minY > screen.minY + 160, element.frame.maxY < screen.maxY - 160 { return }
-            let below = !element.exists || element.frame.midY > screen.midY
+            let below = element.exists ? element.frame.midY > screen.midY : !above
             let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: below ? 0.65 : 0.35))
             let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: below ? 0.45 : 0.55))
             start.press(forDuration: 0.05, thenDragTo: end)

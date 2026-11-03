@@ -61,12 +61,14 @@ public struct Silhouette: Codable, Hashable, Sendable {
             .chest: chestHalf,
             .waist: waistHalf,
             .hip: hipHalf,
-            .thigh: hipHalf * 0.62,
-            .knee: max(hipHalf * 0.33, 0.028 * h),
-            .ankle: 0.021 * h,
+            // Both legs together, standing with the feet a little apart (neutral proportions, not measurements).
+            .thigh: hipHalf * 0.82,
+            .knee: max(hipHalf * 0.58, 0.058 * h),
+            .ankle: 0.055 * h,
         ]
         let anchors = Station.allCases.map { Point(x: widths[$0]!, y: $0.heightFraction * h) }
-        let outline = smooth(anchors, samplesPerSegment: 8)
+        let outline = roundedHead(smooth(anchors, samplesPerSegment: 8), crown: widths[.crown]!, widest: widths[.headWidest]!,
+                                  widestY: Station.headWidest.heightFraction * h)
         let shape = Silhouette(heightCm: h, halfWidthsCm: widths, rightOutline: outline)
         try shape.validate()
         return shape
@@ -82,6 +84,16 @@ public struct Silhouette: Codable, Hashable, Sendable {
             guard b.y > a.y else { throw .unsafeGeometry("fold") }
             guard b.x > 0, b.x <= heightCm * 0.3 else { throw .unsafeGeometry("width") }
             guard abs(b.x - a.x) <= (b.y - a.y) * Self.maxSlope else { throw .unsafeGeometry("spike") }
+        }
+    }
+
+    /// Crown to the widest point of the head follows a quarter ellipse instead of the monotone cubic,
+    /// which would read as a pointed hood. Starts at the crown width, so nothing collapses to a point.
+    static func roundedHead(_ outline: [Point], crown: Double, widest: Double, widestY: Double) -> [Point] {
+        outline.map { p in
+            guard p.y < widestY else { return p }
+            let s = (widestY - p.y) / widestY // 1 at the crown, 0 at the widest point
+            return Point(x: max(crown, widest * (1 - s * s).squareRoot()), y: p.y)
         }
     }
 

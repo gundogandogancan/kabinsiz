@@ -1,0 +1,81 @@
+evidence_schema: 1
+work_package: WP15-07/08
+title: "Neutral procedural 3D body (BodyMesh) + RealityKit view turned by hand (drag, flick, pinch, front/side/back), 2D G0 fallback"
+status: PASS   # macOS unit tests + iPhone 17 simulator; frame timing and device rendering REAL_DEVICE_BLOCKED
+commit_sha: null   # filled by the commit that adds this file; see git log
+branch: main
+spec: "ADR-007; v1.5 §108, §133.1; v1.6 BODY-3D; v1.7 §3.2 G0; v2.0 UI-06, §05.2; V19-T-023, 024, 028, 032; R17-FIT-05; UI20-T-005; V14-T-030"
+implementation_paths:
+  - Packages/KabinsizCore/Sources/BodyGeometry/BodyMesh.swift
+  - Packages/KabinsizCore/Sources/BodyGeometry/Silhouette.swift
+  - Packages/KabinsizCore/Sources/Octopus/BodyJourney.swift
+  - apps/ios/Kabinsiz/Features/Profile/BodyModel3DView.swift
+  - apps/ios/Kabinsiz/Features/Profile/BodyStudioView.swift
+unit_test_command: "cd Packages/KabinsizCore && swift test"
+unit_test_exit_code: 0
+unit_test_count: 223   # whole package; 12 in BodyMeshTests
+ui_test_command: "scripts/check.sh"
+ui_test_exit_code: 0
+ui_tests:
+  - "testBody3DRotatesByHand PASS: neutral body -> 3D view with fidelity label -> no movement after 2 s (no auto-rotate) -> Yan / Arka / Ön presets -> horizontal drag turns it"
+  - "testBodyStudioJourney PASS with the 3D view in place of the silhouette"
+  - "testThermalCriticalKeepsBodyStudioUsable PASS: SURVIVAL (2D_CARD) shows the silhouette and 'Basit siluet' label, no 3D view"
+hardware: "Apple M5 Mac, macOS 26.4; iPhone 17 simulator iOS 26.5 (SIMULATOR_ONLY). Simulator GPU is not a device GPU"
+benchmarks: []   # no fps or latency claim; mesh size only (< 40 000 triangles, asserted)
+mesh_design:
+  source: "Original procedural geometry from AvatarSnapshot only; no third-party body model, no download (SMPL/SMPL-X/LHM NC-licensed; Anny/MHR need approval)"
+  parts: "torso+head (lofted elliptical rings), 2 legs, 2 arms; closed tubes, CCW from outside, smooth normals"
+  girth: "torso depth solved from circumference with Ramanujan II, so the waist ring's girth equals the slider value (asserted to 0.1 cm)"
+  agreement_with_2d: "torso front half-width and the legs' outer edge equal the 2D silhouette at every station (asserted to 0.01 cm)"
+  arms: "neutral (no arm measurement yet); A-pose 8-30 degrees; below the elbow never inside the torso outline; moves out if a chest is much wider than the shoulders"
+spec_cases:
+  - "V19-T-023 PASS: waist edit changes the waist ring; girth equals the value; head unchanged (localEdit, girthMatches, waistMonotonic)"
+  - "V19-T-024 PASS: shoulder edit leaves torso below mid-height and legs byte-identical; shoulder ring widens"
+  - "V19-T-028 PASS: 243 extreme combinations: each is refused before drawing or yields a valid closed mesh; invalid mesh -> scene without mesh -> 2D silhouette (G0)"
+  - "R17-FIT-05 PASS: waist girth strictly increases across the whole slider range in 2.5 cm steps"
+  - "UI20-T-005 PARTIAL: no auto-rotation asserted in UI test; Reduce Motion path (instant presets, no momentum) is in code but not driven by a UI test"
+  - "V14-T-030 PARTIAL: 360 turn by drag and presets PASS; pinch zoom in code, not UI-tested; VoiceOver adjustable action (45 degree steps) in code, full VoiceOver pass REAL_DEVICE_BLOCKED; mirror is LM21 scope"
+  - "V19-T-032 PARTIAL: mesh is built inside the coordinator's render node (deadline + cancellation race, latest-wins preview lane, ORC-03/04); GPU upload cancellation not measured"
+not_started:
+  - "V19-T-025: no garment preview exists yet to invalidate on a new avatar revision"
+other_cases:
+  - "Validation rejects a hole, a flipped piece and a NaN (validationCatches)"
+  - "Deterministic: identical snapshot -> identical mesh; low detail validates with fewer triangles"
+  - "Structural only: encoded mesh has no face/hair/anatomy words and no measurement source labels"
+  - "Budget: BALANCED -> G0 mesh + outline; thermal critical (2D_CARD) -> outline only"
+design_iterations_from_screenshots:
+  - "1st render: legs tapered to needles, pointed head, cut-off hands -> silhouette legs widened to realistic proportions, stance gap, rounded hands"
+  - "2nd render: pointed crown in profile and a ledge at the seat -> head rounded front-to-back as well as side-to-side; leg depth blends from the torso over the seat"
+  - "Low-detail 2D anchors drawn as a smooth curve (from WP15-06 screenshot)"
+visual_artifacts:
+  - docs/evidence/screenshots/SIMULATOR_ONLY-13-body-3d-front.png
+  - docs/evidence/screenshots/SIMULATOR_ONLY-14-body-3d-side.png
+  - docs/evidence/screenshots/SIMULATOR_ONLY-15-body-3d-back.png
+  - docs/evidence/screenshots/SIMULATOR_ONLY-16-body-3d-dragged.png
+accessibility_checks:
+  - "3D view is one accessibility element: label 'Vücudunun 3B modeli', value = angle + all body values, adjustable action turns 45 degrees"
+  - "Preset buttons are plain text buttons (Ön / Yan / Arka)"
+motion:
+  - "Drag is direct (1:1, no animation); a flick carries up to a quarter turn with ease-out; presets ease 0.45 s to the nearest equivalent angle; Reduce Motion: presets instant, no momentum; never turns by itself"
+mutation_checks:
+  - "mirrored arm/leg keeps winding (inside-out): neutralIsValid failed as expected"
+  - "depth not solved from girth: girthMatches failed as expected"
+  - "arm never moves out for a wide chest: extremeCombinations failed as expected"
+  - "leg not on the silhouette edge: matchesSilhouette failed as expected"
+  - "open surface accepted: validationCatches failed as expected"
+  - "mesh built under 2D_CARD: budgetPicksMesh failed as expected"
+  - "shoulder edit leaks into the hips: shoulderDoesNotDeformHips failed as expected"
+ui_bugs_found_by_tests:
+  - "Arms entered the torso on several extreme bodies with a chest much wider than the shoulders (found by extremeCombinations; fixed by the elbow-down clearance rule)"
+  - "The taller 3D view pushed the sliders below the fold; journey test now scrolls before asserting"
+  - "Test helper scrolled the wrong way for a row above the viewport that the list had unloaded (no frame); the caller now says which way to look. Full gate: 223 unit + 6/6 UI PASS"
+independent_reviewer: null
+review_independence_level: INTERNAL_SELF_REVIEW
+residual_risks:
+  - "Torso and legs are separate closed surfaces: a faint joint line shows at the seat, like a display mannequin's leg joint. A single branching ('trouser') topology would remove it"
+  - "Arms are neutral and fixed; no arm length/girth control yet"
+  - "Lighting is three directional lights without image-based lighting; look on device and in dark mode not yet reviewed on hardware"
+  - "Mesh is rebuilt on every preview during a drag; cost on older iPhones unmeasured (WP15-18 on the paired 13 Pro Max / 14 Pro Max / 16 Pro)"
+  - "Proportions (D-019) are appearance hypotheses, never fit evidence; the label says so on screen"
+open_p0: []
+open_p1: []

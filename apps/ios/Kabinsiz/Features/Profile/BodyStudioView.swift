@@ -70,10 +70,23 @@ struct BodyStudioSection: View {
     @ViewBuilder
     private func editor(_ profile: BodyProfile) -> some View {
         VStack(spacing: Token.Space.tight) {
-            SilhouetteView(scene: model.bodyScene, heightCm: draftValue(.height, profile), summary: summary(profile))
-                .frame(height: 280)
-                .frame(maxWidth: .infinity)
-                .animation(reduceMotion ? nil : .smooth(duration: 0.28), value: model.bodyScene?.bodyRevision)
+            if let scene = model.bodyScene, !scene.isFallback, let mesh = scene.mesh {
+                BodyModel3DView(mesh: mesh, summary: summary(profile))
+                    .frame(height: 360)
+                    .frame(maxWidth: .infinity)
+            } else {
+                // G0 fallback (ADR-007 §5): the 2D outline with the same controls, when the budget says
+                // 2D_CARD or the mesh could not be built.
+                SilhouetteView(scene: model.bodyScene, heightCm: draftValue(.height, profile), summary: summary(profile))
+                    .frame(height: 280)
+                    .frame(maxWidth: .infinity)
+                    .animation(reduceMotion ? nil : .smooth(duration: 0.28), value: model.bodyScene?.bodyRevision)
+            }
+            if let scene = model.bodyScene, !scene.isFallback {
+                Text(scene.mesh == nil ? "Basit siluet. Görünüm, beden uyumunun kanıtı değildir." : "Nötr 3B model. Görünüm, beden uyumunun kanıtı değildir.")
+                    .font(.caption).foregroundStyle(Token.textSecondary)
+                    .accessibilityIdentifier("bodyFidelityLabel")
+            }
             if let note = model.deviceNote {
                 // §113.1 "warn subtly": one quiet line; the controls below keep working.
                 Label(note, systemImage: "leaf")

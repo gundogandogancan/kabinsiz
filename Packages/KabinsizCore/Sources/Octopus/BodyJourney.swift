@@ -14,9 +14,20 @@ public struct PreviewScene: Codable, Hashable, Sendable {
     /// Empty when the shape could not be drawn and the values list is the fallback (V15-T-BOD-07).
     public let rightOutline: [Silhouette.Point]
     public let isFallback: Bool
+    /// The neutral 3D body (ADR-007) when the budget allows a mesh; nil under `2D_CARD` or if the mesh
+    /// failed validation, and the 2D outline is drawn instead (G0 fallback).
+    public let mesh: BodyMesh?
 
-    /// Full outline under a 3D/2D-capable budget; only the station anchors under `2D_CARD` (lower LOD,
-    /// same controls, V15-T-BOD-08).
+    public init(bodyRevision: Int, tier: VisualFidelityTier, rightOutline: [Silhouette.Point], isFallback: Bool, mesh: BodyMesh? = nil) {
+        self.bodyRevision = bodyRevision
+        self.tier = tier
+        self.rightOutline = rightOutline
+        self.isFallback = isFallback
+        self.mesh = mesh
+    }
+
+    /// Full outline plus the neutral 3D mesh under a 3D-capable budget; only the station anchors and no
+    /// mesh under `2D_CARD` (lower LOD, same controls, V15-T-BOD-08).
     public static func render(_ snapshot: AvatarSnapshot, maxTier: VisualFidelityTier) -> PreviewScene {
         let shape = snapshot.silhouette
         let h = shape.heightCm
@@ -28,7 +39,10 @@ public struct PreviewScene: Codable, Hashable, Sendable {
         } else {
             points = shape.rightOutline.map { Silhouette.Point(x: $0.x / h, y: $0.y / h) }
         }
-        return PreviewScene(bodyRevision: snapshot.bodyRevision, tier: .flat2D, rightOutline: points, isFallback: false)
+        // The 2D outline always travels with the mesh, so the view can fall back without another run.
+        let mesh = maxTier == .flat2D ? nil : try? BodyMesh.make(from: snapshot)
+        return PreviewScene(bodyRevision: snapshot.bodyRevision, tier: mesh == nil ? .flat2D : .genericMesh,
+                            rightOutline: points, isFallback: false, mesh: mesh)
     }
 
     public static func valuesOnly(bodyRevision: Int) -> PreviewScene {

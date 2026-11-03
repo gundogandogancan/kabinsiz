@@ -46,6 +46,7 @@ Durum: `TESTED` (macOS birim testleri + simülatör). Kriptografi uzmanı incele
 | T28 | Ağ yolu izleyicisi veri sızdırır | `NWPathMonitor` yalnız var/yok okur; bağlantı açan Network API'leri ağ taramasında yasak; dosya bazlı istisna (D-017) | `T-TRV-087 / T-V13-057` statik tarama | Statik tarama dinamik yakalamanın yerini tutmaz (`REAL_DEVICE_BLOCKED`) |
 | T29 | Kilitliyken kasa işi yarıda kalır ya da düz metin yedeğe düşer | Kilitte yeni P0 reddedilir; gövde yazıları `untilProtectedDataAvailable` ile kilit açılana kadar bekler; geçici dosyalar tam koruma + yedek dışı + açılışta süpürülür | `lockedDefers`, `orphanSweep` | Gerçek dosya koruması yalnız cihazda doğrulanır |
 | T30 | Cihaz durumu parmak izi / yanıltıcı sıcaklık iddiası | Kademe nedenleri yalnız kod (değer yok); kullanıcı notunda rakam, derece, yüzde yok; pil izlemesi kapalı | `notes`, `batteryUnknown` | — |
+| T31 | 3B mesh vücut ölçülerini geri verir ve dışarı çıkar | Mesh yalnız bellekte, `PreviewScene` içinde; diske/kasaya yazılmaz (kasada yalnız `avatar-cache` = snapshot, LOCAL_SENSITIVE); RealityKit görünümünde paylaşım/dışa aktarma yok; ağ yolu yok | `structuralOnly`, statik ağ taraması | Ekran görüntüsünü kullanıcı kendisi alabilir (OS düzeyi) |
 
 ## Bilinçli kalan riskler
 
