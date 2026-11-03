@@ -13,6 +13,12 @@ Kod: `Packages/KabinsizCore/Sources/SystemContracts/`. Testler: `Tests/ContractT
 | `EvidenceRecord` | `schema_version` = 1 | §106.2 | Lisans + varyant + doğrulama + geçerlilik yoksa "doğrulanmış" gösterilemez | `evidenceGate` |
 | `DeviceBudget` | `schema_version` = 1 | §113.1 | Fizik kapalı; ön planda P0 hep açık; offline/survival ağ yok | `budgets` |
 | `DecisionEnvelope<V>` | `schema_version` = 1 | §103 | Durum ↔ değer/hata şekli; hata kendi durumunu taşır; "doğrulanmış" yalnız temiz tamamlanmada, gösterilebilir `EvidenceRecord`'a çözülen ID'lerle (`validate(citing:now:)`) | V15-T-AGT-06 |
+| `ConsentLedger` | `ConsentLedger.schemaVersion` = 1 | §112.3 | Sorulmamış = verilmemiş; her değişiklik `version` artırır; her kapsamın geri alma zinciri var | `revocationChains` |
+| `CitadelGate` / `CapabilityGrant` / `AuthorizedEgress` | — | §112, §112.2 | Tek ağ yolu; registry + tek kullanımlık süreli grant + rıza; rota allowlist'i; sınıfsız DTO red; tel alanı birebir; `AuthorizedEgress` yalnız kapıdan çıkar | V15-T-SEC-06/07/08, kapı testleri |
+| `UntrustedText` | — | §64.2, §112 | Görünmez/yön değiştiren karakter yok, ≤200 karakter; yetkiye dönüşemez | V15-T-SEC-04 |
+| `SensitiveAttributeGuard` | — | §61, §112 | Din, etnik köken, sağlık, cinsellik, siyaset anahtarları kasaya yazılamaz | V15-T-SEC-09 |
+| `DeletionReceipt` | `schema_version` = 1 | §116.3 | Yalnız sayı ve tür; kayıt ID'si sızamaz (tür adında rakam yok); erişilemeyen kopyalar her zaman listelenir | V15-T-CRY-10 |
+| `VaultRecordV1` / `VaultIndex` / `KeyRegistry` | `formatVersion` = 1 | §111.2, §116 | AEAD + bağlı AAD; index commit noktası; anahtar baytı yazdırılmaz | V15-T-CRY-01..05, SEC-10 |
 | `FaultCode` | ham değerler donmuş | §103, §113.4 | Kullanıcı mesajı özel veri içermez | `frozenRawValues` |
 
 ## Uyumluluk kuralları

@@ -19,7 +19,7 @@
 - **Sahte bitmişlik yok.** Mock, sentetik ve engelli olanları raporda ayrı yaz; bilinmiyorsa `UNKNOWN` de.
 - İnsan onayı gerektirenler: ücretli harcama, dış hesap, gerçek kullanıcı verisi, sözleşme, marka tescili, canlı ödeme, App Store/TestFlight yayını, kamuya gönderim.
 - `STOP_THE_LINE` koşulları: mahremiyet sızıntısı, yanıltıcı beden/uyum iddiası, belirsiz veri hakkı, App Review ihlali, kırık build.
-- iOS projesi XcodeGen ile üretilir (`~/.local/bin/xcodegen`). Toolchain: Xcode 26.6. Bu Mac'te brew, gh, docker, uv ve blender yok.
+- iOS projesi XcodeGen ile üretilir (`~/.local/bin/xcodegen`). Toolchain: Xcode 26.6. Bu Mac'te brew, docker ve uv yok; `gh` `~/.local/bin/gh`, Blender 5.2.3 `~/Applications/Blender.app` (PATH'te değil).
 - Kullanıcıyla Türkçe konuş.
 
 ## Uzman ajanlar (anayasa §17 → `.claude/agents/`)

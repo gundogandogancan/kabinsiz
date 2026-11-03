@@ -1,13 +1,18 @@
-import LocalStore
 import SwiftUI
+import Vault
 
 @main
 struct KabinsizApp: App {
     @State private var model: AppModel = {
-        // UI tests start from an empty, throwaway store so they never touch real data.
-        if ProcessInfo.processInfo.arguments.contains("-resetForUITest") {
-            let dir = FileManager.default.temporaryDirectory.appendingPathComponent("kabinsiz-uitest-\(UUID().uuidString)")
-            return AppModel(store: try? LocalStore(directory: dir))
+        // UI tests use their own vault directory and Keychain item, never the real ones. `-resetForUITest`
+        // starts empty; `-uiTestVault <name>` reuses a named vault so a relaunch test can check persistence.
+        let args = ProcessInfo.processInfo.arguments
+        var name: String?
+        if args.contains("-resetForUITest") { name = "reset-\(UUID().uuidString)" }
+        if let i = args.firstIndex(of: "-uiTestVault"), i + 1 < args.count { name = args[i + 1] }
+        if let name {
+            let dir = FileManager.default.temporaryDirectory.appendingPathComponent("kabinsiz-uitest-\(name)", isDirectory: true)
+            return AppModel(location: VaultLocation(directory: dir, keyStore: KeychainKeyStore(account: name.hasPrefix("reset-") ? "kek.uitest.reset" : "kek.uitest.\(name)"), legacyDirectory: nil))
         }
         return AppModel()
     }()

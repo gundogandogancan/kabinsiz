@@ -58,9 +58,29 @@ struct MyModelView: View {
 
             Section {
                 Label("Hesap yok, sunucu yok", systemImage: "lock")
-                Label("Dolap, seyahat ve deneme kayıtları yalnız bu cihazda", systemImage: "iphone")
+                Label("Dolap, seyahat ve deneme kayıtları yalnız bu cihazda, şifreli kasada", systemImage: "lock.iphone")
+                Toggle(isOn: Binding(
+                    get: { model.weatherConsent != .revoked },
+                    set: { allowed in Task { await model.setWeatherAllowed(allowed) } }
+                )) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Dokununca hava tahmini iste")
+                        Text("Açıkken yalnız sen dokunduğunda seyahat şehrinin merkezi Apple Weather'a gider.")
+                            .font(.caption).foregroundStyle(Token.textSecondary)
+                    }
+                }
+                .accessibilityIdentifier("weatherConsentToggle")
                 Button("Bu cihazdaki tüm Kabinsiz verilerini sil", role: .destructive) { confirmDeleteAll = true }
                     .accessibilityIdentifier("deleteAllData")
+                if let receipt = model.lastDeletionReceipt {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Silindi: \(receipt.deletedRecordCount) kayıt, \(receipt.destroyedKeyCount) şifreleme anahtarı.")
+                        Text("Cihaz yedeklerindeki ve daha önce paylaştığın kopyalar bu işlemle silinemez.")
+                            .font(.caption).foregroundStyle(Token.textSecondary)
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier("deletionReceipt")
+                }
             } header: {
                 Text("Gizlilik")
             }

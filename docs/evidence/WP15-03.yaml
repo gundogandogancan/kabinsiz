@@ -1,0 +1,58 @@
+evidence_schema: 1
+work_package: WP15-03
+title: "Consent ledger + runtime capability/egress gate (CitadelGate)"
+status: PASS   # macOS unit tests + simulator; see blocked_reasons
+commit_sha: null   # filled by the commit that adds this file; see git log
+branch: main
+implementation_paths:
+  - Packages/KabinsizCore/Sources/SystemContracts/CitadelGate.swift
+  - Packages/KabinsizCore/Sources/SystemContracts/ConsentLedger.swift
+  - Packages/KabinsizCore/Sources/SystemContracts/UntrustedInput.swift
+  - apps/ios/Kabinsiz/Services/AppleWeatherProvider.swift
+  - apps/ios/Kabinsiz/App/AppModel.swift
+  - apps/ios/Kabinsiz/Features/Profile/MyModelView.swift
+  - apps/ios/Kabinsiz/Features/Scan/ScanView.swift
+unit_test_command: "cd Packages/KabinsizCore && swift test"
+unit_test_exit_code: 0
+unit_test_count: 155   # whole package, after review fixes
+ui_test_command: "scripts/check.sh"
+ui_test_exit_code: 0
+hardware: "Apple M5 Mac, macOS 26.4; iPhone 17 simulator iOS 26.5 (SIMULATOR_ONLY)"
+benchmarks: []
+privacy_egress_capture: null   # static scan + runtime gate tests; no packet capture (needs device)
+security_threat_cases:
+  - "V15-T-SEC-04 PASS: injected instructions in product text stay data; decision unchanged; bidi/zero-width stripped"
+  - "V15-T-SEC-05 PASS: URL/javascript:/tel: barcodes rejected as input; openURL forbidden by scan"
+  - "V15-T-SEC-06 PASS: unregistered host blocked at runtime; code allowlist == EGRESS_REGISTER.md; no third-party packages"
+  - "V15-T-SEC-07 PASS: unclassified DTO -> UNKNOWN_CLASSIFICATION before transport; class mismatch blocked"
+  - "V15-T-SEC-08 PASS: extra body field or nested object in product request -> EGRESS_BLOCKED; wire values plain ASCII <= 64"
+  - "V15-T-SEC-09 PASS: protected-trait keys (incl. HEALTHSCORE, religion2) rejected by schema and at vault boundary"
+  - "§112.3 revocation: grants die, in-flight response discarded, chain per scope"
+  - "Grants: one-shot for network, <= 60 s, bound to module + capability, replay refused"
+not_applicable:
+  - "V15-T-SEC-01/02/03 NOT_APPLICABLE_YET: no Photos feature exists; revocation chain for photos is coded and unit-tested as data"
+mutation_checks:
+  - "exact wire-key match -> subset: SEC-08 test failed as expected"
+  - "post-transport revocation check removed: revokeDuringFlight failed as expected"
+  - "network grant forced one-shot removed: grantLimits failed as expected"
+  - "stem matching removed: protectedTraits failed as expected"
+visual_artifacts:
+  - docs/evidence/screenshots/SIMULATOR_ONLY-08-deletion-receipt.png   # shows the weather consent switch
+accessibility_checks: []
+independent_reviewer: "AG-12 subagent (same model family)"
+review_independence_level: INTERNAL_SELF_REVIEW
+review_findings: 11   # shared review with WP15-04: 3 x P1, 8 x P2; no P0
+review_fixes:
+  - "P1 #3 consent fails closed: unreadable ledger or unopened vault -> weather revoked"
+  - "P2 #6 grant lifetime capped at 60 s; network grants always one-shot"
+  - "P2 #7 scan: whitespace-insensitive patterns, WeatherKit call must sit inside the gate closure, provider built only by the tap handler"
+  - "P2 #8 protected-trait guard: digit boundaries and run-together stems"
+open_p0: []
+open_p1: []
+residual_risks:
+  - "A grant cannot prove it came from a tap; enforced structurally by the source scan (D-009)"
+  - "SensitiveAttributeGuard checks key names, not values"
+blocked_reasons:
+  - "REAL_DEVICE_BLOCKED: no packet-level egress capture without an iPhone"
+  - "BLOCKED_EXTERNAL: live WeatherKit call waits for the Apple PLA (R-003)"
+raw_artifact_index: null

@@ -7,13 +7,15 @@ import WeatherKit
 
 /// Apple WeatherKit behind the `WeatherProvider` seam (ADR-004). Sends only the bundled city-centre
 /// point of the destination, looked up at request time from `CityDirectory` (never a stored or device
-/// coordinate), and only after the user taps "get forecast". Egress register: EG-001.
+/// coordinate), and only after the user taps "get forecast". Every request passes `CitadelGate`
+/// (§112.2): one-shot grant for OCT-16, registered route EG-001, classified DTO, wire-field check.
 struct AppleWeatherProvider: WeatherProvider {
     let name = "APPLE_WEATHER"
+    let gate: CitadelGate
 
-    enum Failure: Error { case noCityCenter, egressDenied(FaultCode) }
+    enum Failure: Error { case noCityCenter }
 
-    /// The declaration checked before every request (§112.2). If it stops validating, no request is made.
+    /// The declaration checked before every request. If it stops validating, no request is made.
     static let egress = EgressIntent(
         destinationHost: "weatherkit.apple.com", method: .get, endpointPath: "/api/v1/weather",
         classification: .localPrivate, purpose: .weatherForecast, fields: ["city_center_coordinate"],
@@ -21,29 +23,36 @@ struct AppleWeatherProvider: WeatherProvider {
         retention: .cacheWithTTL
     )
 
+    /// Planning never fetches on its own: live data only comes from `fetch`, which a user tap calls.
     func snapshots(for destination: Destination, dates: [LocalDate]) async -> [WeatherSnapshot] {
-        (try? await fetch(destination: destination, dates: dates)) ?? dates.map(WeatherSnapshot.noData)
+        dates.map(WeatherSnapshot.noData)
     }
 
     /// Days outside what WeatherKit returns stay `NO_DATA`; the horizon is read from the response, not assumed.
     func fetch(destination: Destination, dates: [LocalDate]) async throws -> [WeatherSnapshot] {
-        do { try Self.egress.validate() } catch { throw Failure.egressDenied(error) }
         guard let center = CityDirectory.cityCenter(for: destination) else { throw Failure.noCityCenter }
-        let location = CLLocation(latitude: center.latitude, longitude: center.longitude)
-        let forecast = try await WeatherService.shared.weather(for: location, including: .daily)
-        let retrieved = forecast.metadata.date
-        let expires = forecast.metadata.expirationDate
-        var byDate: [LocalDate: WeatherSnapshot] = [:]
-        for day in forecast {
-            let date = LocalDate(instant: day.date, timeZone: destination.timeZone)
-            byDate[date] = WeatherSnapshot(
-                localDate: date, evidence: .liveForecast, provider: name, retrievedAt: retrieved, validUntil: expires,
-                lowC: day.lowTemperature.converted(to: .celsius).value,
-                highC: day.highTemperature.converted(to: .celsius).value,
-                precipitationProbability: day.precipitationChance,
-                windKph: day.wind.speed.converted(to: .kilometersPerHour).value,
-                isSynthetic: false
-            )
+        let grant = try await gate.issue(module: .weatherContext, capability: .weatherFetch)
+        let request = WeatherForecastRequest(latitude: center.latitude, longitude: center.longitude)
+        let provider = name
+        let byDate = try await gate.send(Self.egress, payload: request, module: .weatherContext, grant: grant) { authorized in
+            // Only the coordinate the gate checked is sent.
+            guard let point = WeatherForecastRequest.coordinate(from: authorized) else { throw Failure.noCityCenter }
+            let forecast = try await WeatherService.shared.weather(for: CLLocation(latitude: point.latitude, longitude: point.longitude), including: .daily)
+            let retrieved = forecast.metadata.date
+            let expires = forecast.metadata.expirationDate
+            var byDate: [LocalDate: WeatherSnapshot] = [:]
+            for day in forecast {
+                let date = LocalDate(instant: day.date, timeZone: destination.timeZone)
+                byDate[date] = WeatherSnapshot(
+                    localDate: date, evidence: .liveForecast, provider: provider, retrievedAt: retrieved, validUntil: expires,
+                    lowC: day.lowTemperature.converted(to: .celsius).value,
+                    highC: day.highTemperature.converted(to: .celsius).value,
+                    precipitationProbability: day.precipitationChance,
+                    windKph: day.wind.speed.converted(to: .kilometersPerHour).value,
+                    isSynthetic: false
+                )
+            }
+            return byDate
         }
         return dates.map { byDate[$0] ?? .noData($0) }
     }

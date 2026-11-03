@@ -90,14 +90,44 @@ struct StoreAndPrivacyTests {
         // `@preconcurrency import WeatherKit`; ` WeatherKit.` matches `import struct WeatherKit.X`.
         let forbidden = ["URLSession", "import Network", "NWConnection", "CFNetwork", "URLRequest",
                          "import WeatherKit", " WeatherKit.", "WeatherService",
-                         "AsyncImage", "CLLocationManager", "CLGeocoder", "MKLocalSearch", "WKWebView", "openURL"]
+                         "AsyncImage", "CLLocationManager", "CLGeocoder", "MKLocalSearch", "WKWebView", "openURL",
+                         // WP15-03: routes are fixed in SystemContracts; nothing else may add one or open URLs.
+                         "EgressRoute(", "routes:", "UIApplication.shared.open"]
         // Egress register: full repo-relative paths, so a same-named file elsewhere gets no exemption.
-        let allowed: [String: Set<String>] = ["apps/ios/Kabinsiz/Services/AppleWeatherProvider.swift": ["import WeatherKit", "WeatherService", "AsyncImage"]]
+        let weatherFile = "apps/ios/Kabinsiz/Services/AppleWeatherProvider.swift"
+        let allowed: [String: Set<String>] = [
+            weatherFile: ["import WeatherKit", "WeatherService", "AsyncImage"],
+            "Packages/KabinsizCore/Sources/SystemContracts/CitadelGate.swift": ["EgressRoute(", "routes:"],
+        ]
         for file in files {
             let relative = String(file.standardizedFileURL.path.dropFirst(repo.standardizedFileURL.path.count + 1))
             let text = try String(contentsOf: file, encoding: .utf8)
+            // Whitespace is removed before matching, so `routes :` or `EgressRoute .init(` cannot slip past.
+            let compact = text.filter { !$0.isWhitespace }
             for word in forbidden where !(allowed[relative]?.contains(word) ?? false) {
-                #expect(!text.contains(word), "\(relative) contains \(word)")
+                let needle = word.hasPrefix("import ") || word.hasPrefix(" ") ? word : word.filter { !$0.isWhitespace }
+                #expect(!(needle == word ? text : compact).contains(needle), "\(relative) contains \(word)")
+            }
+            if !(allowed[relative]?.contains("EgressRoute(") ?? false) {
+                #expect(!compact.contains("EgressRoute.init("), "\(relative) builds an EgressRoute")
+            }
+            // The one exempt file must call WeatherKit only inside the gate's transport closure.
+            if relative == weatherFile {
+                let parts = compact.components(separatedBy: "WeatherService.shared.weather(")
+                #expect(parts.count == 2, "\(relative): exactly one WeatherKit call")
+                let before = parts.first ?? ""
+                let sendStart = before.range(of: "gate.send(", options: .backwards)
+                #expect(sendStart != nil, "\(relative): WeatherKit call must come after gate.send(")
+                if let sendStart {
+                    // Between `gate.send(` and the call, the closure is still open: more `{` than `}`.
+                    let span = before[sendStart.upperBound...]
+                    #expect(span.filter { $0 == "{" }.count > span.filter { $0 == "}" }.count, "\(relative): WeatherKit call outside the transport closure")
+                }
+            }
+            // Only the user-tap handler builds the live provider (D-009).
+            if relative != weatherFile {
+                let uses = compact.components(separatedBy: "AppleWeatherProvider(").count - 1
+                #expect(uses == 0 || (relative == "apps/ios/Kabinsiz/App/AppModel.swift" && uses == 1), "\(relative) creates AppleWeatherProvider")
             }
         }
     }

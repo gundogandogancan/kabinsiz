@@ -1,15 +1,36 @@
 # Egress register (§112.2, §117)
 
-Her ağ yolu burada. Statik tarama (`StoreAndPrivacyTests.staticEgress`) paket ve app kaynaklarında başka ağ kodu bulursa test kırılır.
+Uygulamanın her ağ yolu burada listelenir. Koddaki allowlist `EgressRoute.registered` (SystemContracts/CitadelGate.swift) bu tabloyla birebir aynı olmalı. `V15-T-SEC-06` testi tabloyla kodu karşılaştırır; ayrıca üçüncü taraf Swift paketi eklenirse test kırılır.
 
-| ID | Dosya | Hedef | Ne gider | Ne gitmez | Tetik | Rıza | Durum |
-|---|---|---|---|---|---|---|---|
-| EG-001 | `apps/ios/Kabinsiz/Services/AppleWeatherProvider.swift` | Apple WeatherKit (sistem framework'ü) | Seyahat şehrinin şehir merkezi: istek anında `CityDirectory.cityCenter` ile paketli tablodan alınır, seyahat dosyasında koordinat yoktur (düzenlenmiş dosya başka nokta gönderemez) | Cihaz konumu, kimlik, tarih aralığı, dolap, ölçü | Kullanıcı "Apple Weather'dan tahmin al" dokunuşu; istek sürerken buton kapalı | Butonun altındaki açıklama; her istekten önce `EgressIntent.validate()` | CODED. Canlı çağrı `BLOCKED_EXTERNAL` (PLA kabul edilmedi) |
-| EG-002 | Aynı dosya, `WeatherAttributionView` | Apple'ın attribution logo URL'si ve yasal sayfa | Standart HTTP isteği (görsel) | Kullanıcı verisi | Apple Weather verisi ekrandayken | WeatherKit kullanım koşulu gereği zorunlu | CODED |
+Statik tarama (`StoreAndPrivacyTests.staticEgress`) paket ve app kaynaklarında başka ağ kodu bulursa test kırılır. Tarama ayrıca şunları denetler:
+- Uygulama kendi `EgressRoute`'unu kuramaz.
+- WeatherKit dosyası `gate.send(` üzerinden gönderir ve içinde tam bir WeatherKit çağrısı vardır.
 
-Notlar:
-- Seyahat hedefi kişisel bir bilgi olduğu için istek `LOCAL_PRIVATE` sayılır; `EgressIntent` bunu yalnız `WEATHER_FORECAST` amacı ve `city_center_coordinate` alanı için açık dokunuşla kabul eder.
-- Demo seyahati hiçbir zaman ağa çıkmaz (sentetik hava).
-- Plan oluştururken otomatik hava isteği yok; ilk plan `NO_DATA` ile kurulur.
-- Statik tarama tam dosya yoluyla istisna tanır ve kod kalıplarına bakar (`import WeatherKit`, ` WeatherKit.`, `WeatherService`, `AsyncImage`, `CLLocationManager`, `CLGeocoder`, `MKLocalSearch`, `WKWebView`, `openURL`, `URLSession`, `URLRequest`, …).
-- Dinamik ağ yakalama testi yok (cihaz gerekiyor).
+| ID | Host | Method | Path | Amaç | Dosya | Ne gider | Ne gitmez | Tetik | Rıza | Durum |
+|---|---|---|---|---|---|---|---|---|---|---|
+| EG-001 | weatherkit.apple.com | GET | /api/v1/weather | WEATHER_FORECAST | `apps/ios/Kabinsiz/Services/AppleWeatherProvider.swift` | `city_center_coordinate`: paketli `CityDirectory` tablosundan, 4 ondalığa yuvarlanmış şehir merkezi. Seyahat dosyasında koordinat yoktur | Cihaz konumu, kimlik, tarih aralığı, dolap, ölçü | Kullanıcının "Apple Weather'dan tahmin al" dokunuşu. İstek sürerken buton kapalıdır | Her dokunuşta tek kullanımlık, 60 saniyelik grant verilir (OCT-16, `weather.fetch`). Profil'deki "Dokununca hava tahmini iste" anahtarı kapalıysa grant verilmez | CODED + kapı testli. Canlı çağrı `BLOCKED_EXTERNAL` (PLA kabul edilmedi) |
+| EG-002 | Apple attribution varlıkları (sistem URL'si) | GET | WeatherKit'in döndürdüğü logo/yasal sayfa | Attribution | Aynı dosya, `WeatherAttributionView` | Standart görsel isteği | Kullanıcı verisi | Ekranda Apple Weather verisi varken | WeatherKit kullanım koşulu gereği zorunlu | CODED. Kullanıcı verisi taşımadığı için kapıdan geçmez; sistem ağ envanterinde |
+
+## Kapı sırası (`CitadelGate.send`)
+
+1. `EgressIntent.validate()`. Bildirim eksik veya yanlışsa istek reddedilir (`SCHEMA_INVALID` / `EGRESS_BLOCKED`).
+2. Host + method + path + amaç `EgressRoute.registered` listesinde olmalı. Değilse `EGRESS_BLOCKED` (SEC-06).
+3. Modül registry'de bu yeteneğe sahip olmalı, grant geçerli olmalı ve rıza `REVOKED` olmamalı. Aksi halde `CAPABILITY_NOT_GRANTED` veya `POLICY_DENIED`.
+4. DTO sınıflandırılmış olmalı (`EgressPayload.egressClassification`). Sınıfı yoksa `UNKNOWN_CLASSIFICATION` (SEC-07). Sınıfı bildirimle uyuşmazsa `EGRESS_BLOCKED`.
+5. DTO ağa gidecek biçimde serileştirilir. Şunların hepsi sağlanmalı, aksi halde `EGRESS_BLOCKED` (SEC-08):
+   - Anahtarlar bildirilen alanlarla birebir aynı.
+   - Değerler düz skaler.
+   - En fazla 64 ASCII karakter.
+   - URL, e-posta veya JSON değil.
+6. Transport, yalnız kapının ürettiği `AuthorizedEgress`'i alır ve yalnız onun içindeki kontrol edilmiş değeri gönderir.
+7. Cevap geldiğinde rıza bu arada geri alınmışsa sonuç atılır (`discardedAfterRevocation`, §112.3).
+
+Denetim kaydında yalnız amaç, host, alan adları ve sonuç tutulur; değerler kaydedilmez. Kayıt en fazla 200 satırdır.
+
+## Notlar
+
+- Seyahat hedefi kişisel bir bilgi olduğu için istek `LOCAL_PRIVATE` sayılır.
+- Demo seyahati hiçbir zaman ağa çıkmaz; hava verisi sentetiktir.
+- Plan oluşturulurken hava otomatik istenmez. `AppleWeatherProvider.snapshots` her zaman `NO_DATA` döndürür; canlı veri yalnız dokunuşla çağrılan `fetch` üzerinden gelir.
+- `PRODUCT_LOOKUP` için kayıtlı bir rota yok, çünkü lisanslı katalog API'si yok. `ProductLookupRequest` yalnız testlerde kullanılır.
+- Dinamik ağ yakalama testi yok; bunun için cihaz gerekiyor (`REAL_DEVICE_BLOCKED`).

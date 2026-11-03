@@ -84,6 +84,49 @@ final class AcceptanceDemoUITests: XCTestCase {
         attach(app, "07-ambiguous")
     }
 
+    /// WP15-04 on the simulator: the real Keychain KEK and the encrypted vault survive a relaunch, the
+    /// consent switch persists, and "delete everything" leaves an empty vault plus a receipt.
+    func testVaultSurvivesRelaunchAndDeletes() throws {
+        let vaultName = "persist-\(UUID().uuidString)"
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTestVault", vaultName]
+        app.launch()
+        app.buttons["Dolabım"].tap()
+        app.buttons["loadSyntheticCloset"].tap()
+        let garment = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'garment-'")).firstMatch
+        XCTAssertTrue(garment.waitForExistence(timeout: 5))
+        app.buttons["Benim Modelim"].tap()
+        let toggle = app.switches["weatherConsentToggle"]
+        for _ in 0..<6 where !toggle.isHittable { app.swipeUp() }
+        XCTAssertEqual(toggle.value as? String, "1")
+        toggle.switches.firstMatch.tap()
+        XCTAssertEqual(toggle.value as? String, "0")
+        sleep(1) // let the queued vault writes finish before the process is killed
+        app.terminate()
+
+        app.launch()
+        app.buttons["Dolabım"].tap()
+        XCTAssertTrue(garment.waitForExistence(timeout: 5), "wardrobe must be read back from the encrypted vault")
+        app.buttons["Benim Modelim"].tap()
+        for _ in 0..<6 where !toggle.isHittable { app.swipeUp() }
+        XCTAssertEqual(toggle.value as? String, "0", "consent revocation must persist")
+        let delete = app.buttons["deleteAllData"]
+        for _ in 0..<6 where !delete.isHittable { app.swipeUp() }
+        delete.tap()
+        app.buttons["Dolap, seyahatler ve Fit Passport silinsin"].firstMatch.tap()
+        let receipt = app.descendants(matching: .any)["deletionReceipt"].firstMatch
+        for _ in 0..<6 where !receipt.exists { app.swipeUp() }
+        XCTAssertTrue(receipt.waitForExistence(timeout: 5))
+        attach(app, "08-deletion-receipt")
+        sleep(1)
+        app.terminate()
+
+        app.launch()
+        app.buttons["Dolabım"].tap()
+        XCTAssertTrue(app.buttons["loadSyntheticCloset"].waitForExistence(timeout: 5), "wardrobe must be empty after delete-all")
+        XCTAssertFalse(garment.exists)
+    }
+
     private func attach(_ app: XCUIApplication, _ name: String) {
         let shot = XCTAttachment(screenshot: app.screenshot())
         shot.name = name

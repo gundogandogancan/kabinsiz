@@ -4,10 +4,41 @@ import Foundation
 import LocalStore
 import Observation
 import ShoppingCopilot
+import SystemContracts
 import TravelEngine
+import Vault
 import WardrobeDomain
 
-/// Single source of truth for the app. All state is device-local (ADR-002); nothing here talks to a network.
+/// Where each piece of state lives in the vault (§116.1 PrivateVault). Record IDs equal the old
+/// LocalStore collection names, so the plaintext migration and the "unreadable" guard share one name.
+enum Records {
+    static let wardrobe = VaultRecordSpec(id: "wardrobe", type: "wardrobe", domain: .wardrobe)
+    static let passport = VaultRecordSpec(id: "fit-passport", type: "fit-passport", domain: .preferences)
+    static let measurements = VaultRecordSpec(id: "measurements", type: "measurements", domain: .body, classification: .localSensitive)
+    static let trips = VaultRecordSpec(id: "trips", type: "trips", domain: .travel)
+    static let consent = VaultRecordSpec(id: "consent", type: "consent", domain: .preferences)
+    static func plan(_ tripID: String) -> VaultRecordSpec { VaultRecordSpec(id: "plan-\(tripID)", type: "plan", domain: .travel) }
+    static func packing(_ tripID: String) -> VaultRecordSpec {
+        VaultRecordSpec(id: "packing-\(tripID)", type: "packing", domain: .travel, derivedFrom: ["plan-\(tripID)"])
+    }
+}
+
+/// How the app reaches its vault. UI tests point it at a throwaway directory and Keychain item.
+struct VaultLocation: Sendable {
+    let directory: URL
+    let keyStore: any KeyStore
+    /// Pre-v1.5 plaintext store, migrated and then removed (WP15-04).
+    let legacyDirectory: URL?
+
+    static func standard() throws -> VaultLocation {
+        let base = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+        return VaultLocation(directory: try Vault.defaultDirectory(), keyStore: KeychainKeyStore(),
+                             legacyDirectory: base.appendingPathComponent("Kabinsiz", isDirectory: true))
+    }
+}
+
+/// Single source of truth for the app. All state is device-local in the encrypted vault (§111, §116);
+/// the only network path is the user-tapped forecast, and it goes through `CitadelGate` (§112.2).
 @MainActor
 @Observable
 final class AppModel {
@@ -24,40 +55,112 @@ final class AppModel {
     var isPlanning = false
 
     let catalog: ProductResolver
-    private let store: LocalStore?
-    /// Collections that exist on disk but could not be read. We refuse to overwrite them (no silent data loss).
+    private let location: VaultLocation?
+    private var vault: Vault?
+    /// Capabilities, consent and the single egress path. Starts with forecasts revoked and is rebuilt
+    /// from the stored ledger on load: until consent is known, nothing may leave (fail closed).
+    private var gate = CitadelGate(registry: .p0(), ledger: AppModel.closedLedger)
+    private static var closedLedger: ConsentLedger {
+        var ledger = ConsentLedger()
+        ledger.revoke(.weatherFetch)
+        return ledger
+    }
+    private var loadStarted = false
+    /// Whether the user allows forecast requests at all (Profil → Gizlilik). Off stops even the tap.
+    private(set) var weatherConsent: ConsentState = .notAsked
+    /// Shown after "delete everything": counts and the copies a local delete cannot reach (§116.3).
+    private(set) var lastDeletionReceipt: DeletionReceipt?
+    /// Records that exist but could not be read. We refuse to overwrite them (no silent data loss).
     private var unreadable: Set<String> = []
     /// Saves run one after another so an older write can never land after a newer one.
     private var lastSave: Task<Void, Never>?
 
-    init(store: LocalStore? = try? LocalStore.applicationSupport()) {
-        self.store = store
+    init(location: VaultLocation? = try? VaultLocation.standard()) {
+        self.location = location
         catalog = (try? ProductResolver.syntheticCatalog()) ?? ProductResolver(products: [])
     }
 
     // MARK: Loading
 
+    /// Runs once, as the first job of the save queue: no save, toggle or "delete everything" can run
+        /// before the vault is open and the plaintext migration is done. Later calls just wait for it.
     func load() async {
-        guard let store else { loadError = "Yerel depo açılamadı."; return }
-        wardrobe = await read(Wardrobe.self, "wardrobe", Wardrobe.schemaVersion, from: store) ?? Wardrobe()
-        passport = await read(FitPassport.self, "fit-passport", FitPassport.schemaVersion, from: store) ?? FitPassport()
-        measurements = await read(UserMeasurements.self, "measurements", 1, from: store) ?? UserMeasurements()
-        trips = await read([Trip].self, "trips", Trip.schemaVersion, from: store) ?? []
-        for trip in trips {
-            plans[trip.id] = await read(TripPlan.self, "plan-\(trip.id)", TripPlan.schemaVersion, from: store)
-            packingLists[trip.id] = await read(PackingList.self, "packing-\(trip.id)", PackingList.schemaVersion, from: store)
+        if !loadStarted {
+            loadStarted = true
+            let previous = lastSave
+            lastSave = Task {
+                await previous?.value
+                await self.openAndRead()
+            }
         }
+        await lastSave?.value
+    }
+
+    private func openAndRead() async {
+        guard let location else { loadError = "Yerel kasa açılamadı."; return }
+        let vault: Vault
+        do {
+            vault = try Vault.open(directory: location.directory, keyStore: location.keyStore)
+        } catch {
+            // Never create new keys over data we cannot read (V15-T-CRY-04/06). The user can reset from Profil.
+            switch error as? VaultError {
+            case .keyUnavailable?:
+                loadError = "Şifreli kasanın anahtarı şu an okunamıyor. Veriler silinmedi; cihaz kilidi açıkken tekrar dene."
+            case .keyLost?:
+                loadError = "Şifreleme anahtarı bu cihazda yok (ör. şifresiz yedekten geri yükleme). Kasa okunamıyor; Profil'den sıfırlayabilirsin."
+            default:
+                loadError = "Şifreli kasa okunamadı. Hiçbir şey silinmedi."
+            }
+            return
+        }
+        self.vault = vault
+        if let legacy = location.legacyDirectory { await migrateLegacy(from: legacy, into: vault) }
+
+        wardrobe = await read(Wardrobe.self, Records.wardrobe, Wardrobe.schemaVersion, from: vault) ?? Wardrobe()
+        passport = await read(FitPassport.self, Records.passport, FitPassport.schemaVersion, from: vault) ?? FitPassport()
+        measurements = await read(UserMeasurements.self, Records.measurements, 1, from: vault) ?? UserMeasurements()
+        trips = await read([Trip].self, Records.trips, Trip.schemaVersion, from: vault) ?? []
+        for trip in trips {
+            plans[trip.id] = await read(TripPlan.self, Records.plan(trip.id), TripPlan.schemaVersion, from: vault)
+            packingLists[trip.id] = await read(PackingList.self, Records.packing(trip.id), PackingList.schemaVersion, from: vault)
+        }
+        // Missing ledger = never asked. Unreadable ledger = unknown, so forecasts stay off until the user decides.
+        let stored = await read(ConsentLedger.self, Records.consent, ConsentLedger.schemaVersion, from: vault)
+        let ledger = unreadable.contains(Records.consent.id) ? Self.closedLedger : (stored ?? ConsentLedger())
+        gate = CitadelGate(registry: .p0(), ledger: ledger)
+        weatherConsent = ledger.state(.weatherFetch)
         if !unreadable.isEmpty {
             loadError = "Bazı kayıtlar okunamadı (\(unreadable.sorted().joined(separator: ", "))). Silinmediler ve üzerlerine yazılmayacak."
         }
     }
 
-    /// Each collection loads on its own; one bad file never blocks or endangers the others.
-    private func read<T: Codable & Sendable>(_ type: T.Type, _ name: String, _ version: Int, from store: LocalStore) async -> T? {
-        do { return try await store.load(type, from: name, currentVersion: version) } catch {
-            unreadable.insert(name)
+    /// Each record loads on its own; one bad record never blocks or endangers the others.
+    private func read<T: Codable & Sendable>(_ type: T.Type, _ spec: VaultRecordSpec, _ version: Int, from vault: Vault) async -> T? {
+        do { return try await vault.get(type, id: spec.id, currentVersion: version) } catch {
+            unreadable.insert(spec.id)
             return nil
         }
+    }
+
+    /// Moves pre-v1.5 plaintext files into the vault. A file that fails stays where it is and its record
+    /// is marked unreadable, so nothing overwrites it until the user decides (§68 no silent data loss).
+    private func migrateLegacy(from directory: URL, into vault: Vault) async {
+        guard FileManager.default.fileExists(atPath: directory.path), let legacy = try? LocalStore(directory: directory) else { return }
+        func move<T: Codable & Sendable>(_ type: T.Type, _ version: Int, _ spec: VaultRecordSpec) async {
+            do { _ = try await LegacyImport.move(type, collection: spec.id, version: version, from: legacy, into: vault, as: spec) } catch {
+                unreadable.insert(spec.id)
+            }
+        }
+        await move(Wardrobe.self, Wardrobe.schemaVersion, Records.wardrobe)
+        await move(FitPassport.self, FitPassport.schemaVersion, Records.passport)
+        await move(UserMeasurements.self, 1, Records.measurements)
+        await move([Trip].self, Trip.schemaVersion, Records.trips)
+        let tripIDs = ((try? await vault.get([Trip].self, id: Records.trips.id, currentVersion: Trip.schemaVersion)) ?? nil)?.map(\.id) ?? []
+        for id in tripIDs {
+            await move(TripPlan.self, TripPlan.schemaVersion, Records.plan(id))
+            await move(PackingList.self, PackingList.schemaVersion, Records.packing(id))
+        }
+        LegacyImport.removeIfEmpty(legacy)
     }
 
     // MARK: Wardrobe
@@ -84,7 +187,7 @@ final class AppModel {
 
     private func persistWardrobe() {
         let value = wardrobe
-        save(["wardrobe"]) { try await $0.save(value, as: "wardrobe", schemaVersion: Wardrobe.schemaVersion) }
+        save([Records.wardrobe.id]) { try await $0.put(value, Records.wardrobe, schemaVersion: Wardrobe.schemaVersion) }
     }
 
     // MARK: Fit Passport
@@ -101,9 +204,9 @@ final class AppModel {
 
     func persistPassport() {
         let value = passport, m = measurements
-        save(["fit-passport", "measurements"]) {
-            try await $0.save(value, as: "fit-passport", schemaVersion: FitPassport.schemaVersion)
-            try await $0.save(m, as: "measurements", schemaVersion: 1)
+        save([Records.passport.id, Records.measurements.id]) {
+            try await $0.put(value, Records.passport, schemaVersion: FitPassport.schemaVersion)
+            try await $0.put(m, Records.measurements, schemaVersion: 1)
         }
     }
 
@@ -205,7 +308,7 @@ final class AppModel {
         weatherInFlight.insert(tripID)
         defer { weatherInFlight.remove(tripID) }
         do {
-            let snapshots = try await AppleWeatherProvider().fetch(destination: trip.destination, dates: trip.dates)
+            let snapshots = try await AppleWeatherProvider(gate: gate).fetch(destination: trip.destination, dates: trip.dates)
             let live = snapshots.filter { $0.evidence != .noData }.count
             weatherStatus[tripID] = live == 0
                 ? "Seyahat günlerin tahmin aralığının dışında. Tarih yaklaşınca tekrar dene."
@@ -213,9 +316,21 @@ final class AppModel {
             // The trip may have been deleted while the request was in flight.
             guard self.trip(id: tripID) != nil else { weatherStatus[tripID] = nil; return }
             if live > 0 { proposeReplan(tripID: tripID, weather: Dictionary(uniqueKeysWithValues: snapshots.map { ($0.localDate, $0) })) }
+        } catch FaultCode.policyDenied {
+            weatherStatus[tripID] = "Hava tahmini izni kapalı. Planın değişmedi."
         } catch {
             weatherStatus[tripID] = "Hava tahmini alınamadı. Planın değişmedi."
         }
+    }
+
+    /// Profil switch. Revoking runs the §112.3 chain: outstanding grants die, a response still in flight
+    /// is discarded, cached forecasts stay until they expire.
+    func setWeatherAllowed(_ allowed: Bool) async {
+        if allowed { await gate.grantConsent(.weatherFetch) } else { await gate.revokeConsent(.weatherFetch) }
+        let ledger = await gate.ledger
+        weatherConsent = ledger.state(.weatherFetch)
+        if !allowed { for id in weatherInFlight { weatherStatus[id] = "Hava tahmini izni kapatıldı." } }
+        save([Records.consent.id]) { try await $0.put(ledger, Records.consent, schemaVersion: ConsentLedger.schemaVersion) }
     }
 
     func choose(_ candidate: OutfitCandidate, tripID: String) {
@@ -260,9 +375,10 @@ final class AppModel {
         pendingReplans[id] = nil
         weatherStatus[id] = nil
         persistTrips()
-        save(["plan-\(id)", "packing-\(id)"]) {
-            try await $0.delete(collection: "plan-\(id)")
-            try await $0.delete(collection: "packing-\(id)")
+        save([Records.plan(id).id, Records.packing(id).id]) {
+            // Deleting the plan also deletes the packing list derived from it.
+            try await $0.delete(Records.plan(id).id)
+            try await $0.delete(Records.packing(id).id)
         }
     }
 
@@ -271,48 +387,74 @@ final class AppModel {
         wardrobe = Wardrobe()
         passport = FitPassport()
         measurements = UserMeasurements()
-        let ids = trips.map(\.id)
         trips = []
         plans = [:]
         packingLists = [:]
         pendingReplans = [:]
         weatherStatus = [:]
-        // Explicit user request: this is the one path allowed to remove unreadable files too.
+        weatherConsent = .notAsked
+        gate = CitadelGate(registry: .p0())
+        // Explicit user request: this is the one path allowed to remove unreadable records too.
         unreadable = []
         loadError = nil
-        save([]) { store in
-            for c in ["wardrobe", "fit-passport", "measurements", "trips"] { try await store.delete(collection: c) }
-            for id in ids {
-                try await store.delete(collection: "plan-\(id)")
-                try await store.delete(collection: "packing-\(id)")
+        guard let location else { return }
+        let previous = lastSave
+        lastSave = Task {
+            await previous?.value
+            do {
+                let receipt: DeletionReceipt
+                if let vault = self.vault {
+                    let result = try await vault.deleteAll()
+                    receipt = result.receipt
+                    self.vault = result.fresh
+                    // Plaintext files left from before v1.5 are ones that failed to migrate; the user asked for everything to go.
+                    if let legacy = location.legacyDirectory { try? FileManager.default.removeItem(at: legacy) }
+                } else {
+                    // The vault could not be opened (lost key): reset it without reading it. Plaintext files that
+                    // were never migrated are kept and moved into the new vault, since they are still readable.
+                    try Vault.destroy(directory: location.directory, keyStore: location.keyStore)
+                    receipt = DeletionReceipt(completedAt: Date(), scope: .everything, deletedCountsByType: [:], destroyedKeyCount: 1)
+                    await self.openAndRead()
+                }
+                self.lastDeletionReceipt = receipt
+            } catch {
+                // The old instance is closed either way; leave none rather than a dead one. Relaunch reopens.
+                self.vault = nil
+                self.loadError = "Silme tamamlanamadı: \((error as? VaultError)?.faultCode.userMessage ?? "bilinmeyen hata")"
             }
         }
     }
 
     private func persistTrips() {
         let value = trips
-        save(["trips"]) { try await $0.save(value, as: "trips", schemaVersion: Trip.schemaVersion) }
+        save([Records.trips.id]) { try await $0.put(value, Records.trips, schemaVersion: Trip.schemaVersion) }
     }
 
     private func persistPlan(_ tripID: String) {
         let plan = plans[tripID], list = packingLists[tripID]
-        save(["plan-\(tripID)", "packing-\(tripID)"]) {
-            if let plan { try await $0.save(plan, as: "plan-\(tripID)", schemaVersion: TripPlan.schemaVersion) }
-            if let list { try await $0.save(list, as: "packing-\(tripID)", schemaVersion: PackingList.schemaVersion) }
+        save([Records.plan(tripID).id, Records.packing(tripID).id]) {
+            if let plan { try await $0.put(plan, Records.plan(tripID), schemaVersion: TripPlan.schemaVersion) }
+            if let list { try await $0.put(list, Records.packing(tripID), schemaVersion: PackingList.schemaVersion) }
         }
     }
 
-    private func save(_ collections: [String], _ work: @escaping @Sendable (LocalStore) async throws -> Void) {
-        guard let store else { return }
-        let blocked = collections.filter(unreadable.contains)
+    private func save(_ records: [String], _ work: @escaping @Sendable (Vault) async throws -> Void) {
+        let blocked = records.filter(unreadable.contains)
         guard blocked.isEmpty else {
-            loadError = "\(blocked.joined(separator: ", ")) okunamadığı için değişiklik kaydedilmedi. Mevcut dosya korunuyor."
+            loadError = "\(blocked.joined(separator: ", ")) okunamadığı için değişiklik kaydedilmedi. Mevcut kayıt korunuyor."
             return
         }
         let previous = lastSave
         lastSave = Task {
             await previous?.value
-            do { try await work(store) } catch { self.loadError = "Kaydedilemedi: \(error)" }
+            // Resolved when the save runs, not when it was queued: "delete everything" swaps the vault.
+            guard let vault = self.vault else {
+                self.loadError = "Şifreli kasa açık değil; değişiklik kaydedilmedi."
+                return
+            }
+            do { try await work(vault) } catch {
+                self.loadError = "Kaydedilemedi: \((error as? VaultError)?.faultCode.userMessage ?? "bilinmeyen hata")"
+            }
         }
     }
 }

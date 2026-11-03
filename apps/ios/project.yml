@@ -35,6 +35,8 @@ targets:
         product: ShoppingCopilot
       - package: KabinsizCore
         product: SystemContracts
+      - package: KabinsizCore
+        product: Vault
       - sdk: WeatherKit.framework
     info:
       path: Kabinsiz/Info.plist

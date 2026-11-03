@@ -13,6 +13,8 @@
 | D-004 | Kanonik anayasa v1.5. Yeni iş v1.5 §122 DAG sırasıyla; mevcut travel/shopping kodu korunur, yeni travel özelliği P1'e kadar yok | KABUL | Kullanıcı "sıraya koy" 2026-11-03; docs/audit/V15_QUEUE_AND_CONFLICT_MAP.md |
 | D-006 | WeatherKit, kullanıcının isteğiyle P1 sırasından öne alındı. İstek yalnız açık dokunuşla, yalnız şehir merkezi koordinatıyla; ilk plan `NO_DATA` | KULLANICI KARARI | 2026-11-03 sohbet; docs/security/EGRESS_REGISTER.md |
 | D-007 | Bundle ID `app.kabinsiz.ios`, takım `47XQMQZLF6` (WeatherKit için App ID gerekiyor). Kamuya marka ilanı değildir | KABUL | §0, R-003 |
+| D-008 | Vault: Keychain KEK erişimi `kSecAttrAccessibleWhenUnlocked` (şifreli yedekle taşınır, telefon değişiminde veri kaybı yok; §68). Alternatif `…ThisDeviceOnly` daha sıkı ama geri yüklemede veri kaybı. Constitution'daki 3 alana `TRAVEL` alanı eklendi (seyahat ayrı silinebilsin). Dosyalar `completeFileProtection` | KABUL (AG-09 onayı bekliyor) | docs/security/THREAT_MODEL.md R1, CRYPTO_KEY_LIFECYCLE.md |
+| D-009 | Hava isteği rızası: varsayılan "her dokunuşta sor yok, dokunuş = rıza"; Profil'deki anahtar kapatılınca (`REVOKED`) dokunuş da çalışmaz. Her dokunuş tek kullanımlık, 60 sn grant üretir | KABUL | docs/security/EGRESS_REGISTER.md |
 | D-005 | D-003 gözden geçirilecek: v1.5 §133.1 ilk kanıt gövde kaydırıcıları + 3D mesh istiyor. Blender olmadan prosedürel mesh ile başlanır | AÇIK | v1.5 §122/§133 |
 
 ## Açık riskler
@@ -24,4 +26,4 @@
 | R-003 | WeatherKit: kod + entitlement hazır; Apple PLA güncellemesi kabul edilmeden App ID/profil oluşmuyor | AG-13 | BLOCKED_EXTERNAL (hesap sahibi kabul etmeli) |
 | R-004 | Lisanslı katalog/beden tablosu yok, fit iddiası yapılamaz | AG-08 | BLOCKED_EXTERNAL |
 | R-005 | Blender bu Mac'te yoktu | AG-04 | KAPANDI: 5.2.3 LTS kuruldu, SHA-256 + notarizasyon doğrulandı |
-| R-006 | Yerel veri şifresiz JSON (v1.5 §111/§116 açığı) | AG-09 | AÇIK → WP15-04 |
+| R-006 | Yerel veri şifresiz JSON (v1.5 §111/§116 açığı) | AG-09 | KAPANDI (WP15-04): CryptoKit kasası + düz metin göçü. Kalan riskler THREAT_MODEL R1–R7 |

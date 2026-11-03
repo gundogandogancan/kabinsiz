@@ -1,0 +1,65 @@
+evidence_schema: 1
+work_package: WP15-04
+title: "Encrypted PrivateVault: CryptoKit AES-GCM, Keychain KEK, per-domain keys, tombstones, rotation, migration"
+status: PASS   # macOS unit tests + simulator Keychain; see blocked_reasons
+commit_sha: null   # filled by the commit that adds this file; see git log
+branch: main
+implementation_paths:
+  - Packages/KabinsizCore/Sources/Vault/
+  - Packages/KabinsizCore/Sources/SystemContracts/DeletionReceipt.swift
+  - apps/ios/Kabinsiz/App/AppModel.swift
+  - apps/ios/Kabinsiz/App/KabinsizApp.swift
+unit_test_command: "cd Packages/KabinsizCore && swift test"
+unit_test_exit_code: 0
+unit_test_count: 155   # whole package
+ui_test_command: "scripts/check.sh"
+ui_test_exit_code: 0
+ui_tests:
+  - "testVaultSurvivesRelaunchAndDeletes PASS: real simulator Keychain KEK; wardrobe and consent read back after relaunch; delete-all receipt; empty after relaunch"
+hardware: "Apple M5 Mac, macOS 26.4; iPhone 17 simulator iOS 26.5 (SIMULATOR_ONLY)"
+benchmarks: []
+security_threat_cases:
+  - "V15-T-CRY-01 PASS: one flipped ciphertext bit -> integrityFailure; tampered index -> integrityFailure"
+  - "V15-T-CRY-02 PASS: record copied into another slot -> integrityFailure (AAD from sealed index)"
+  - "V15-T-CRY-03 PASS: 300 vault seals + 1000 raw seals, all nonces and ciphertexts unique"
+  - "V15-T-CRY-04 PASS: old DEK absent after rotation; restored old record unreadable; wrong KEK -> integrityFailure; missing KEK -> keyLost, no new key minted"
+  - "V15-T-CRY-05 PASS: rotation crash at 3 points -> coherent old or new vault, orphans swept, rotates again"
+  - "V15-T-CRY-10 PASS: delete body -> avatar cache and second-level derived record gone, wardrobe kept, body DEK destroyed, receipt counts only"
+  - "V15-T-SEC-10 PASS: deleted avatar cache restored from an old copy stays deleted; new revision is a new write"
+  - "No plaintext on disk (measurements, garment names); key bytes never printed"
+  - "Legacy plaintext migration: verify-then-delete; corrupt file kept and marked unreadable; crash-after-write resolves to vault copy"
+partial:
+  - "V15-T-CRY-06 LOGIC_ONLY: locked key store fails closed without touching files; real lock state is REAL_DEVICE_BLOCKED"
+not_started:
+  - "V15-T-CRY-07/08/09 SPEC_ONLY: encrypted export/import is P1 (§111.3)"
+  - "KEK and root key rotation SPEC_ONLY (docs/security/CRYPTO_KEY_LIFECYCLE.md)"
+mutation_checks:
+  - "record ID removed from AAD: swappedRecords failed as expected"
+  - "sweep keeps every file: tombstonePreventsResurrection failed as expected"
+  - "tombstone check removed from get: tombstonePreventsResurrection failed as expected"
+  - "registry recovery disabled: interruptedRotation failed as expected"
+  - "orphan sweep disabled: interruptedRotation failed as expected"
+  - "single-instance guard removed: singleInstance failed as expected"
+  - "closed guard removed: deleteEverything failed as expected"
+  - "derivedFrom source check removed: derivedNeedsLiveSource failed as expected"
+visual_artifacts:
+  - docs/evidence/screenshots/SIMULATOR_ONLY-08-deletion-receipt.png
+accessibility_checks: []
+independent_reviewer: "AG-12 subagent (same model family)"
+review_independence_level: INTERNAL_SELF_REVIEW
+review_findings: 11   # 3 x P1, 8 x P2; no P0; all fixed or documented
+review_fixes:
+  - "P1 #1 first open writes index before keys.json; keys-without-index-or-records opens empty; key loss keeps unmigrated plaintext"
+  - "P1 #2 one instance per directory (alreadyOpen); close/deleteAll invalidate the instance (closed); app load runs once at the head of the save queue"
+  - "P2 #4 saves cannot run before migration (queued after load)"
+  - "P2 #5 derivedFrom must name live records (missingSource)"
+  - "P2 #9 CRY-04 test now asserts the old key ID is gone"
+  - "P2 #10 F_FULLFSYNC after each write; THREAT_MODEL R2/R3/T6 corrected"
+  - "P2 #11 dropped saves now surface an error; keyLost has its own message"
+open_p0: []
+open_p1: []
+residual_risks: "docs/security/THREAT_MODEL.md R1-R7 (KEK travels with encrypted backups; no monotonic anti-rollback counter; no cryptographer review)"
+blocked_reasons:
+  - "REAL_DEVICE_BLOCKED: CRY-06 lock-state proof, Secure Enclave, power-loss test"
+  - "HUMAN_REVIEW_PENDING: §111.2 asks for a cryptographer review of the design"
+raw_artifact_index: null

@@ -12,6 +12,7 @@ let package = Package(
         .library(name: "FitPassport", targets: ["FitPassport"]),
         .library(name: "ShoppingCopilot", targets: ["ShoppingCopilot"]),
         .library(name: "SystemContracts", targets: ["SystemContracts"]),
+        .library(name: "Vault", targets: ["Vault"]),
     ],
     targets: [
         .target(name: "DomainContracts"),
@@ -21,6 +22,8 @@ let package = Package(
         .target(name: "FitPassport", dependencies: ["DomainContracts"]),
         // v1.5 §133.3 shared contracts: events, work orders, registry, egress, evidence, budgets, faults.
         .target(name: "SystemContracts", dependencies: ["DomainContracts"]),
+        // v1.5 §111/§116 encrypted PrivateVault: CryptoKit AES-GCM, Keychain KEK, per-domain keys.
+        .target(name: "Vault", dependencies: ["SystemContracts", "LocalStore"]),
         .target(
             name: "ShoppingCopilot",
             dependencies: ["DomainContracts", "WardrobeDomain", "FitPassport"],
@@ -34,6 +37,10 @@ let package = Package(
             name: "ContractTests",
             dependencies: ["SystemContracts", "DomainContracts"],
             resources: [.copy("Fixtures")]
+        ),
+        .testTarget(
+            name: "SecurityTests",
+            dependencies: ["SystemContracts", "Vault", "LocalStore", "DomainContracts", "WardrobeDomain", "TravelEngine", "FitPassport", "ShoppingCopilot"]
         ),
     ]
 )

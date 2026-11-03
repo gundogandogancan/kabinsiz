@@ -2,6 +2,7 @@ import DomainContracts
 import FitPassport
 import ShoppingCopilot
 import SwiftUI
+import SystemContracts
 
 /// "Tara" → product code → one decision card (§60). Camera scanning is P0-deferred (D-002):
 /// manual code entry is the documented fallback when the camera is unavailable (§60.3).
@@ -74,7 +75,7 @@ private struct ResolutionView: View {
                 Text("Bu kod birden fazla varyanta ait. Doğru olanı seç; tahmin etmiyoruz.").font(.subheadline).foregroundStyle(Token.textSecondary)
                 ForEach(options) { p in
                     Button { pick(p) } label: {
-                        HStack { Text("\(p.name) · \(p.colorName)"); Spacer(); Text(p.code).font(.caption.monospaced()) }.frame(minHeight: 44)
+                        HStack { Text(verbatim: "\(UntrustedText(p.name)) · \(UntrustedText(p.colorName))"); Spacer(); Text(p.code).font(.caption.monospaced()) }.frame(minHeight: 44)
                     }
                 }
             }
@@ -101,7 +102,7 @@ struct DecisionCardView: View {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(card.product.brandName).font(.caption).foregroundStyle(Token.textSecondary)
-                    Text(card.product.name).font(.title3.weight(.semibold))
+                    Text(verbatim: UntrustedText(card.product.name).displayValue).font(.title3.weight(.semibold))
                     Text("\(card.product.colorName) · \(card.product.code)").font(.caption.monospaced()).foregroundStyle(Token.textSecondary)
                 }
                 Spacer()
@@ -159,7 +160,7 @@ struct FitFeedbackView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section { Text(product.name) }
+                Section { Text(verbatim: UntrustedText(product.name).displayValue) }
                 TextField("Denediğin beden (ör. M)", text: $size).textInputAutocapitalization(.characters)
                 Picker("Sonuç", selection: $outcome) {
                     ForEach(FitOutcome.allCases, id: \.self) { Text($0.displayName).tag($0) }
