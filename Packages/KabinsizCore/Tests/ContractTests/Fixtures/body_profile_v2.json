@@ -1,0 +1,48 @@
+{
+  "avatar_morph_state" : {
+    "preferred_unit" : "CM",
+    "values" : [
+      {
+        "cm" : 170,
+        "region" : "HEIGHT",
+        "source" : "NEUTRAL_START"
+      },
+      {
+        "cm" : 43,
+        "region" : "SHOULDER_WIDTH",
+        "source" : "SLIDER_SHAPED"
+      }
+    ]
+  },
+  "fit_preferences" : {
+    "prefers_relaxed_fit" : true
+  },
+  "local_only" : true,
+  "measurements" : [
+    {
+      "cm" : 96,
+      "method" : "TAPE_SELF",
+      "observed_at" : "2026-11-03T09:00:00.000Z",
+      "origin" : "USER_MEASURED",
+      "region" : "CHEST"
+    },
+    {
+      "cm" : 82.5,
+      "method" : "TAPE_SELF",
+      "observed_at" : "2026-11-03T09:00:00.000Z",
+      "origin" : "USER_MEASURED",
+      "region" : "WAIST"
+    },
+    {
+      "cm" : 99,
+      "confidence" : "LOW",
+      "method" : "PHOTO_ESTIMATE",
+      "observed_at" : "2026-11-03T10:00:00.000Z",
+      "origin" : "IMAGE_ESTIMATE",
+      "region" : "HIP"
+    }
+  ],
+  "profile_revision" : 7,
+  "schema_version" : 2,
+  "user_approval" : "APPROVED"
+}

@@ -1,0 +1,27 @@
+{
+  "composition" : [
+    {
+      "fiber" : "COTTON",
+      "percentage" : 98
+    },
+    {
+      "fiber" : "ELASTANE",
+      "percentage" : 2
+    }
+  ],
+  "composition_origin" : "SYNTHETIC",
+  "drying_instruction" : "LINE_DRY",
+  "evidence_by_attribute" : {
+    "composition" : "ev-synth-composition",
+    "drying_instruction" : "ev-synth-care",
+    "knit_or_woven" : "ev-synth-construction",
+    "stretch_direction" : "ev-synth-stretch",
+    "wash_instruction_c" : "ev-synth-care"
+  },
+  "identity_id" : "pid-synth-jkt-01-nvy-m",
+  "knit_or_woven" : "WOVEN",
+  "schema_version" : 1,
+  "stretch_direction" : "WIDTH_ONLY",
+  "uncertainty" : "MEDIUM",
+  "wash_instruction_c" : 30
+}

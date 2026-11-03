@@ -1,0 +1,18 @@
+{
+  "advice" : "NO_DATA",
+  "context" : {
+    "activity" : "WALKING",
+    "layers" : 2
+  },
+  "identity_id" : "pid-synth-jkt-01-nvy-m",
+  "limitations" : [
+    "Hava verisi yok.",
+    "Kişisel ısı tercihi bilinmiyor."
+  ],
+  "schema_version" : 1,
+  "text" : "Hava bilgisi yok. Katmanlı giyinmek seçeneklerini açık tutar.",
+  "verified_measurement_ids" : [
+
+  ],
+  "wash_care_temp_c" : 30
+}

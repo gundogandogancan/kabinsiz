@@ -15,6 +15,7 @@ let package = Package(
         .library(name: "Vault", targets: ["Vault"]),
         .library(name: "BodyGeometry", targets: ["BodyGeometry"]),
         .library(name: "Octopus", targets: ["Octopus"]),
+        .library(name: "DomainSchemas", targets: ["DomainSchemas"]),
     ],
     targets: [
         .target(name: "DomainContracts"),
@@ -30,6 +31,8 @@ let package = Package(
         .target(name: "BodyGeometry"),
         // v1.5 §103 OctopusCoordinator: task DAG, policy, budget, timeouts, latest-wins; body journey.
         .target(name: "Octopus", dependencies: ["DomainContracts", "SystemContracts", "BodyGeometry", "Vault"]),
+        // v1.7 §4 / R17-02 + R18-WP02: versioned product, fabric, body v2, fit, thermal, try-on and commerce DTOs.
+        .target(name: "DomainSchemas", dependencies: ["DomainContracts", "SystemContracts", "BodyGeometry"]),
         .target(
             name: "ShoppingCopilot",
             dependencies: ["DomainContracts", "WardrobeDomain", "FitPassport"],
@@ -41,7 +44,7 @@ let package = Package(
         ),
         .testTarget(
             name: "ContractTests",
-            dependencies: ["SystemContracts", "DomainContracts"],
+            dependencies: ["SystemContracts", "DomainContracts", "DomainSchemas", "BodyGeometry"],
             resources: [.copy("Fixtures")]
         ),
         .testTarget(

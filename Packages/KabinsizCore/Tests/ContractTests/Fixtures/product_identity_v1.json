@@ -1,0 +1,22 @@
+{
+  "brand_id" : "brand-synth-1",
+  "brand_product_code" : "SYN-JKT-01",
+  "catalog_version" : "synthetic-catalog-1",
+  "color_id" : "NVY",
+  "evidence_ids" : [
+    "ev-synth-identity-1"
+  ],
+  "gtin" : "02000001000014",
+  "identity_id" : "pid-synth-jkt-01-nvy-m",
+  "licensing_rights" : [
+
+  ],
+  "market" : "TR",
+  "match_kind" : "EXACT_USER_CONFIRMED",
+  "model_id" : "model-synth-jkt-01",
+  "schema_version" : 1,
+  "season" : "2026-AW",
+  "size_label" : "M",
+  "source_ref" : "SYNTHETIC_DEMO_ONLY",
+  "verified_at" : "2026-11-03T09:00:00.000Z"
+}

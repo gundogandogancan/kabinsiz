@@ -1,0 +1,46 @@
+{
+  "closure" : "zip",
+  "cut" : "REGULAR",
+  "identity_id" : "pid-synth-jkt-01-nvy-m",
+  "lining" : true,
+  "measurement_type" : "FINISHED_GARMENT",
+  "points_by_size" : [
+    {
+      "cm" : 54,
+      "dimension" : "FLAT_HALF_WIDTH",
+      "method" : "FLAT_LAY_TAPE",
+      "region" : "CHEST",
+      "revision" : 1,
+      "size" : "M",
+      "source_evidence_id" : "ev-synth-m-chest",
+      "tolerance_cm" : 1
+    },
+    {
+      "cm" : 70.5,
+      "dimension" : "LENGTH",
+      "method" : "FLAT_LAY_TAPE",
+      "region" : "TOTAL_LENGTH",
+      "revision" : 1,
+      "size" : "M",
+      "source_evidence_id" : "ev-synth-m-length",
+      "tolerance_cm" : 1
+    },
+    {
+      "cm" : 56.5,
+      "dimension" : "FLAT_HALF_WIDTH",
+      "method" : "FLAT_LAY_TAPE",
+      "region" : "CHEST",
+      "revision" : 2,
+      "size" : "L",
+      "source_evidence_id" : "ev-synth-l-chest",
+      "tolerance_cm" : 1
+    }
+  ],
+  "revision" : 2,
+  "schema_version" : 1,
+  "size_system" : "EU-ALPHA",
+  "stretch_test_refs" : [
+
+  ],
+  "unit_system" : "METRIC"
+}

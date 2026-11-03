@@ -1,0 +1,34 @@
+{
+  "brands" : [
+    {
+      "brand_id" : "brand-synth-1",
+      "display_name" : "Örnek Marka",
+      "local_licensees" : [
+        {
+          "market" : "DE",
+          "owner_id" : "owner-synth-2"
+        }
+      ],
+      "markets" : [
+        "TR",
+        "DE"
+      ],
+      "owner_id" : "owner-synth-1",
+      "source_tier" : "SYNTHETIC_DEMO"
+    }
+  ],
+  "owners" : [
+    {
+      "legal_name" : "Örnek Giyim A.Ş. (SYNTHETIC_DEMO_ONLY)",
+      "owner_id" : "owner-synth-1",
+      "source_claim_id" : "claim-synth-owner-1"
+    },
+    {
+      "legal_name" : "Muster Lizenz GmbH (SYNTHETIC_DEMO_ONLY)",
+      "owner_id" : "owner-synth-2",
+      "source_claim_id" : "claim-synth-owner-2"
+    }
+  ],
+  "registry_revision" : 3,
+  "schema_version" : 1
+}

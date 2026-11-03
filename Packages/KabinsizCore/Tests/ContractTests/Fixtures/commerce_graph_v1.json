@@ -1,0 +1,155 @@
+{
+  "claims" : [
+    {
+      "attribute" : "PRICE",
+      "claim_id" : "claim-synth-price-1",
+      "claimed_by" : "SYNTHETIC",
+      "evidence_id" : "ev-synth-price-1",
+      "level" : "OFFER",
+      "market" : "TR",
+      "observed_at" : "2026-11-03T09:00:00.000Z",
+      "revision" : 1,
+      "revocation_status" : "ACTIVE",
+      "source_tier" : "SYNTHETIC_DEMO",
+      "source_uri" : "kabinsiz-synthetic-catalog-v1",
+      "subject_id" : "offer-synth-1",
+      "translation_provenance" : "ORIGINAL",
+      "valid_until" : "2026-11-03T15:00:00.000Z"
+    },
+    {
+      "attribute" : "STOCK",
+      "claim_id" : "claim-synth-stock-1",
+      "claimed_by" : "SYNTHETIC",
+      "evidence_id" : "ev-synth-stock-1",
+      "level" : "OFFER",
+      "market" : "TR",
+      "observed_at" : "2026-11-03T09:00:00.000Z",
+      "revision" : 1,
+      "revocation_status" : "ACTIVE",
+      "source_tier" : "SYNTHETIC_DEMO",
+      "source_uri" : "kabinsiz-synthetic-catalog-v1",
+      "subject_id" : "offer-synth-1",
+      "translation_provenance" : "ORIGINAL",
+      "valid_until" : "2026-11-03T15:00:00.000Z"
+    },
+    {
+      "attribute" : "FINISHED_MEASUREMENT",
+      "claim_id" : "claim-synth-chart-1",
+      "claimed_by" : "SYNTHETIC",
+      "evidence_id" : "ev-synth-m-chest",
+      "level" : "SIZE_VARIANT",
+      "observed_at" : "2026-11-03T09:00:00.000Z",
+      "revision" : 2,
+      "revocation_status" : "ACTIVE",
+      "source_tier" : "SYNTHETIC_DEMO",
+      "source_uri" : "kabinsiz-synthetic-catalog-v1",
+      "subject_id" : "var-synth-jkt-01-nvy-m",
+      "translation_provenance" : "ORIGINAL"
+    }
+  ],
+  "collections" : [
+    {
+      "brand_id" : "brand-synth-1",
+      "collection_id" : "col-synth-aw26",
+      "season" : "2026-AW"
+    }
+  ],
+  "colorways" : [
+    {
+      "color_name" : "Lacivert",
+      "colorway_id" : "cw-synth-jkt-01-nvy",
+      "style_model_id" : "model-synth-jkt-01"
+    }
+  ],
+  "graph_revision" : 5,
+  "merchants" : [
+    {
+      "display_name" : "Örnek Mağaza",
+      "markets" : [
+        "TR"
+      ],
+      "merchant_id" : "merchant-synth-1"
+    }
+  ],
+  "offers" : [
+    {
+      "claim_ids" : [
+        "claim-synth-price-1",
+        "claim-synth-stock-1"
+      ],
+      "currency" : "TRY",
+      "is_affiliate_link" : false,
+      "is_sponsored" : false,
+      "market" : "TR",
+      "merchant_id" : "merchant-synth-1",
+      "observed_at" : "2026-11-03T09:00:00.000Z",
+      "offer_id" : "offer-synth-1",
+      "price_minor" : 249990,
+      "stock" : "AVAILABLE_VERIFIED",
+      "valid_until" : "2026-11-03T15:00:00.000Z",
+      "variant_id" : "var-synth-jkt-01-nvy-m"
+    },
+    {
+      "claim_ids" : [
+
+      ],
+      "is_affiliate_link" : false,
+      "is_sponsored" : false,
+      "market" : "TR",
+      "merchant_id" : "merchant-synth-1",
+      "observed_at" : "2026-11-03T09:00:00.000Z",
+      "offer_id" : "offer-synth-2",
+      "stock" : "UNKNOWN",
+      "variant_id" : "var-synth-jkt-01-nvy-l"
+    }
+  ],
+  "schema_version" : 1,
+  "size_variants" : [
+    {
+      "colorway_id" : "cw-synth-jkt-01-nvy",
+      "identifiers" : [
+        {
+          "namespace" : "GTIN",
+          "value" : "02000001000014"
+        },
+        {
+          "namespace" : "MANUFACTURER_STYLE_CODE",
+          "value" : "SYN-JKT-01"
+        },
+        {
+          "issuer" : "merchant-synth-1",
+          "namespace" : "MERCHANT_SKU",
+          "value" : "SKU-778-M"
+        }
+      ],
+      "size_label" : "M",
+      "size_system" : "EU-ALPHA",
+      "variant_id" : "var-synth-jkt-01-nvy-m"
+    },
+    {
+      "colorway_id" : "cw-synth-jkt-01-nvy",
+      "identifiers" : [
+        {
+          "namespace" : "GTIN",
+          "value" : "02000001000021"
+        },
+        {
+          "namespace" : "MANUFACTURER_STYLE_CODE",
+          "value" : "SYN-JKT-01"
+        }
+      ],
+      "size_label" : "L",
+      "size_system" : "EU-ALPHA",
+      "variant_id" : "var-synth-jkt-01-nvy-l"
+    }
+  ],
+  "style_models" : [
+    {
+      "brand_id" : "brand-synth-1",
+      "category" : "OUTERWEAR",
+      "collection_id" : "col-synth-aw26",
+      "manufacturer_style_code" : "SYN-JKT-01",
+      "style_model_id" : "model-synth-jkt-01"
+    }
+  ]
+}

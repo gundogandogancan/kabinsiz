@@ -1,0 +1,15 @@
+{
+  "asset_license" : "OWN_PROCEDURAL",
+  "confidence_explanations" : [
+    "Nötr gövde, ürünün kendi 3B varlığı yok."
+  ],
+  "fidelity" : "G0",
+  "identity_id" : "pid-synth-jkt-01-nvy-m",
+  "limitations" : [
+    "Görünüm beden uyumunun kanıtı değildir."
+  ],
+  "profile_revision" : 7,
+  "rendering_method" : "GENERIC_MESH",
+  "schema_version" : 1,
+  "simulation_validated" : false
+}

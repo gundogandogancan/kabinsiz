@@ -1,0 +1,162 @@
+{
+  "Advice" : [
+    "LAYERING_SUGGESTION",
+    "NO_DATA",
+    "WEATHER_UNCERTAIN"
+  ],
+  "AssetLicense" : [
+    "BRAND_LICENSED",
+    "MARKETPLACE_LICENSED",
+    "NONE",
+    "OWN_PROCEDURAL",
+    "SYNTHETIC_DEMO"
+  ],
+  "BodyOrigin" : [
+    "IMAGE_ESTIMATE",
+    "USER_EDITED",
+    "USER_MEASURED"
+  ],
+  "BodyRegion" : [
+    "ARM_LENGTH",
+    "CHEST",
+    "HEIGHT",
+    "HIP",
+    "INSEAM",
+    "NECK",
+    "SHOULDER_WIDTH",
+    "THIGH",
+    "WAIST"
+  ],
+  "ClaimAttribute" : [
+    "BODY_SIZE_CHART",
+    "CARE",
+    "COLOR",
+    "COMPOSITION",
+    "FINISHED_MEASUREMENT",
+    "IDENTITY",
+    "MEDIA",
+    "OWNERSHIP",
+    "PRICE",
+    "SIZE_LABEL",
+    "STOCK"
+  ],
+  "ClaimedBy" : [
+    "BRAND",
+    "BRAND_OWNER",
+    "GS1",
+    "MARKETPLACE",
+    "RETAILER",
+    "SYNTHETIC",
+    "USER"
+  ],
+  "CompositionOrigin" : [
+    "BRAND_LICENSED",
+    "CARE_LABEL_UNCONFIRMED",
+    "CARE_LABEL_USER_CONFIRMED",
+    "RETAILER_FEED",
+    "SYNTHETIC",
+    "USER_TYPED"
+  ],
+  "Dimension" : [
+    "CIRCUMFERENCE",
+    "FLAT_HALF_WIDTH",
+    "LENGTH"
+  ],
+  "Evaluation" : [
+    "FIT_EVIDENCE",
+    "POSSIBLY_LOOSE",
+    "POSSIBLY_TIGHT",
+    "UNKNOWN"
+  ],
+  "Fiber" : [
+    "ACRYLIC",
+    "CASHMERE",
+    "COTTON",
+    "ELASTANE",
+    "LINEN",
+    "LYOCELL",
+    "MODAL",
+    "OTHER",
+    "POLYAMIDE",
+    "POLYESTER",
+    "SILK",
+    "VISCOSE",
+    "WOOL"
+  ],
+  "Fidelity" : [
+    "G0",
+    "G1",
+    "G2",
+    "G3"
+  ],
+  "GarmentRegion" : [
+    "CHEST",
+    "HIP",
+    "INSEAM",
+    "LEG_OPENING",
+    "NECK",
+    "RISE",
+    "SHOULDER",
+    "SLEEVE",
+    "THIGH",
+    "TOTAL_LENGTH",
+    "WAIST"
+  ],
+  "LicensingRight" : [
+    "COMMERCE_LINK",
+    "DISPLAY_FACTS",
+    "DISPLAY_MEDIA",
+    "FIT_COMPUTATION",
+    "OFFLINE_CACHE"
+  ],
+  "MatchKind" : [
+    "AMBIGUOUS",
+    "CANDIDATE_ONLY",
+    "EXACT_USER_CONFIRMED",
+    "EXACT_VERIFIED",
+    "NOT_FOUND"
+  ],
+  "MeasurementType" : [
+    "BODY_SIZE_CHART",
+    "FINISHED_GARMENT"
+  ],
+  "MeasureMethod" : [
+    "BRAND_DECLARED",
+    "CAD_PATTERN",
+    "FLAT_LAY_TAPE",
+    "ON_FORM",
+    "UNKNOWN",
+    "USER_TAPE"
+  ],
+  "Namespace" : [
+    "GTIN",
+    "MANUFACTURER_STYLE_CODE",
+    "MERCHANT_SKU",
+    "PARTNER_VARIANT_ID"
+  ],
+  "Recommendation" : [
+    "COMPARE_TWO_SIZES",
+    "INSUFFICIENT_DATA",
+    "TRY_SIZE"
+  ],
+  "RenderingMethod" : [
+    "GENERATIVE_IMAGE",
+    "GENERIC_MESH",
+    "PREPARED_PRODUCT_MESH",
+    "PRODUCT_PHOTO_CARD",
+    "VALIDATED_DRAPE"
+  ],
+  "SourceTier" : [
+    "SYNTHETIC_DEMO",
+    "TIER_A_BRAND_SIGNED",
+    "TIER_B_AUTHORIZED_RETAIL",
+    "TIER_C_GS1_IDENTITY",
+    "TIER_D_USER_OR_OCR"
+  ],
+  "Stock" : [
+    "AVAILABLE_VERIFIED",
+    "LIMITED_VERIFIED",
+    "OUT_OF_STOCK",
+    "UNKNOWN"
+  ]
+}

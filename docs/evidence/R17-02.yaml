@@ -1,0 +1,78 @@
+evidence_schema: 1
+work_package: R17-02 (+ R18-WP02 contracts)
+title: "Versioned product, fabric, body v2, regional fit, thermal, try-on and commerce graph contracts with golden files and v1<->v2 body migration"
+status: PASS   # macOS unit tests; no UI change, no device involvement
+commit_sha: null   # filled by the commit that adds this file; see git log
+branch: main
+spec: "v1.7 §4 (ProductIdentityV1, ProductPhysicalSpecV1, FabricSpecV1, BodyProfileV2, RegionalFitV1, ThermalAdviceV1, VisualTryOnV1, provenance rule), §3.2, §5, §6; v1.8 V18-00.1, V18-01.1, V18-01.3, V18-04.1, V18-04.2; R18-WP02 (BrandRegistry, CommerceGraph, ProductVariant, Offer, ClaimEvidence)"
+decision: D-020
+implementation_paths:
+  - Packages/KabinsizCore/Sources/DomainSchemas/Support.swift
+  - Packages/KabinsizCore/Sources/DomainSchemas/ProductIdentity.swift
+  - Packages/KabinsizCore/Sources/DomainSchemas/FabricSpec.swift
+  - Packages/KabinsizCore/Sources/DomainSchemas/BodyProfileV2.swift
+  - Packages/KabinsizCore/Sources/DomainSchemas/FitThermalTryOn.swift
+  - Packages/KabinsizCore/Sources/DomainSchemas/Commerce.swift
+  - Packages/KabinsizCore/Package.swift
+test_paths:
+  - Packages/KabinsizCore/Tests/ContractTests/DomainSchemaTests.swift
+  - Packages/KabinsizCore/Tests/ContractTests/DomainSchemaGoldens.swift
+  - Packages/KabinsizCore/Tests/ContractTests/Fixtures/{product_identity_v1,product_physical_spec_v1,fabric_spec_v1,body_profile_v2,regional_fit_v1,thermal_advice_v1,visual_try_on_v1,brand_registry_v1,commerce_graph_v1,frozen_raw_values_r17}.json
+unit_test_command: "cd Packages/KabinsizCore && swift test"
+unit_test_exit_code: 0
+unit_test_count: 248   # whole package; 25 in DomainSchemaTests (45 with arguments)
+ui_test_command: null   # the app does not link DomainSchemas yet; UI gate unchanged since 5a888c3 (6/6 PASS)
+hardware: "Apple M5 Mac, macOS 26.4 (package tests only)"
+benchmarks: []
+golden_policy: "Goldens are Swift values (DomainSchemaGoldens) written once to JSON and frozen; the test compares file == value and round-trips. Regenerate only on purpose with REGENERATE_GOLDENS=1. All golden data is SYNTHETIC_DEMO_ONLY: GTINs in GS1 in-store prefix 200 (never a real global product), invented brand/owner/merchant"
+compatibility_cases:
+  - "Forward: each golden decodes, validates, re-encodes to the same value with the same key names"
+  - "Backward: every contract refuses schema_version+1 with SCHEMA_NEWER (never half-read)"
+  - "Strict keys: every contract refuses an extra top-level key"
+  - "Frozen enum raw values for all 21 new persisted enums"
+  - "Migration: BodyProfile v1 -> BodyProfileV2 -> v1 exact over 300 generated bodies (cm and inch entries, slider and typed mixes)"
+  - "Migration reader accepts a v1 file or a v2 file; refuses v3, a v1 file with an extra key, and garbage"
+provenance_cases:
+  - "No number without a source: physical points need source evidence; fabric evidence keys equal exactly the present attributes"
+  - "A picture never gives material: composition origin list has no photo/image entry; appearance is a separate hint; synthetic/OCR-unconfirmed composition is never product fact"
+  - "Wash temperature is care only: carried in FabricSpecV1/ThermalAdviceV1, never changes advice; no degree, digit or % in advice text without a measured interval backed by thermal test ids and weather evidence"
+  - "No weather values without weather evidence"
+  - "Slider shapes and starting values never become measurements in migration; photo estimates never reach size advice; a fit verdict may only rest on approved, typed measurements of the same body revision (STALE_REVISION otherwise)"
+  - "One size (TRY_SIZE) only when every region in play was evaluated; 'proven' only with evidence in every region; otherwise limitations are required"
+  - "Only G2 is a validated simulation; G1+ needs a licensed product asset revision; generated images are G3 only; try-on never informs size advice"
+  - "Identity: exact match needs a code, evidence and check time; verified needs DISPLAY_FACTS and expires to BRAND_IDENTIFIABLE"
+  - "Commerce: one GTIN or merchant SKU per variant; merchant SKU tied to its merchant; money in minor units + ISO currency; verified stock always carries an expiry and reads UNKNOWN after it; claim tier locked to the claimant; GS1 identity-only; price/stock only on offers; fact display only for tier A/B, licensed, active, in force"
+property_tests:
+  - "GTIN: 500 generated codes valid; one changed digit in each is always rejected"
+  - "Body migration round trip over 300 generated bodies"
+mutation_checks:   # 17/17 killed (scratchpad script mutate_r17.py, each run swift test --filter DomainSchemaTests)
+  - "GTIN uniqueness per variant removed: graphIntegrity failed as expected"
+  - "open-ended verified stock allowed: offerRules failed as expected"
+  - "GS1 claim of measurements allowed: claimRules failed as expected"
+  - "stock never ages: offerRules failed as expected"
+  - "claim tier/claimant mismatch allowed: claimRules failed as expected"
+  - "orphan fabric evidence allowed: fabricProvenance failed as expected"
+  - "composition total 85-115 instead of 99-101: fabricProvenance failed as expected"
+  - "slider shape promoted to measurement in migration: upgradeKeepsShapesOut + roundTripProperty failed as expected"
+  - "photo estimate used for sizing: bodyRules, downgradeEstimate, fitAgainstBody failed as expected"
+  - "v1 reader accepts extra keys: readEitherVersion failed as expected"
+  - "TRY_SIZE with an unknown region: fitRules failed as expected"
+  - "fit verdict resting on a slider shape: fitAgainstBody failed as expected"
+  - "degrees in text without data: thermalRules failed as expected"
+  - "weather values without a source: thermalRules failed as expected"
+  - "G1 claiming simulation: tryOnRules failed as expected"
+  - "candidate match carrying verified_at: identityRules failed as expected"
+  - "GTIN check-digit weights swapped: gtinSingleDigitErrors (and graph/claim goldens) failed as expected"
+not_in_scope:
+  - "EvidenceCoverageGate (source conflict, licence TTL) is queue row 11 (R18-WP03)"
+  - "App adoption of BodyProfileV2 and RegionalFitV1 in SizeAdvisor is R17-05 (row 15)"
+  - "Synthetic multi-brand catalogue fixture is R18-WP07 (row 22)"
+independent_reviewer: null
+review_independence_level: INTERNAL_SELF_REVIEW
+residual_risks:
+  - "The app still persists BodyProfile v1; the v2 reader exists but the vault does not call it yet"
+  - "No real licensed catalogue or GS1 data; every value here is synthetic"
+  - "ISO 3166/4217 checks are format-only (two/three upper-case letters), not membership in the official lists"
+  - "Entry ranges in BodyProfileV2 are typo guards (§5.1), not norms; they may need widening for children's sizes later"
+open_p0: []
+open_p1: []

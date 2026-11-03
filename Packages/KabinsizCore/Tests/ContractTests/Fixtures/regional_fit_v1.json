@@ -1,0 +1,55 @@
+{
+  "chart_revision" : 2,
+  "identity_id" : "pid-synth-jkt-01-nvy-m",
+  "is_product_specific_fit_proven" : false,
+  "limitations" : [
+    "Kalça karşılaştırılamadı.",
+    "Ürüne özel uyum denemeyle kanıtlanmadı."
+  ],
+  "profile_revision" : 7,
+  "recommendation" : "COMPARE_TWO_SIZES",
+  "recommended_sizes" : [
+    "M",
+    "L"
+  ],
+  "regions" : [
+    {
+      "evaluation" : "FIT_EVIDENCE",
+      "evidence_ids" : [
+        "ev-synth-m-chest"
+      ],
+      "explanation" : "Göğüs, ölçtüğün değere göre rahat pay bırakıyor.",
+      "garment_ease_cm" : 12,
+      "region" : "CHEST",
+      "uncertainty_cm" : 2,
+      "usable_measurements" : [
+        "CHEST"
+      ]
+    },
+    {
+      "evaluation" : "POSSIBLY_TIGHT",
+      "evidence_ids" : [
+        "ev-synth-m-waist"
+      ],
+      "explanation" : "Bel payı az; dar gelebilir.",
+      "garment_ease_cm" : 1,
+      "region" : "WAIST",
+      "uncertainty_cm" : 2,
+      "usable_measurements" : [
+        "WAIST"
+      ]
+    },
+    {
+      "evaluation" : "UNKNOWN",
+      "evidence_ids" : [
+
+      ],
+      "explanation" : "Kalça ölçüsü bu üründe yok; karşılaştırılmadı.",
+      "region" : "HIP",
+      "usable_measurements" : [
+
+      ]
+    }
+  ],
+  "schema_version" : 1
+}
