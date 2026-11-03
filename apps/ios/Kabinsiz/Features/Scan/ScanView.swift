@@ -1,11 +1,14 @@
 import DomainContracts
 import FitPassport
+import PhotosUI
+import ProductCapture
 import ShoppingCopilot
 import SwiftUI
 import SystemContracts
 
-/// "Tara" → product code → one decision card (§60). Camera scanning is P0-deferred (D-002):
-/// manual code entry is the documented fallback when the camera is unavailable (§60.3).
+/// "Tara" → a product → one decision card (§60). The product comes by live barcode (VisionKit, where
+/// supported), by a photo of its label or barcode (taken now or chosen; read on this iPhone, never
+/// stored or sent, SCAN-T011), or by typing the code (§60.3 fallback). Only catalogue matches count.
 struct ScanView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
@@ -14,14 +17,29 @@ struct ScanView: View {
     var onTryOn: ((CatalogProduct) -> Void)?
     @State private var code = ""
     @State private var resolution: ProductResolution?
+    @State private var intake = ProductPhotoIntake()
+    @State private var pickerItem: PhotosPickerItem?
+    @State private var showCamera = false
+    @State private var showLiveScanner = false
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: Token.Space.card) {
                     Card {
-                        Text("Ürün kodunu yaz").font(.headline)
-                        Text("Etiketteki ürün kodunu gir. Barkod kamerası destekleyen iPhone'larda Dene ekranında.")
+                        ProductIntakeButtons(intake: intake, onLiveScan: { showLiveScanner = true },
+                                             onCamera: { showCamera = true }, pickerItem: $pickerItem)
+                    }
+
+                    ProductPhotoResultView(state: intake.state, debugDetail: debugDetail) { product in
+                        intake.reset()
+                        code = product.code
+                        resolve()
+                    }
+
+                    Card {
+                        Text("ya da kodu yaz").font(.headline)
+                        Text("Etiketteki ürün kodunu gir.")
                             .font(.subheadline).foregroundStyle(Token.textSecondary)
                         TextField("ör. KB-TEE-01-WHT", text: $code)
                             .textInputAutocapitalization(.characters)
@@ -30,9 +48,9 @@ struct ScanView: View {
                             .padding(12)
                             .background(Token.surfaceBase, in: RoundedRectangle(cornerRadius: Token.Radius.small))
                             .submitLabel(.search)
-                            .onSubmit(resolve)
+                            .onSubmit { intake.reset(); resolve() }
                             .accessibilityIdentifier("productCodeField")
-                        Button("Sonucu göster", action: resolve)
+                        Button("Sonucu göster") { intake.reset(); resolve() }
                             .buttonStyle(PrimaryButtonStyle())
                             .accessibilityIdentifier("resolveButton")
                     }
@@ -41,7 +59,7 @@ struct ScanView: View {
                         HStack { Text("Örnek kodlar").font(.subheadline.weight(.semibold)); Spacer(); SyntheticBadge() }
                         FlowLayout {
                             ForEach(["KB-TEE-01-WHT", "KB-JKT-01", "KB-JNS-02-BLU", "KB-SHR-03-NVY", "KB-SNK-04-WHT", "OB-DRS-01-RED", "KB-XXX-99"], id: \.self) { sample in
-                                Button { code = sample; resolve() } label: { Chip(text: sample) }.buttonStyle(.plain)
+                                Button { intake.reset(); code = sample; resolve() } label: { Chip(text: sample) }.buttonStyle(.plain)
                             }
                         }
                     }
@@ -58,7 +76,55 @@ struct ScanView: View {
             .onAppear {
                 if let scannedCode, code.isEmpty { code = scannedCode; resolve() }
             }
+            #if DEBUG
+            .task { await intake.runFixtureIfRequested(resolver: model.catalog) }
+            #endif
+            .onChange(of: pickerItem) { _, item in
+                guard let item else { return }
+                pickerItem = nil
+                Task {
+                    resolution = nil
+                    guard let data = try? await item.loadTransferable(type: Data.self) else { intake.markUnreadable(); return }
+                    await readPhoto(data)
+                }
+            }
+            .onChange(of: intake.state) { _, state in
+                guard case let .done(result, _) = state else { return }
+                withAnimation(.easeOut(duration: 0.2)) {
+                    switch result.match {
+                    case let .found(product, _):
+                        code = product.code
+                        resolution = .found(product)
+                    case .choose, .notInCatalog, .nothingRead:
+                        resolution = nil
+                    }
+                }
+            }
+            .fullScreenCover(isPresented: $showCamera) {
+                CameraCaptureSheet { data in Task { await readPhoto(data) } }.ignoresSafeArea()
+            }
+            .sheet(isPresented: $showLiveScanner) {
+                BarcodeScannerSheet { scanned in
+                    showLiveScanner = false
+                    intake.reset()
+                    code = scanned
+                    resolve()
+                }
+            }
         }
+    }
+
+    private var debugDetail: String? {
+        #if DEBUG
+        intake.debugError
+        #else
+        nil
+        #endif
+    }
+
+    private func readPhoto(_ data: Data) async {
+        resolution = nil
+        await intake.read(data: data, resolver: model.catalog)
     }
 
     private func resolve() {

@@ -22,6 +22,7 @@ let package = Package(
         .library(name: "TodayOutfit", targets: ["TodayOutfit"]),
         .library(name: "LivingWorld", targets: ["LivingWorld"]),
         .library(name: "MorningReady", targets: ["MorningReady"]),
+        .library(name: "ProductCapture", targets: ["ProductCapture"]),
     ],
     targets: [
         .target(name: "DomainContracts"),
@@ -52,6 +53,9 @@ let package = Package(
             dependencies: ["DomainContracts", "WardrobeDomain", "FitPassport"],
             resources: [.process("Resources")]
         ),
+        // On-device label reading (Vision): barcode + printed code → catalogue match. No network.
+        .target(name: "ProductCapture", dependencies: ["ShoppingCopilot"]),
+        .testTarget(name: "ProductCaptureTests", dependencies: ["ProductCapture", "ShoppingCopilot"]),
         .testTarget(
             name: "KabinsizCoreTests",
             dependencies: ["DomainContracts", "WardrobeDomain", "LocalStore", "TravelEngine", "FitPassport", "ShoppingCopilot"]

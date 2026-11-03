@@ -19,6 +19,8 @@ modules:
     capabilities: [wardrobe.read]
   - id: OCT-16
     capabilities: [weather.fetch]
+  - id: OCT-17
+    capabilities: [streetImagery.fetch]
   - id: OCT-18
     capabilities: [wardrobe.read, wardrobe.write]
   - id: OCT-19

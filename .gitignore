@@ -7,3 +7,5 @@ apps/ios/*.xcodeproj/
 apps/ios/build/
 .build/
 .swiftpm/
+/build/
+__pycache__/

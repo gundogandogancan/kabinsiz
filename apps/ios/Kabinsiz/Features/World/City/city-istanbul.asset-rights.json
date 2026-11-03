@@ -1,0 +1,81 @@
+{
+  "schema": "kabinsiz.asset-rights.v1",
+  "asset_id": "city-istanbul",
+  "source_owner": "Kabinsiz (built by tools/scenes from primitives)",
+  "provenance": "OWNED_ORIGINAL",
+  "licence_document_id": null,
+  "commercial_allowed": true,
+  "derivative_allowed": true,
+  "on_device_distribution_allowed": true,
+  "attribution": null,
+  "territory": "worldwide",
+  "expiry": null,
+  "revocation_policy": "not applicable (owned)",
+  "third_party_inputs": [],
+  "generator": "tools/scenes/build_city_usdz.py --city istanbul --atlas 2048 --samples 192",
+  "blender": "5.2.3 LTS",
+  "lighting": "baked for the app camera (Cycles); geometry, depth and rain are real time",
+  "triangles": 16204,
+  "texels_per_metre": {
+    "ground": {
+      "16-20m": 63.7,
+      "20-24m": 57.7,
+      "24-28m": 52.4,
+      "28-32m": 47.7,
+      "32-36m": 43.5,
+      "36-40m": 39.7,
+      "40-44m": 23.8
+    },
+    "near": {
+      "0-4m": 184.2,
+      "4-8m": 89.8,
+      "8-12m": 83.9,
+      "12-16m": 44.7,
+      "16-20m": 41.5
+    },
+    "left": {
+      "4-8m": 87.3,
+      "8-12m": 66.3,
+      "12-16m": 58.5,
+      "16-20m": 42.9,
+      "20-24m": 42.4,
+      "24-28m": 38.5,
+      "28-32m": 30.4,
+      "32-36m": 26.7,
+      "36-40m": 30.4,
+      "40-44m": 20.2
+    },
+    "right": {
+      "4-8m": 84.0,
+      "8-12m": 65.5,
+      "12-16m": 53.7,
+      "16-20m": 44.4,
+      "20-24m": 37.4,
+      "24-28m": 32.7,
+      "28-32m": 33.1,
+      "32-36m": 23.0,
+      "36-40m": 29.6,
+      "40-44m": 19.0
+    },
+    "far": {
+      "40-44m": 11.1
+    }
+  },
+  "artifact_hash": {
+    "city-istanbul.usdz": "5396d136d2e7d258ac68a64d81ad4ad60855e48c4699c446375a51c36ba00718",
+    "city-istanbul-ground-dry.jpg": "53763493cd42b20f1c23bcac7ca91edcd5db1f9ce0eb5736ae14084057d2d431",
+    "city-istanbul-near-dry.jpg": "c7f0d62718a8b8f4434b0e99046f05326d1231a34115f9cecb08971972aa7bba",
+    "city-istanbul-left-dry.jpg": "1661365d3498eed0ae059e04a10cfc577b983411b4d0566648c835e79da74b7c",
+    "city-istanbul-right-dry.jpg": "cf36e41c0eab6157fb98ffb0b8af16f02106ed16144be80978b212d85c625804",
+    "city-istanbul-far-dry.jpg": "38320f94bf735ae3ec4c992c9070d4443db1c6945b82308f90cfc0369e312984",
+    "city-istanbul-sky-dry.jpg": "61c6096a15b8acca9cb5692cfb57a09cb960b4365d4c9ec5b77ce898618bfd62",
+    "city-istanbul-ground-wet.jpg": "f203a5652ba1f1878d2eea8a61bc8dfd25eb6b6015a7c6423a11dbe794f00b8e",
+    "city-istanbul-near-wet.jpg": "71c13f72f35b9a766427b68dc154b1fd8c027b26ee03379def8bd2594fa90f76",
+    "city-istanbul-left-wet.jpg": "1d3b4aa4af9a45146028e774a7dd439081b931e4e663b31de2de5ce0506a18fd",
+    "city-istanbul-right-wet.jpg": "f6a672b4eebe906fb153b139dad078611b7ae66b451b8bb0bbf7d39070ad584a",
+    "city-istanbul-far-wet.jpg": "8f7a3afd49c8c9e950a12620d17d19dad7be51e019652ed6fceb3ef8628746e0",
+    "city-istanbul-sky-wet.jpg": "7bc973e21f5d15f8f90b405d50f19c42389aaa7ee48e62fbdd0ac785a2ea54d2"
+  },
+  "reviewer": null,
+  "approved_at": null
+}

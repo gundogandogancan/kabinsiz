@@ -1,5 +1,6 @@
 import AvatarDressing
 import BodyGeometry
+import LivingWorld
 import RealityKit
 import SwiftUI
 
@@ -21,6 +22,15 @@ struct DressedAvatarView: View {
     var onTapSlot: (GarmentSlotID?) -> Void = { _ in }
     /// VoiceOver's way to a garment: one action per worn slot (v2.8 §06.3).
     var onSlotAction: (GarmentSlotID) -> Void = { _ in }
+    /// The 3D street to stand in, its surface state, and whether it may be shown and drift.
+    var city: CityModel3D?
+    var wetCity = false
+    var showCity = false
+    var cameraDrift = false
+    /// Scene update rate, reported every two seconds.
+    var onFrameRate: (Double) -> Void = { _ in }
+    /// True once the street is on screen; false when it could not be loaded.
+    var onCityReady: (Bool) -> Void = { _ in }
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var stage = WorldStage()
@@ -38,6 +48,18 @@ struct DressedAvatarView: View {
                 sync()
             }
             .allowsHitTesting(false)
+            .task(id: CityRequest(resource: showCity ? city?.resource : nil, wet: wetCity)) {
+                do {
+                    try await stage.showCity(showCity ? city : nil, wet: wetCity)
+                    guard !Task.isCancelled else { return }
+                    stage.setCityVisible(showCity)
+                    onCityReady(showCity && stage.showsCity)
+                } catch {
+                    guard !Task.isCancelled else { return }
+                    stage.setCityVisible(false)
+                    onCityReady(false)
+                }
+            }
             .overlay {
                 Color.clear
                     .contentShape(.rect)
@@ -71,6 +93,8 @@ struct DressedAvatarView: View {
         stage.dress(outfit, snapshot: snapshot)
         if stage.selectedSlot != selectedSlot { stage.highlight(selectedSlot) }
         stage.idleEnabled = alive && !reduceMotion
+        stage.driftEnabled = cameraDrift && !reduceMotion
+        if stage.onFrameRate == nil { stage.onFrameRate = { rate in Task { @MainActor in onFrameRate(rate) } } }
         stage.setZoom(zoom)
         if shownRain != rainIntensity {
             stage.rain(reduceMotion ? 0 : rainIntensity)
@@ -90,10 +114,12 @@ struct DressedAvatarView: View {
         dragStartYaw = start
         yaw = start + Float(dx) / 240 * .pi / 2
         stage.place(yaw: yaw, animated: false)
+        if !reduceMotion { stage.nudgeCamera(Float(dx) / 320) }
     }
 
     private func dragEnded(_ velocity: CGFloat) {
         dragStartYaw = nil
+        stage.nudgeCamera(0)
         guard !reduceMotion else { return }
         let carry = Float(velocity / 4) / 240 * .pi / 2
         guard abs(carry) > 0.05 else { return }
@@ -111,6 +137,11 @@ struct DressedAvatarView: View {
         yaw = target
         stage.place(yaw: yaw, animated: animated && !reduceMotion, duration: 0.55)
     }
+}
+
+private struct CityRequest: Equatable {
+    let resource: String?
+    let wet: Bool
 }
 
 /// One-finger pan that begins only on sideways motion.

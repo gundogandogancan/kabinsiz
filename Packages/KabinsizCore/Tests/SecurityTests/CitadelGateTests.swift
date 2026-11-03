@@ -238,6 +238,53 @@ struct CitadelGateTests {
         #expect(await gate.audit.last?.outcome == .discardedAfterRevocation)
     }
 
+    // MARK: EG-003 street imagery (Apple Look Around, UI28-T063)
+
+    static let streetIntent = EgressIntent(
+        destinationHost: "mapkit.apple.com", method: .get, endpointPath: "/look-around/scene",
+        classification: .localPrivate, purpose: .streetImagery, fields: ["street_coordinate"],
+        consentBasis: .explicitUserAction, userVisibleEffect: "Ünlü cadde görüntüsü", retention: .session
+    )
+
+    @Test("UI28-T063: a catalogue street point goes out rounded to 4 decimals and nothing else; only OCT-17 may ask")
+    func streetImageryWire() async throws {
+        let gate = gate()
+        let grant = try await gate.issue(module: .occasionVenue, capability: .streetImageryFetch)
+        let sent = try await gate.send(Self.streetIntent, payload: StreetImageryRequest(latitude: 48.869712, longitude: 2.307834),
+                                       module: .occasionVenue, grant: grant) { authorized in
+            (authorized.fields, StreetImageryRequest.coordinate(from: authorized))
+        }
+        #expect(sent.0 == ["street_coordinate": "48.8697,2.3078"])
+        #expect(sent.1?.latitude == 48.8697 && sent.1?.longitude == 2.3078)
+        await #expect(throws: FaultCode.capabilityNotGranted) {
+            try await gate.issue(module: .weatherContext, capability: .streetImageryFetch)
+        }
+        await #expect(throws: FaultCode.capabilityNotGranted) {
+            try await gate.issue(module: .occasionVenue, capability: .weatherFetch)
+        }
+        // The street route cannot carry a weather request, and the weather route cannot carry this one.
+        let wrong = try await gate.issue(module: .occasionVenue, capability: .streetImageryFetch)
+        let calls = Calls()
+        await #expect(throws: (any Error).self) {
+            try await gate.send(Self.weatherIntent, payload: WeatherForecastRequest(latitude: 1, longitude: 2),
+                                module: .occasionVenue, grant: wrong) { _ in calls.hit() }
+        }
+        #expect(calls.count == 0)
+    }
+
+    @Test("UI28-T064: turning street photos off stops new requests and falls back to the owned scene")
+    func streetImageryRevocation() async throws {
+        #expect(ConsentLedger.plan(for: .streetImagery).steps == [.cancelInFlightWork, .stopFutureAccess, .fallBackToOwnedScene])
+        let gate = gate()
+        let plan = await gate.revokeConsent(.streetImagery)
+        #expect(plan.invalidatedCapabilities == [.streetImageryFetch])
+        await #expect(throws: FaultCode.policyDenied) {
+            try await gate.issue(module: .occasionVenue, capability: .streetImageryFetch)
+        }
+        // Weather is a separate consent and is unaffected.
+        _ = try await gate.issue(module: .weatherContext, capability: .weatherFetch)
+    }
+
     @Test("Every scope has a revocation chain; photos follows §112.3 in order")
     func revocationChains() {
         for scope in ConsentScope.allCases { #expect(!ConsentLedger.plan(for: scope).steps.isEmpty) }

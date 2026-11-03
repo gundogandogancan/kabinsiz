@@ -7,6 +7,7 @@ public enum ConsentScope: String, Codable, CaseIterable, Sendable {
     case learning = "LEARNING"
     case weatherFetch = "WEATHER_FETCH"
     case productLookup = "PRODUCT_LOOKUP"
+    case streetImagery = "STREET_IMAGERY"
 
     /// Capabilities that stop working the moment this scope is revoked.
     public var dependentCapabilities: Set<Capability> {
@@ -16,6 +17,7 @@ public enum ConsentScope: String, Codable, CaseIterable, Sendable {
         case .learning: [.learningUpdateLocal]
         case .weatherFetch: [.weatherFetch]
         case .productLookup: [.networkProductOnly]
+        case .streetImagery: [.streetImageryFetch]
         }
     }
 }
@@ -39,6 +41,8 @@ public enum RevocationStep: String, Codable, Sendable {
     case stopLocalUpdater = "STOP_LOCAL_UPDATER"
     case offerTrainingDataPurge = "OFFER_TRAINING_DATA_PURGE"
     case keepCachedForecastUntilExpiry = "KEEP_CACHED_FORECAST_UNTIL_EXPIRY"
+    /// Street photo switched off: the owned 3D street (or the studio) takes its place.
+    case fallBackToOwnedScene = "FALL_BACK_TO_OWNED_SCENE"
 }
 
 public struct RevocationPlan: Hashable, Sendable {
@@ -87,6 +91,7 @@ public struct ConsentLedger: Codable, Hashable, Sendable {
         case .learning: [.stopLocalUpdater, .offerTrainingDataPurge]
         case .weatherFetch: [.cancelInFlightWork, .stopFutureAccess, .keepCachedForecastUntilExpiry]
         case .productLookup: [.cancelInFlightWork, .stopFutureAccess]
+        case .streetImagery: [.cancelInFlightWork, .stopFutureAccess, .fallBackToOwnedScene]
         }
         return RevocationPlan(scope: scope, steps: steps, invalidatedCapabilities: scope.dependentCapabilities)
     }

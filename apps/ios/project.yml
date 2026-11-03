@@ -53,6 +53,8 @@ targets:
         product: LivingWorld
       - package: KabinsizCore
         product: MorningReady
+      - package: KabinsizCore
+        product: ProductCapture
       - sdk: WeatherKit.framework
     info:
       path: Kabinsiz/Info.plist
@@ -64,7 +66,9 @@ targets:
         ITSAppUsesNonExemptEncryption: false
         UIBackgroundModes: [fetch]
         BGTaskSchedulerPermittedIdentifiers: [app.kabinsiz.ios.morning-refresh]
-        NSCameraUsageDescription: "Canlı Ayna'da seçtiğin parçayı üzerinde görmek için kamera görüntüsü yalnız bu iPhone'da işlenir; kaydedilmez ve gönderilmez."
+        NSLocationWhenInUseUsageDescription: "Yalnız \"Konumumdaki şehir\"e dokunduğunda, yaklaşık konumun telefonda en yakın şehri bulmak için kullanılır; saklanmaz ve gönderilmez."
+        NSLocationDefaultAccuracyReduced: true
+        NSCameraUsageDescription: "Canlı Ayna'da seçtiğin parçayı üzerinde görmek ve ürünün barkodunu ya da etiketini okumak için kamera görüntüsü yalnız bu iPhone'da işlenir; kaydedilmez ve gönderilmez."
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.kabinsiz.ios

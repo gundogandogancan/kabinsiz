@@ -11,6 +11,8 @@ public struct EgressIntent: VersionedContract, Hashable {
     public enum Purpose: String, Codable, CaseIterable, Sendable {
         case productLookup = "PRODUCT_LOOKUP"
         case weatherForecast = "WEATHER_FORECAST"
+        /// Street-level imagery of a catalogue street behind the figure (Apple Look Around).
+        case streetImagery = "STREET_IMAGERY"
     }
 
     public enum ConsentBasis: String, Codable, Sendable {
@@ -64,6 +66,7 @@ public struct EgressIntent: VersionedContract, Hashable {
     public static let allowedFields: [Purpose: Set<String>] = [
         .productLookup: ["gtin", "model_code", "country", "locale"],
         .weatherForecast: ["city_center_coordinate"],
+        .streetImagery: ["street_coordinate"],
     ]
 
     /// Which data class each purpose carries. Product lookups are public facts; a weather request reveals
@@ -71,6 +74,8 @@ public struct EgressIntent: VersionedContract, Hashable {
     public static let classificationForPurpose: [Purpose: DataClassification] = [
         .productLookup: .publicProduct,
         .weatherForecast: .localPrivate,
+        // A catalogue point says which city the person looks at: private, explicit tap only (EG-003).
+        .streetImagery: .localPrivate,
     ]
 
     public func validate() throws(FaultCode) {

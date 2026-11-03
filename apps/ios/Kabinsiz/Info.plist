@@ -27,7 +27,11 @@
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>NSCameraUsageDescription</key>
-	<string>Canlı Ayna'da seçtiğin parçayı üzerinde görmek için kamera görüntüsü yalnız bu iPhone'da işlenir; kaydedilmez ve gönderilmez.</string>
+	<string>Canlı Ayna'da seçtiğin parçayı üzerinde görmek ve ürünün barkodunu ya da etiketini okumak için kamera görüntüsü yalnız bu iPhone'da işlenir; kaydedilmez ve gönderilmez.</string>
+	<key>NSLocationDefaultAccuracyReduced</key>
+	<true/>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Yalnız "Konumumdaki şehir"e dokunduğunda, yaklaşık konumun telefonda en yakın şehri bulmak için kullanılır; saklanmaz ve gönderilmez.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>fetch</string>

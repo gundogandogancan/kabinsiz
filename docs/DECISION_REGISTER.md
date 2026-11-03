@@ -11,7 +11,7 @@
 | ADR-007 | Nötr 3D morf avatar P0, özgün prosedürel mesh, 360° manuel; 2D siluet G0 yedeği (D-003 kapandı) | KABUL | docs/adr/ADR-007-neutral-3d-avatar.md |
 | ADR-008 | Canlı Ayna iki motor: yerel varsayılan; bulut bayrak OFF + stub, insan kararı + DPA olmadan açılmaz | KABUL / BLOCKED_EXTERNAL (bulut) | docs/adr/ADR-008-two-engine-live-mirror.md |
 | D-001 | Ürün adı "Kabinsiz", iç kod adı WEARFORM; kamuya ilan yok | KULLANICI KARARI | 2026-11-03 sohbet |
-| D-002 | Kamera/barkod yerine P0'da manuel ürün kodu girişi (§60.3 fallback) | GEÇİCİ | Cihaz yok, kamera simülatörde test edilemez |
+| D-002 | Kamera/barkod yerine P0'da manuel ürün kodu girişi (§60.3 fallback) | YERİNE GEÇTİ: D-037 (kod girişi yedek yol olarak kalır) | Cihaz yok, kamera simülatörde test edilemez |
 | D-003 | 3D önizleme P0 dışı; 2D kart fallback (§44.4) | KAPANDI (ADR-007) | Blender/asset/lisans yok |
 | D-004 | (D-014 ile değişti) Kanonik anayasa v1.5. Yeni iş v1.5 §122 DAG sırasıyla; mevcut travel/shopping kodu korunur, yeni travel özelliği P1'e kadar yok | KABUL | Kullanıcı "sıraya koy" 2026-11-03; docs/audit/V15_QUEUE_AND_CONFLICT_MAP.md |
 | D-006 | WeatherKit, kullanıcının isteğiyle P1 sırasından öne alındı. İstek yalnız açık dokunuşla, yalnız şehir merkezi koordinatıyla; ilk plan `NO_DATA` | KULLANICI KARARI | 2026-11-03 sohbet; docs/security/EGRESS_REGISTER.md |
@@ -45,6 +45,9 @@
 | D-032 | v2.8 token taslağı değerleri yerine kullanıcının marka panosu korunur; 14 v2.8 rol adı `FigmaTokenMap` ile eşlenir ve test edilir (UI28-T030) | KULLANICI KARARI + ADR-011 | 2026-11-03 |
 | D-033 | Figma: MCP bağlı ama Starter planı/View koltuğu; yazma yok → `BLOCKED_EXTERNAL_FIGMA`. Kullanıcı "Figma'yı sonra bağlayacağız" dedi; kod ilerler, Figma'ya aktarılacak sözleşme repoda | KULLANICI KARARI | 2026-11-03 |
 | D-034 | Şehir sahnesi bu sürümde Blender'da üretilmiş 2B kadrajdır, 3D model önde; UI "şehir Blender kadrajı" der, "3D şehir" demez. Gerçek RealityKit şehir sahnesi (USDZ) UI28-05, cihaz FPS ölçümüyle | KABUL (ADR-011) | 2026-11-03 |
+| D-035 | Gerçek 3B şehir (UI28-05): aynı özgün Blender sokağı USDZ olarak RealityKit'te çizilir, ışık Cycles'ta pişirilir (kuru + ıslak doku seti), etiket "3B şehir, hazır ışık". Kalite yöneticisi ısı/Düşük Güç/hız ile azaltılmış 3B ya da etiketli 2B kadraja düşer. D-034'ün yerini 3B şehri olan şehirler için alır; 2B kadraj geri düşüş olarak kalır | KABUL (ADR-012) | 2026-11-04 |
+| D-036 | Dünya şehirleri: kişinin şehrindeki ünlü cadde Apple MapKit Look Around ile (resmi API, atıf görünür, görüntü saklanmaz). Konum yalnız dokununca, azaltılmış hassasiyetle, cihazda en yakın katalog şehrine eşlenir ve atılır; dışarı yalnız caddenin sabit noktası gider (EG-003, CITADEL, STREET_IMAGERY rızası). D-027'nin "şehir fotoğrafı yok" kuralı internetten toplanan fotoğraf için geçerli kalır; Look Around platform sağlayıcısının canlı hizmetidir. Yayın öncesi hukuk/şartlar incelemesi HUMAN_APPROVAL_PENDING | KULLANICI KARARI + ADR-013 | 2026-11-04 |
+| D-037 | Ürünü getir: canlı barkod (VisionKit), etiket/barkod fotoğrafı (çek ya da seç; cihazda Vision ile okunur, saklanmaz/gönderilmez) ya da kod. Yalnız katalog eşleşmesi; barkoddaki bağlantı reddedilir; görünüşten ürün tanıma yok (lisanslı katalog gerekir). D-002'nin kamera taramasını erteleyen kısmının yerini alır | KULLANICI KARARI + ADR-014 | 2026-11-04 |
 
 ## Açık riskler
 

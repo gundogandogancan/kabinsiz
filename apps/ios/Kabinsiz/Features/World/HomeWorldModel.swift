@@ -4,6 +4,7 @@ import Foundation
 import LivingWorld
 import MorningReady
 import Observation
+import SystemContracts
 import os
 import TodayOutfit
 import TravelEngine
@@ -18,11 +19,18 @@ import WardrobeDomain
 final class HomeWorldModel {
     private static let log = Logger(subsystem: "app.kabinsiz.ios", category: "world")
     private static let cityKey = "world.city"
+    private static let streetKey = "world.street"
 
     var city: SceneCity {
         didSet {
             UserDefaults.standard.set(city.rawValue, forKey: Self.cityKey)
-            if oldValue != city { reading = nil }
+            if oldValue != city {
+                reading = nil
+                cityReady = false
+                cityLoadFailed = false
+                latchedFPS = nil
+                frameRates = []
+            }
         }
     }
     /// The last weather reading from a provider. None is connected in this build (WeatherKit is
@@ -44,6 +52,41 @@ final class HomeWorldModel {
     /// Time from asking for today's plan to having it, in milliseconds (cache read or foreground compute).
     private(set) var warmStartMillis: Double?
 
+    // MARK: Scene quality (v2.8 §06.8 governor)
+
+    /// The last scene update rates (one every two seconds), measured on this device.
+    private(set) var frameRates: [Double] = []
+    /// A slow-frame step-down holds for the rest of the session in this city, so the scene does not flap.
+    private var latchedFPS: Double?
+    /// True once the 3D street is on screen; until then the labelled 2D frame shows ("sahne yükleniyor").
+    private(set) var cityReady = false
+    private(set) var cityLoadFailed = false
+    private(set) var thermal: ThermalLevel = .nominal
+    private(set) var lowPower = false
+    private var forcedTier: SceneRenderTier?
+
+    // MARK: World street (Apple Look Around, EG-003)
+
+    /// The chosen world street, by hand or from "Konumumdaki şehir". Only its id is stored.
+    private(set) var street: FamousStreet?
+    /// The Look Around scene for `street`, once Apple returned one.
+    private(set) var streetScene: LookAroundSceneBox?
+    enum StreetStatus: Equatable { case idle, loading, shown, noImagery, offline, off }
+    private(set) var streetStatus: StreetStatus = .idle
+
+    /// One line on what happened to the street photo, or nil when no world street is chosen.
+    var streetStatusText: String? {
+        guard let street else { return nil }
+        let fallback = street.ownedScene != nil ? "Kabinsiz sokağı gösteriliyor." : "Nötr stüdyo gösteriliyor."
+        return switch streetStatus {
+        case .idle, .loading: "\(street.city): cadde fotoğrafı yükleniyor…"
+        case .shown: "\(street.city) · \(street.street): Apple Look Around"
+        case .noImagery: "Apple'ın \(street.street) için Look Around görüntüsü yok. \(fallback)"
+        case .offline: "Cadde fotoğrafı alınamadı (bağlantı ya da Apple). \(fallback)"
+        case .off: "Cadde fotoğrafı kapalı. \(fallback)"
+        }
+    }
+
     private var cache: OutfitCache
     private var lockFile: SealedJSONFile<OutfitLock>
     private var noticeTask: Task<Void, Never>?
@@ -54,10 +97,18 @@ final class HomeWorldModel {
         city = SceneCity(rawValue: UserDefaults.standard.string(forKey: Self.cityKey) ?? "") ?? .istanbul
         if let i = args.firstIndex(of: "-worldCity"), i + 1 < args.count, let c = SceneCity(rawValue: args[i + 1]) { city = c }
         if args.contains("-worldRainPreview") { preview = .rain }
+        if let i = args.firstIndex(of: "-sceneTier"), i + 1 < args.count { forcedTier = SceneRenderTier(rawValue: args[i + 1]) }
+        var chosen = UserDefaults.standard.string(forKey: Self.streetKey).flatMap(FamousStreetCatalog.street(id:))
+        if let i = args.firstIndex(of: "-worldStreet"), i + 1 < args.count { chosen = FamousStreetCatalog.street(id: args[i + 1]) }
+        if args.contains("-resetForUITest"), !args.contains("-worldStreet") { chosen = nil }
+        // Same rule as `choose(street:)`: the owned 3D street when there is one, else the neutral studio.
+        if let chosen { city = chosen.ownedScene ?? .studio }
+        street = chosen
         let codec = MorningStore.codec()
         cache = OutfitCache(fileURL: MorningStore.planURL, codec: codec)
         lockFile = SealedJSONFile(fileURL: MorningStore.lockURL, codec: codec)
         if case let .value(saved) = lockFile.read() { lock = saved }
+        readDeviceState()
         #if DEBUG
         // Labelled test readings for the H01/H05 UI tests; never used outside a test launch.
         if let i = args.firstIndex(of: "-worldWeatherFixture"), i + 1 < args.count {
@@ -73,14 +124,94 @@ final class HomeWorldModel {
     var freshness: WeatherFreshness { WeatherFreshness.classify(reading, city: city, now: Date()) }
     var weather: SceneWeatherEvidence { preview.map { .userPreview($0) } ?? freshness.sceneEvidence }
     var sceneWeather: SceneWeatherState { SceneWeatherState.from(weather) }
-    var chip: WeatherChipText { WeatherChipText.make(city: city, freshness: freshness, preview: preview) }
+    var chip: WeatherChipText { WeatherChipText.make(city: city, freshness: freshness, preview: preview, placeName: street?.city) }
     var manifest: SceneAssetManifestV1? { SceneAssetManifestV1.manifest(for: city) }
     var outfit: DressedOutfit { dressing.outfit }
     var looks: TodayLooks? { plan?.looks }
     var currentLook: TodayLook? { looks?.looks.indices.contains(lookIndex) == true ? looks?.looks[lookIndex] : nil }
     var isExample: Bool { looks?.source == .syntheticExample }
     var isLocked: Bool { lock?.localDate == today && lock?.outfit == outfit }
-    var today: LocalDate { LocalDate(instant: Date(), timeZone: city.timeZone()) }
+    var today: LocalDate { LocalDate(instant: Date(), timeZone: planTimeZone) }
+    /// A world street without an owned scene keeps its own clock; otherwise the scene city's.
+    var planTimeZone: TimeZone { street?.ownedScene == nil ? street?.timeZone ?? city.timeZone() : city.timeZone() }
+
+    /// Choose a world street (or none, for the owned scenes). A street with an owned 3D scene also moves
+    /// the scene city there, so the 3D street is the fallback when no photo is available.
+    func choose(street: FamousStreet?) {
+        guard street != self.street else { return }
+        self.street = street
+        streetScene = nil
+        streetStatus = .idle
+        UserDefaults.standard.set(street?.id, forKey: Self.streetKey)
+        if let owned = street?.ownedScene { city = owned } else if street != nil { city = .studio }
+        replan()
+    }
+
+    /// Fetch (or drop) the street photo for the chosen street. Called from the view's task.
+    func loadStreetScene(allowed: Bool, fetch: (FamousStreet) async throws -> LookAroundSceneBox?) async {
+        guard let street else { streetScene = nil; streetStatus = .idle; return }
+        guard allowed else { streetScene = nil; streetStatus = .off; return }
+        streetStatus = .loading
+        do {
+            let box = try await fetch(street)
+            guard street == self.street else { return }
+            streetScene = box
+            streetStatus = box == nil ? .noImagery : .shown
+        } catch FaultCode.policyDenied {
+            guard street == self.street else { return }
+            streetScene = nil
+            streetStatus = .off
+        } catch {
+            guard street == self.street else { return }
+            streetScene = nil
+            streetStatus = .offline
+        }
+    }
+
+    func quality(reduceMotion: Bool) -> SceneQuality {
+        let decided = SceneQualityPolicy.decide(hasModel: manifest?.model3D != nil, loadFailed: cityLoadFailed, thermal: thermal,
+                                                lowPower: lowPower, reduceMotion: reduceMotion, sustainedFPS: latchedFPS)
+        guard let forcedTier else { return decided }
+        return SceneQuality(tier: forcedTier, rainScale: decided.rainScale, cameraDrift: forcedTier == .city3D && decided.cameraDrift,
+                            reason: "Test ayarı")
+    }
+
+    /// What is actually on screen: the 3D street only once it has loaded.
+    func shownTier(reduceMotion: Bool) -> SceneRenderTier {
+        if streetScene != nil { return .streetPhoto }
+        let tier = quality(reduceMotion: reduceMotion).tier
+        return tier != .frame2D && cityReady ? tier : .frame2D
+    }
+
+    /// Sustained rate over the last three reports (six seconds); a low one latches a step down.
+    func reportFrameRate(_ rate: Double) {
+        frameRates = Array((frameRates + [rate]).suffix(3))
+        guard frameRates.count == 3, cityReady else { return }
+        let sustained = frameRates.reduce(0, +) / 3
+        if sustained < SceneQualityPolicy.reduceBelowFPS, sustained < (latchedFPS ?? .infinity) {
+            latchedFPS = sustained
+            Self.log.info("scene rate \(sustained, privacy: .public)/s: stepping down")
+        }
+    }
+
+    var sustainedFrameRate: Double? { frameRates.count == 3 ? frameRates.reduce(0, +) / 3 : nil }
+
+    func cityDidLoad(_ ready: Bool) {
+        cityReady = ready
+        if !ready, manifest?.model3D != nil, quality(reduceMotion: false).tier != .frame2D { cityLoadFailed = true }
+    }
+
+    func readDeviceState() {
+        let info = ProcessInfo.processInfo
+        thermal = switch info.thermalState {
+        case .nominal: .nominal
+        case .fair: .fair
+        case .serious: .serious
+        case .critical: .critical
+        @unknown default: .serious
+        }
+        lowPower = info.isLowPowerModeEnabled
+    }
 
     // MARK: Morning-ready plan
 
@@ -89,7 +220,8 @@ final class HomeWorldModel {
     /// and a look that is still offered is not swapped away.
     func refresh(wardrobe: Wardrobe, avatarRevision: String) {
         inputs = (wardrobe, avatarRevision)
-        let context = PlanningContext(city: city, now: Date(), wardrobe: wardrobe, avatarRevision: avatarRevision, mood: mood, weather: freshness)
+        let context = PlanningContext(city: city, now: Date(), wardrobe: wardrobe, avatarRevision: avatarRevision, mood: mood, weather: freshness,
+                                      timeZoneOverride: street?.ownedScene == nil ? street?.timeZone : nil)
         guard plan?.key != context.key else { return }
         let start = ContinuousClock.now
         let warm = WarmStart.prepare(context, cache: cache)

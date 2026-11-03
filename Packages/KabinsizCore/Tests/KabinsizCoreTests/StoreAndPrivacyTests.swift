@@ -91,6 +91,8 @@ struct StoreAndPrivacyTests {
         let forbidden = ["URLSession", "import Network", "NWConnection", "NWListener", "NWBrowser", "NWEndpoint", "CFNetwork", "URLRequest",
                          "import WeatherKit", " WeatherKit.", "WeatherService",
                          "AsyncImage", "CLLocationManager", "CLGeocoder", "MKLocalSearch", "WKWebView", "openURL",
+                         // EG-003: Look Around only through the gate, shown only by the home backdrop.
+                         "MKLookAroundSceneRequest", "LookAroundPreview", "MKLookAroundSnapshotter",
                          // WP15-03: routes are fixed in SystemContracts; nothing else may add one or open URLs.
                          "EgressRoute(", "routes:", "UIApplication.shared.open"]
         // Egress register: full repo-relative paths, so a same-named file elsewhere gets no exemption.
@@ -100,6 +102,10 @@ struct StoreAndPrivacyTests {
             "Packages/KabinsizCore/Sources/SystemContracts/CitadelGate.swift": ["EgressRoute(", "routes:"],
             // WP15-06: `NWPathMonitor` only reads whether a path exists (OFFLINE tier); it opens no connection.
             "apps/ios/Kabinsiz/Services/DeviceSignalMonitor.swift": ["import Network"],
+            "apps/ios/Kabinsiz/Services/LookAroundProvider.swift": ["MKLookAroundSceneRequest"],
+            "apps/ios/Kabinsiz/Features/World/HomeWorldView.swift": ["LookAroundPreview"],
+            // UI28-T060: one reduced-accuracy fix on a tap, matched on device, never stored or sent.
+            "apps/ios/Kabinsiz/Services/CoarseCityLocator.swift": ["CLLocationManager"],
         ]
         for file in files {
             let relative = String(file.standardizedFileURL.path.dropFirst(repo.standardizedFileURL.path.count + 1))
@@ -112,6 +118,23 @@ struct StoreAndPrivacyTests {
             }
             if !(allowed[relative]?.contains("EgressRoute(") ?? false) {
                 #expect(!compact.contains("EgressRoute.init("), "\(relative) builds an EgressRoute")
+            }
+            if relative == "apps/ios/Kabinsiz/Services/CoarseCityLocator.swift" {
+                #expect(compact.contains("kCLLocationAccuracyReduced"), "the locator asks for reduced accuracy")
+                for leak in ["UserDefaults", "FileManager", "write(", "Logger", "print(", "requestTemporaryFullAccuracy", "startUpdatingLocation", "AlwaysAuthorization"] {
+                    #expect(!compact.contains(leak), "the locator must not keep, log or widen the position: \(leak)")
+                }
+            }
+            if relative == "apps/ios/Kabinsiz/Services/LookAroundProvider.swift" {
+                let parts = compact.components(separatedBy: "MKLookAroundSceneRequest(")
+                #expect(parts.count == 2, "\(relative): exactly one Look Around request")
+                let before = parts.first ?? ""
+                let sendStart = before.range(of: "gate.send(", options: .backwards)
+                #expect(sendStart != nil, "\(relative): Look Around request must come after gate.send(")
+                if let sendStart {
+                    let span = before[sendStart.upperBound...]
+                    #expect(span.filter { $0 == "{" }.count > span.filter { $0 == "}" }.count, "\(relative): Look Around request outside the transport closure")
+                }
             }
             // The one exempt file must call WeatherKit only inside the gate's transport closure.
             if relative == weatherFile {

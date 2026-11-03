@@ -1,0 +1,59 @@
+evidence_schema: 1
+work_package: UI28-05 + UI28-05b
+title: "Real 3D city (RealityKit, light baked in Blender Cycles) + world streets via Apple Look Around behind CITADEL"
+status: PASS_SIMULATOR_ONLY   # device FPS/heat/memory REAL_DEVICE_BLOCKED; Look Around terms review HUMAN_APPROVAL_PENDING
+commit_sha: null   # filled by the commit that adds this file; see git log
+branch: v25/living-world
+spec: "v2.8 §01, §06.8-9, H01/H04, UI28-05; v2.7 asset rights; user decisions 2026-11-04 (real 3D city; every world city, the famous street where the person is); ADR-012, ADR-013; D-035, D-036"
+implementation_paths:
+  - tools/scenes/build_city_usdz.py
+  - apps/ios/Kabinsiz/Features/World/City/   # 2 USDZ + 24 JPEG + 2 asset-rights files, ~12 MB
+  - Packages/KabinsizCore/Sources/LivingWorld/LivingWorld.swift   # CityModel3D, SceneRenderTier, SceneQualityPolicy
+  - Packages/KabinsizCore/Sources/LivingWorld/WorldStreets.swift
+  - Packages/KabinsizCore/Sources/SystemContracts/CitadelGate.swift   # EG-003, StreetImageryRequest
+  - apps/ios/Kabinsiz/Features/World/WorldStage.swift
+  - apps/ios/Kabinsiz/Services/LookAroundProvider.swift
+  - apps/ios/Kabinsiz/Services/CoarseCityLocator.swift
+bake:
+  command: "Blender -b --python tools/scenes/build_city_usdz.py -- --city <istanbul|barcelona> --out apps/ios/Kabinsiz/Features/World/City --atlas 2048 --samples 192"
+  hardware: "Apple M5, Cycles Metal; ~15 min per city"
+  istanbul: {triangles: 16204, usdz_mb: 2.3, near_0_4m_texels_per_m: 184, facade_8_12m_texels_per_m: "66-84", wet_dry_unmatched_faces: 0}
+  barcelona: {triangles: 56667, usdz_mb: 3.2, near_0_4m_texels_per_m: 170, facade_8_12m_texels_per_m: "23-25 (weak, see ADR-012)", wet_dry_unmatched_faces: 0}
+  provenance: "OWNED_ORIGINAL, third_party_inputs: [], SHA-256 of every file in city-<city>.asset-rights.json (checked by UI28-T021); reviewer: null (human review pending)"
+unit_test_command: "cd Packages/KabinsizCore && swift test"
+unit_test_exit_code: 0
+unit_test_count: 348   # whole package, 27 suites
+spec_cases:
+  - "UI28-T020 PASS: both cities ship a USDZ and dry+wet textures for all 6 groups"
+  - "UI28-T021 PASS: rights file owned, no third-party input, says baked, hashes match"
+  - "UI28-T022..T024 PASS: governor tiers; no model / failed load -> 2D frame, never called 3D"
+  - "UI28-T061 PASS: a world street without an owned scene plans in its own time zone; chip names the city"
+  - "UI28-T062 PASS: Look Around line credits Apple, never says 3B şehir or Blender"
+  - "UI28-T063 PASS: EG-003 sends only street_coordinate rounded to 4 decimals; only OCT-17 may ask. Found a real bug: the gate's purpose tables lacked STREET_IMAGERY, so every request would have been blocked; fixed"
+  - "UI28-T064 PASS: revoking STREET_IMAGERY cancels, stops future requests, falls back to the owned scene; weather unaffected"
+  - "WorldStreetsTests PASS: 36 entries well formed, no two cities within the match radius, nearest-city cases"
+  - "Privacy source scan PASS: CLLocationManager only in CoarseCityLocator (reduced accuracy, no storage/logging/full accuracy/Always), MapKit Look Around request only in LookAroundProvider inside gate.send, preview only in HomeWorldView"
+ui_test_command: "xcodebuild test -scheme Kabinsiz -destination 'platform=iOS Simulator,name=iPhone 17' (KabinsizUITests)"
+ui_tests:
+  - "testCity3DStreetWeatherAndCities PASS: CITY_3D, '3B şehir, hazır ışık'; garment tap opens sheet over the 3D street; rain preview keeps 3D (the governor stepped down to CITY_3D_REDUCED once on the simulator when the rate fell under 45/s, which the test now accepts and records); Barcelona; why-sheet scene section"
+  - "testFrameFallbackIsLabelled PASS: forced FRAME_2D says 'şehir Blender kadrajı', never 3B"
+  - "testWorldStreetPhotoOrHonestFallback PASS: Paris -> Apple Look Around loaded on the simulator ('Paris · Avenue des Champs-Élysées: Apple Look Around'), truth line 'cadde fotoğrafı: Apple', chip 'Paris'; back to İstanbul -> 3D"
+  - "Full UI suite: 22/22 PASS across the final run and a rerun of AcceptanceDemoUITests after a test-timing fix (slider drag during scroll momentum, testBodyStudioJourney)"
+bugs_found_by_this_evidence:
+  - "Launch race: the gate starts on the closed ledger; the street request ran before consent loaded and reported 'kapalı' forever. Fixed with AppModel.consentLoaded; the UI test now fails on a false 'kapalı'"
+  - "The home chip showed 'Stüdyo' instead of the world city; fixed"
+  - "The 'Örnek beden' pill clipped Apple's Look Around badge; the photo now ends 40 pt higher"
+benchmarks:
+  - "Scene update rate on the simulator: 50-52/s (Mac GPU, NOT a device number)"
+screenshots:   # Apple Look Around imagery is deliberately not stored in the repo (ADR-013: imagery is not saved)
+  - docs/evidence/screenshots/UI28/SIMULATOR_ONLY-UI28-05-istanbul-dry.jpg
+  - docs/evidence/screenshots/UI28/SIMULATOR_ONLY-UI28-05-istanbul-rain-preview.jpg
+  - docs/evidence/screenshots/UI28/SIMULATOR_ONLY-UI28-05-istanbul-sheet.jpg
+  - docs/evidence/screenshots/UI28/SIMULATOR_ONLY-UI28-05-barcelona-dry.jpg
+  - docs/evidence/screenshots/UI28/SIMULATOR_ONLY-UI28-05-why-scene.jpg
+  - docs/evidence/screenshots/UI28/SIMULATOR_ONLY-UI28-05-frame-fallback.jpg
+blocked:
+  - "REAL_DEVICE_BLOCKED: FPS, heat, memory, load time on iPhone; location permission flow and real-position matching"
+  - "HUMAN_APPROVAL_PENDING: Apple MapKit / Look Around terms and attribution review before TestFlight/App Store (B11)"
+  - "HUMAN_APPROVAL_PENDING: asset-rights reviewer field"
+  - "UNVERIFIED: catalogue street coordinates (Paris verified by a loaded scene only)"

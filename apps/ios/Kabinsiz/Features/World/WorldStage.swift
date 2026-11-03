@@ -1,24 +1,46 @@
 import AvatarDressing
 import BodyGeometry
+import LivingWorld
+import Metal
+import os
 import QuartzCore
 import RealityKit
 import SwiftUI
 import UIKit
 
-/// The home world's 3D layer (v2.5 §3.4): the person's figure dressed in the day's look, standing at
-/// the origin of a street whose backdrop is drawn behind this view. Model, garments, rain and light
-/// are separate layers, so a garment swap never reloads the city and rain never touches the figure.
+/// The home world's 3D layer (v2.5 §3.4, v2.8 §06): the person's figure dressed in the day's look,
+/// standing at the origin of a street. The street is real geometry (tools/scenes/build_city_usdz.py)
+/// drawn by RealityKit with lighting baked in Blender for this camera; when it cannot be shown, the
+/// labelled 2D frame is drawn behind this view instead. Model, garments, city, rain and light are
+/// separate layers, so a garment swap never reloads the city and rain never touches the figure.
 ///
-/// The camera matches the backdrop renders (tools/scenes/build_city_scene.py): horizontal, 0.80 m
-/// above the ground, 2.73 m in front of the figure, 60° vertical field of view. Pinch zoom narrows
-/// the field of view only, so the backdrop can follow with a plain scale about the screen centre.
+/// The camera matches the city build and the 2D renders: horizontal, 0.45 m above the ground, 3.40 m
+/// in front of the figure, 60° vertical field of view. Pinch zoom narrows the field of view only, so
+/// the 2D frame can follow with a plain scale; the 3D street also shows depth through a slow camera
+/// drift and a small sideways shift while the figure is turned by hand.
 @MainActor
 final class WorldStage {
     static let cameraHeight: Float = 0.45
     static let cameraDistance: Float = 3.40
     static let baseFOV: Float = 60
 
+    private static let log = Logger(subsystem: "app.kabinsiz.ios", category: "city")
+
     let root = Entity()
+    private let city = Entity()
+    private var cityResource: String?
+    private var cityWet: Bool?
+    private var cityGroups: [String: [ModelEntity]] = [:]
+    private var cityLoads = 0
+    /// Sideways camera motion: slow drift (when allowed) plus a small shift that follows a hand turn.
+    var driftEnabled = false
+    private var driftClock: TimeInterval = 0
+    private var nudgeTarget: Float = 0
+    private var nudge: Float = 0
+    /// Frames counted between update-rate reports (RealityKit scene updates, about one per frame).
+    private var frameCount = 0
+    private var frameClock: TimeInterval = 0
+    var onFrameRate: ((Double) -> Void)?
     private let pivot = Entity()
     private let body = Entity()
     private let garments = Entity()
@@ -49,9 +71,13 @@ final class WorldStage {
     func build(in content: inout RealityViewCameraContent) {
         content.camera = .virtual
         camera.camera.fieldOfViewInDegrees = Self.baseFOV
+        camera.camera.near = 0.05
+        // The sky dome sits 420 m from the camera.
+        camera.camera.far = 1_200
         camera.look(at: SIMD3(0, Self.cameraHeight, 0), from: SIMD3(0, Self.cameraHeight, Self.cameraDistance), relativeTo: nil)
         content.add(camera)
         content.add(lights)
+        content.add(city)
         pivot.addChild(body)
         pivot.addChild(garments)
         root.addChild(pivot)
@@ -238,6 +264,8 @@ final class WorldStage {
     }
 
     private func tick(_ dt: TimeInterval) {
+        countFrame(dt)
+        moveCamera(dt)
         guard idleEnabled, CACurrentMediaTime() >= idleResumesAt else { return }
         idleClock += dt
         idleOffset = Self.swayAmplitude * Float(sin(idleClock * 2 * .pi / Self.swayPeriod))
@@ -248,6 +276,115 @@ final class WorldStage {
             translation: .zero
         )
     }
+
+    // MARK: Camera depth cues
+
+    /// A small sideways camera shift while the figure is turned by hand (`amount` in -1...1).
+    func nudgeCamera(_ amount: Float) {
+        nudgeTarget = max(-1, min(1, amount))
+    }
+
+    private func moveCamera(_ dt: TimeInterval) {
+        if driftEnabled { driftClock += dt }
+        nudge += (nudgeTarget - nudge) * Float(min(1, dt * 6))
+        let drift = driftEnabled ? Float(sin(driftClock * 2 * .pi / 17)) : 0
+        let lift = driftEnabled ? Float(sin(driftClock * 2 * .pi / 23)) : 0
+        let x = 0.16 * drift + 0.22 * nudge
+        let y = Self.cameraHeight + 0.04 * lift
+        guard abs(x - camera.position.x) > 0.0001 || abs(y - camera.position.y) > 0.0001 else { return }
+        // An orbit about the figure: the person stays put while the street behind shifts with depth.
+        camera.look(at: SIMD3(0, Self.cameraHeight, 0), from: SIMD3(x, y, Self.cameraDistance), relativeTo: nil)
+    }
+
+    private func countFrame(_ dt: TimeInterval) {
+        frameCount += 1
+        frameClock += dt
+        guard frameClock >= 2 else { return }
+        let rate = Double(frameCount) / frameClock
+        frameCount = 0
+        frameClock = 0
+        onFrameRate?(rate)
+    }
+
+    // MARK: City
+
+    var showsCity: Bool { city.isEnabled && !city.children.isEmpty }
+
+    /// Show the 3D street of `model` with the baked textures for the surface state, or none. Loading
+    /// happens once per city; a weather change only swaps textures. Throws when the asset is missing
+    /// or damaged, so the caller can fall back to the labelled 2D frame.
+    func showCity(_ model: CityModel3D?, wet: Bool) async throws {
+        cityLoads += 1
+        let ticket = cityLoads
+        guard let model else {
+            city.children.removeAll()
+            cityResource = nil
+            cityGroups = [:]
+            return
+        }
+        if cityResource != model.resource {
+            let start = ContinuousClock.now
+            let street = try await Entity(named: model.resource, in: .main)
+            guard ticket == cityLoads else { return }
+            var groups: [String: [ModelEntity]] = [:]
+            street.visit { entity in
+                guard let m = entity as? ModelEntity, let group = Self.group(of: m) else { return }
+                groups[group, default: []].append(m)
+            }
+            guard Set(groups.keys) == Set(CityModel3D.groups) else { throw CityError.missingGroups(groups.keys.sorted()) }
+            city.children.removeAll()
+            city.addChild(street)
+            cityResource = model.resource
+            cityGroups = groups
+            cityWet = nil
+            Self.log.info("city \(model.resource, privacy: .public) loaded in \(start.duration(to: .now), privacy: .public)")
+        }
+        guard cityWet != wet else { return }
+        var materials: [String: UnlitMaterial] = [:]
+        for group in CityModel3D.groups {
+            let name = model.texture(group: group, wet: wet)
+            guard let url = Bundle.main.url(forResource: name, withExtension: "jpg") else { throw CityError.missingTexture(name) }
+            let texture = try await TextureResource(contentsOf: url, options: .init(semantic: .color, mipmapsMode: .allocateAndGenerateAll))
+            var material = UnlitMaterial(applyPostProcessToneMap: false)
+            material.color = .init(tint: .white, texture: .init(texture, sampler: Self.sampler))
+            materials[group] = material
+        }
+        guard ticket == cityLoads else { return }
+        for (group, entities) in cityGroups {
+            guard let material = materials[group] else { continue }
+            for entity in entities { entity.model?.materials = [material] }
+        }
+        cityWet = wet
+    }
+
+    func setCityVisible(_ visible: Bool) { city.isEnabled = visible }
+
+    enum CityError: Error {
+        case missingGroups([String])
+        case missingTexture(String)
+    }
+
+    /// The street's mesh group from the nearest `city_<group>` ancestor (the Blender object name).
+    private static func group(of entity: Entity) -> String? {
+        var e: Entity? = entity
+        while let current = e {
+            if current.name.hasPrefix("city_") { return String(current.name.dropFirst(5)) }
+            e = current.parent
+        }
+        return nil
+    }
+
+    /// Trilinear and anisotropic, so the street does not shimmer at grazing angles.
+    private static let sampler: MaterialParameters.Texture.Sampler = {
+        let d = MTLSamplerDescriptor()
+        d.minFilter = .linear
+        d.magFilter = .linear
+        d.mipFilter = .linear
+        d.maxAnisotropy = 8
+        d.sAddressMode = .clampToEdge
+        d.tAddressMode = .clampToEdge
+        return MaterialParameters.Texture.Sampler(d)
+    }()
 
     // MARK: Light and weather
 
@@ -363,6 +500,13 @@ struct WorldLight: Equatable {
         .init(color: .white, intensity: 900, from: SIMD3(-2, 1, 1.5)),
         .init(color: .white, intensity: 1_400, from: SIMD3(0, 1.8, -2.5)),
     ])
+}
+
+private extension Entity {
+    func visit(_ body: (Entity) -> Void) {
+        body(self)
+        for child in children { child.visit(body) }
+    }
 }
 
 extension UIColor {

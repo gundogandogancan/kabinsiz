@@ -37,7 +37,8 @@ final class TryOnRouter {
 }
 
 /// "Dene" (v2.6 Tara ve Dene, v2.8 D01–D07, ADR-011): one journey instead of two tabs. Bring a
-/// product (barcode or code, the wardrobe; photo and link say plainly they are not in this build),
+/// product (live barcode, a photo of its label or barcode read on the device, the code, the wardrobe;
+/// link says plainly it is not in this build),
 /// see where it came from, then look at it on the 3D model or in the local mirror — same selection,
 /// same session. The AI video mode is shown as what it is: off, behind consent, contract and cost.
 struct TryOnHubView: View {
@@ -141,11 +142,14 @@ struct TryOnHubView: View {
         VStack(alignment: .leading, spacing: Atelier.Space.s) {
             Text("Ürünü getir").font(AtelierType.sectionTitle)
             LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
-                intakeTile("Barkod tara", detail: scannerAvailable ? "Kamera ile" : "Bu cihazda kamera taraması yok",
-                           symbol: "barcode.viewfinder", id: "tryOnBarcode", enabled: scannerAvailable) { showScanner = true }
+                // Without live scanning (older iPhones, the simulator) the barcode is read from a photo instead.
+                intakeTile("Barkod tara", detail: scannerAvailable ? "Kamera ile, canlı" : "Fotoğrafından okunur",
+                           symbol: "barcode.viewfinder", id: "tryOnBarcode", enabled: true) {
+                    if scannerAvailable { showScanner = true } else { pendingCode = nil; showCode = true }
+                }
                 intakeTile("Kodu yaz", detail: "Etiketteki ürün kodu", symbol: "keyboard", id: "mirrorScan", enabled: true) { pendingCode = nil; showCode = true }
-                intakeTile("Fotoğraftan", detail: "Bu sürümde yok", symbol: "photo", id: "tryOnPhoto", enabled: false) {
-                    unavailable = "Fotoğraftan ürün tanıma bu sürümde yok. Fotoğraflarından dolabına ekleme ayrı bir adım olarak geliyor."
+                intakeTile("Fotoğraftan", detail: "Etiket ya da barkod fotoğrafı", symbol: "camera", id: "tryOnPhoto", enabled: true) {
+                    pendingCode = nil; showCode = true
                 }
                 intakeTile("Bağlantı", detail: "Katalog bağlı değil", symbol: "link", id: "tryOnLink", enabled: false) {
                     unavailable = "Mağaza kataloğu bağlı değil; bağlantıdaki ürünü doğrulayamıyoruz. Benzerini gösterip doğruymuş gibi sunmuyoruz."

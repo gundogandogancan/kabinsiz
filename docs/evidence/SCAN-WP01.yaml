@@ -1,0 +1,47 @@
+evidence_schema: 1
+work_package: SCAN-WP01
+title: "Bring a product by live barcode, by a photo of its label or barcode (taken or chosen, read on the device), or by its code"
+status: PASS_SIMULATOR_ONLY   # live scanning and real camera frames REAL_DEVICE_BLOCKED
+commit_sha: null   # filled by the commit that adds this file; see git log
+branch: v25/living-world
+spec: "User decision 2026-11-04 ('sadece ürün kodunu yazmayacak, barkod veya fotoğrafını çekebilir'); v1.3 §60, §64.2; T-V13-003; V15-T-SEC-05; ADR-014; D-037 (supersedes the camera deferral in D-002)"
+implementation_paths:
+  - Packages/KabinsizCore/Sources/ProductCapture/ProductLabelReader.swift
+  - Packages/KabinsizCore/Sources/ProductCapture/ProductCodeMatcher.swift
+  - Packages/KabinsizCore/Sources/ProductCapture/SyntheticLabel.swift   # synthetic test labels, marked as examples
+  - apps/ios/Kabinsiz/Features/Scan/ProductPhotoIntake.swift
+  - apps/ios/Kabinsiz/Features/Scan/ScanView.swift
+  - apps/ios/Kabinsiz/Features/TryOn/TryOnHubView.swift
+unit_test_command: "cd Packages/KabinsizCore && swift test --filter ProductCaptureTests   (also: xcodebuild -scheme KabinsizCore-Package -destination 'platform=iOS Simulator,name=iPhone 17' test -only-testing:ProductCaptureTests)"
+unit_test_exit_code: 0
+unit_test_count: 11   # real Vision on rendered labels; same 11 pass on macOS and on the iOS simulator
+spec_cases:
+  - "SCAN-T001 PASS: Code 128 label -> KB-JKT-01-NVY via the barcode"
+  - "SCAN-T002 PASS: printed code only, label rotated 4 degrees -> KB-TEE-01-WHT via on-device OCR"
+  - "SCAN-T003 PASS: EAN-13 not in the catalogue -> 'katalogda yok', no similar product"
+  - "SCAN-T004 / V15-T-SEC-05 PASS: a link in a QR code is refused and counted, never resolved or opened"
+  - "SCAN-T005 PASS: a garment photo with no label -> nothing read, said plainly"
+  - "SCAN-T006 PASS: downsampled to 2048 px upright (drops EXIF/location); non-image data refused"
+  - "SCAN-T006b PASS: CPU-only path and the classic barcode detector read the same label"
+  - "SCAN-T007..T010 PASS: model code asks for the colour; two products both offered; OCR repairs only in numeric text segments and only to a catalogue code; GTIN check digit; prices/sizes are not codes"
+ui_tests:
+  - "testBarcodeOnLabelPhotoFindsTheProduct PASS: 'Fotoğraftaki barkoddan (Code128) okundu: KB-JKT-01-NVY' + decision card + example badge; live scanner disabled on the simulator with the reason shown"
+  - "testPrintedCodeIsReadFromTheLabelText PASS"
+  - "testShopBarcodeNotInCatalogueIsSaidPlainly PASS: '8690000000012 · GTIN/EAN barkod numarası, barkoddan', no decision card"
+  - "testLinkInQRIsRefusedAndAPlainPhotoSaysNothingWasRead PASS"
+  - "testMirrorEntryAndCameraFallback / testScanDecisionCard / testTabRoutesSurviveTabSwitchAndScan PASS (typing the code still works)"
+measured_on_simulator:
+  - "Vision barcode revision 4 fails with code 9 on the iOS simulator and returns nothing on CPU; revision 2 reads it -> fallback added"
+  - "Text recognition needed the CPU retry path on the simulator"
+  - "iOS 26 simulator reports a camera; VisionKit live scanning is unsupported there"
+screenshots:
+  - docs/evidence/screenshots/UI28/SIMULATOR_ONLY-SCAN-photo-barcode-found.jpg
+  - docs/evidence/screenshots/UI28/SIMULATOR_ONLY-SCAN-photo-text-found.jpg
+  - docs/evidence/screenshots/UI28/SIMULATOR_ONLY-SCAN-photo-ean-not-in-catalogue.jpg
+  - docs/evidence/screenshots/UI28/SIMULATOR_ONLY-SCAN-photo-qr-link-refused.jpg
+  - docs/evidence/screenshots/UI28/SIMULATOR_ONLY-SCAN-photo-nothing-read.jpg
+blocked:
+  - "REAL_DEVICE_BLOCKED: live barcode scanning, real camera stills, read rate and time on real labels"
+  - "BLOCKED_EXTERNAL (R-004): real shop barcodes resolve only with a licensed catalogue; recognising a product from its look needs the same"
+not_started:
+  - "UI28-09: own garment photo -> wardrobe item (the reader can be reused)"

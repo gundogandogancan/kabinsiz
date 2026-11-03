@@ -35,6 +35,19 @@ struct MorningReadyTests {
         #expect(start.plan.looks.looks.allSatisfy(OutfitCache.isWearable))
     }
 
+    @Test("UI28-T061: a world street (no owned scene) plans in its own time zone and the chip names its city")
+    func worldStreetDayAndChip() {
+        // 22:30 UTC on 3 November is already 07:30 on 4 November in Tokyo; the studio itself has no city day.
+        let tokyo = PlanningContext(city: .studio, now: lateEvening, deviceTimeZone: TimeZone(identifier: "UTC")!,
+                                    wardrobe: SyntheticCloset.studio, avatarRevision: "standin-1", weather: .none,
+                                    timeZoneOverride: TimeZone(identifier: "Asia/Tokyo"))
+        #expect(tokyo.timeZone.identifier == "Asia/Tokyo")
+        #expect(tokyo.localDate == LocalDate("2026-11-04"))
+        #expect(tokyo.key.timeZoneID == "Asia/Tokyo", "a city change must not reuse another zone's cached day")
+        #expect(WeatherChipText.make(city: .studio, freshness: .none, placeName: "Tokyo").title == "Tokyo · Hava verisi yok")
+        #expect(WeatherChipText.make(city: .istanbul, freshness: .none, placeName: nil).title == "İstanbul · Hava verisi yok")
+    }
+
     @Test("UI28-T002: the day is the chosen city's day, not the device's")
     func cityLocalDate() {
         #expect(context(.istanbul).localDate == LocalDate("2026-11-04"))

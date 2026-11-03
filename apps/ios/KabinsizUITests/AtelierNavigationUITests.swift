@@ -94,14 +94,16 @@ final class AtelierNavigationUITests: XCTestCase {
         XCTAssertTrue(chip.waitForExistence(timeout: 10))
         chip.tap()
         let rain = app.switches["cityRainToggle"]
-        XCTAssertTrue(rain.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.reveal(rain), "the rain preview is in the city sheet, below the world streets")
         rain.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
         app.buttons["Bitti"].tap()
         XCTAssertTrue(chip.label.contains("önizlemesi"), "a preview never passes for real weather: \(chip.label)")
         attach(app, "v28-H04-rain-preview")
         chip.tap()
+        XCTAssertTrue(app.reveal(app.switches["cityRainToggle"]))
         app.switches["cityRainToggle"].coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
         let bcn = app.buttons["city-ES-BCN"]
+        for _ in 0..<4 where !(bcn.exists && bcn.isHittable) { app.collectionViews.firstMatch.swipeDown() }
         XCTAssertTrue(bcn.waitForExistence(timeout: 5))
         bcn.tap()
         attach(app, "v28-H04-city-sheet")
@@ -142,7 +144,9 @@ final class AtelierNavigationUITests: XCTestCase {
         let open = app.buttons["primary.openMirror"]
         XCTAssertTrue(open.waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["primary.tryOnModel"].exists, "the same selection can go on the 3D model")
-        for id in ["tryOnPhoto", "tryOnLink"] { XCTAssertEqual(app.buttons[id].value as? String, "Bu sürümde yok", id) }
+        // SCAN-T011: photo intake is live (read on the device); only the store link is still not in this build.
+        XCTAssertNotEqual(app.buttons["tryOnPhoto"].value as? String, "Bu sürümde yok")
+        XCTAssertEqual(app.buttons["tryOnLink"].value as? String, "Bu sürümde yok")
         XCTAssertEqual(XCUIApplication(bundleIdentifier: "com.apple.springboard").alerts.count, 0, "no camera prompt before the user opens the mirror")
         attach(app, "v28-D01-dene")
         for _ in 0..<4 where !open.isHittable { app.swipeUp() }

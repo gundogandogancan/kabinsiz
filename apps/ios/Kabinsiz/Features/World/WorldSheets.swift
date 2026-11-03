@@ -144,6 +144,21 @@ struct OutfitSwapSheet: View {
 struct WhyThisLookSheet: View {
     @Environment(HomeWorldModel.self) private var world
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// What the street behind the figure is, and why it is not the full 3D street when it is not.
+    private var sceneText: String {
+        let quality = world.quality(reduceMotion: reduceMotion)
+        switch world.shownTier(reduceMotion: reduceMotion) {
+        case .city3D: return "3B şehir: gerçek zamanlı geometri, ışığı Blender'da önceden hesaplandı. Özgün model, harita verisi yok."
+        case .streetPhoto:
+            return "Cadde fotoğrafı: Apple Look Around, \(world.street.map { "\($0.city) · \($0.street)" } ?? ""). Fotoğraf 3B değildir; model temsilidir ve önüne yerleştirildi."
+        case .city3DReduced: return "3B şehir, azaltılmış: \(quality.reason). Yağmur seyreltildi, kamera kayması kapalı."
+        case .frame2D:
+            if quality.tier == .frame2D { return "Düz şehir kadrajı (Blender çizimi, 3B değil): \(quality.reason)." }
+            return "3B şehir yükleniyor; o sırada düz Blender kadrajı gösteriliyor."
+        }
+    }
 
     private var originText: String {
         switch world.origin {
@@ -202,8 +217,21 @@ struct WhyThisLookSheet: View {
                             .font(.footnote.monospacedDigit()).foregroundStyle(.secondary)
                     }
                 }
+                Section("Sahne") {
+                    Text(sceneText).font(.footnote).foregroundStyle(.secondary)
+                        .accessibilityIdentifier("sceneTier")
+                    if let status = world.streetStatusText, world.streetScene == nil {
+                        Text(status).font(.footnote).foregroundStyle(.secondary)
+                    }
+                    if let fps = world.sustainedFrameRate {
+                        Text(String(format: "Sahne güncellemesi: %.0f/sn (bu cihazda, son 6 sn)", fps))
+                            .font(.footnote.monospacedDigit()).foregroundStyle(.secondary)
+                            .accessibilityIdentifier("sceneRate")
+                    }
+                }
             }
             .navigationTitle("Bugünün kombini")
+
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Kapat") { dismiss() } } }
         }
@@ -215,9 +243,13 @@ struct WhyThisLookSheet: View {
 /// says where it comes from and how old it is; rain is a preview only when the user asks for one.
 /// Travel lives here too (v2.8 §02: Seyahat opens from the city menu).
 struct CityPickerSheet: View {
+    @Environment(AppModel.self) private var model
     @Environment(HomeWorldModel.self) private var world
     @Environment(\.dismiss) private var dismiss
     let onPlan: () -> Void
+    @State private var locating = false
+    @State private var locateNote: String?
+    @State private var locator = CoarseCityLocator()
 
     var body: some View {
         NavigationStack {
@@ -225,6 +257,7 @@ struct CityPickerSheet: View {
                 Section {
                     ForEach(SceneCity.allCases.filter { SceneAssetManifestV1.manifest(for: $0) != nil }) { city in
                         Button {
+                            world.choose(street: nil)
                             world.city = city
                         } label: {
                             HStack {
@@ -233,16 +266,45 @@ struct CityPickerSheet: View {
                                     Text(city.sceneDescription).font(.footnote).foregroundStyle(.secondary)
                                 }
                                 Spacer()
-                                if world.city == city { Image(systemName: "checkmark").foregroundStyle(Atelier.brand) }
+                                if world.street == nil, world.city == city { Image(systemName: "checkmark").foregroundStyle(Atelier.brand) }
                             }
                         }
                         .accessibilityIdentifier("city-\(city.rawValue)")
-                        .accessibilityAddTraits(world.city == city ? .isSelected : [])
+                        .accessibilityAddTraits(world.street == nil && world.city == city ? .isSelected : [])
                     }
                 } header: {
-                    Text("Şehir")
+                    Text("Kabinsiz sokakları")
                 } footer: {
-                    Text("Konum izni istenmez. Sahneler Kabinsiz için Blender'da üretildi; gerçek sokak fotoğrafı değildir ve modelin arkasında düz kadraj olarak gösterilir.")
+                    Text("Kabinsiz için Blender'da üretilmiş özgün sokaklar; gerçek fotoğraf değildir. Cihaz kaldırırsa 3B, kaldıramazsa düz kadraj olarak gösterilir.")
+                }
+                Section {
+                    Button {
+                        Task { await locate() }
+                    } label: {
+                        Label(locating ? "Konum bulunuyor…" : "Konumumdaki şehir", systemImage: "location")
+                    }
+                    .disabled(locating)
+                    .accessibilityIdentifier("cityLocate")
+                    if let status = world.streetStatusText {
+                        Text(status).font(.footnote).foregroundStyle(.secondary).accessibilityIdentifier("streetStatus")
+                    }
+                    if let locateNote {
+                        Text(locateNote).font(.footnote).foregroundStyle(.secondary).accessibilityIdentifier("cityLocateNote")
+                    }
+                    NavigationLink {
+                        WorldStreetList()
+                    } label: {
+                        LabeledContent("Dünya şehirleri", value: world.street.map { "\($0.city) · \($0.street)" } ?? "\(FamousStreetCatalog.all.count) şehir")
+                    }
+                    .accessibilityIdentifier("worldStreets")
+                    Toggle("Cadde fotoğrafı (Apple Look Around)", isOn: Binding(
+                        get: { model.streetImageryConsent != .revoked },
+                        set: { on in Task { await model.setStreetImageryAllowed(on) } }))
+                    .accessibilityIdentifier("streetPhotoToggle")
+                } header: {
+                    Text("Dünya şehirleri · ünlü cadde")
+                } footer: {
+                    Text("Konum yalnız \"Konumumdaki şehir\"e dokununca, yaklaşık olarak istenir; telefonda en yakın şehri bulmak için kullanılır, saklanmaz ve gönderilmez. Apple'a giden tek şey seçilen ünlü caddenin sabit noktasıdır. Fotoğraf Apple Look Around'dan gelir, kaydedilmez; model temsilidir ve fotoğrafın önüne yerleştirilir. Fotoğraf yoksa ya da kapalıysa Kabinsiz sokağı veya stüdyo gösterilir.")
                 }
                 Section {
                     LabeledContent("Durum", value: world.chip.provenance)
@@ -254,7 +316,7 @@ struct CityPickerSheet: View {
                 } header: {
                     Text("Hava")
                 } footer: {
-                    Text("Bu sürümde hava servisi bağlı değil. Yağmur yalnız sen istersen ve önizleme olarak gösterilir; kombin önizlemeye göre değişmez.")
+                    Text("Bu sürümde hava servisi bağlı değil. Yağmur yalnız sen istersen ve önizleme olarak gösterilir; kombin önizlemeye göre değişmez. Cadde fotoğrafının önünde yağmur çizilmez.")
                 }
             }
             .navigationTitle("Şehir ve hava")
@@ -270,6 +332,45 @@ struct CityPickerSheet: View {
             }
         }
         .presentationDetents([.medium, .large])
+    }
+
+    private func locate() async {
+        locating = true
+        defer { locating = false }
+        switch await locator.locate() {
+        case let .city(street):
+            world.choose(street: street)
+            locateNote = "\(street.city) · \(street.street)"
+        case .noCityNearby: locateNote = "Yakınında listede bir şehir yok; listeden seçebilirsin."
+        case .denied: locateNote = "Konum izni yok. Şehri listeden seçebilirsin."
+        case .unavailable: locateNote = "Konum şu an alınamadı. Şehri listeden seçebilirsin."
+        }
+    }
+}
+
+/// Every catalogue city with its famous street. Choosing one is the user action that may fetch its photo.
+struct WorldStreetList: View {
+    @Environment(HomeWorldModel.self) private var world
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        List(FamousStreetCatalog.all) { street in
+            Button {
+                world.choose(street: street)
+                dismiss()
+            } label: {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(street.city).foregroundStyle(.primary)
+                        Text(street.street).font(.footnote).foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    if world.street == street { Image(systemName: "checkmark").foregroundStyle(Atelier.brand) }
+                }
+            }
+            .accessibilityIdentifier("street-\(street.id)")
+        }
+        .navigationTitle("Dünya şehirleri")
     }
 }
 

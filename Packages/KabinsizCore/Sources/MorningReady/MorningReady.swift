@@ -97,19 +97,21 @@ public struct WeatherChipText: Hashable, Sendable {
 
     public enum State: String, Sendable { case live, lastKnown, noData, preview }
 
-    public static func make(city: SceneCity, freshness: WeatherFreshness, preview: SceneCondition? = nil) -> WeatherChipText {
+    /// `placeName` replaces the scene city's name when the home shows another place (a world street).
+    public static func make(city: SceneCity, freshness: WeatherFreshness, preview: SceneCondition? = nil, placeName: String? = nil) -> WeatherChipText {
+        let name = placeName ?? city.displayName
         if let preview {
             let word = preview == .rain ? "Yağmur" : "Açık"
-            return WeatherChipText(title: "\(city.displayName) · \(word) önizlemesi", provenance: "Önizleme · gerçek hava değil", state: .preview)
+            return WeatherChipText(title: "\(name) · \(word) önizlemesi", provenance: "Önizleme · gerçek hava değil", state: .preview)
         }
         switch freshness {
         case .none:
-            return WeatherChipText(title: "\(city.displayName) · Hava verisi yok", provenance: "Hava kaynağı bağlı değil", state: .noData)
+            return WeatherChipText(title: "\(name) · Hava verisi yok", provenance: "Hava kaynağı bağlı değil", state: .noData)
         case let .live(s):
-            return WeatherChipText(title: ([city.displayName] + reading(s)).joined(separator: " · "),
+            return WeatherChipText(title: ([name] + reading(s)).joined(separator: " · "),
                                    provenance: "\(s.source) · \(clock(s.observedAt, city))", state: .live)
         case let .lastKnown(s):
-            return WeatherChipText(title: ([city.displayName] + reading(s)).joined(separator: " · "),
+            return WeatherChipText(title: ([name] + reading(s)).joined(separator: " · "),
                                    provenance: "Son bilinen tahmin · \(clock(s.observedAt, city)) · \(s.source)", state: .lastKnown)
         }
     }
@@ -193,9 +195,12 @@ public struct PlanningContext: Sendable {
     public let avatarRevision: String
     public let mood: TodayOutfitEngine.Mood
     public let weather: WeatherFreshness
+    /// The day of a chosen world street that has no owned scene follows that street's clock.
+    public let timeZoneOverride: TimeZone?
 
     public init(city: SceneCity, now: Date, deviceTimeZone: TimeZone = .current, wardrobe: Wardrobe, avatarRevision: String,
-                mood: TodayOutfitEngine.Mood = .balanced, weather: WeatherFreshness) {
+                mood: TodayOutfitEngine.Mood = .balanced, weather: WeatherFreshness, timeZoneOverride: TimeZone? = nil) {
+        self.timeZoneOverride = timeZoneOverride
         self.city = city
         self.now = now
         self.deviceTimeZone = deviceTimeZone
@@ -205,7 +210,7 @@ public struct PlanningContext: Sendable {
         self.weather = weather
     }
 
-    public var timeZone: TimeZone { city.timeZone(device: deviceTimeZone) }
+    public var timeZone: TimeZone { timeZoneOverride ?? city.timeZone(device: deviceTimeZone) }
     public var localDate: LocalDate { LocalDate(instant: now, timeZone: timeZone) }
 
     public var key: OutfitCacheKey {

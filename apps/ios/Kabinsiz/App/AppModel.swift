@@ -2,6 +2,7 @@ import BodyGeometry
 import DomainContracts
 import FitPassport
 import Foundation
+import LivingWorld
 import LocalStore
 import Observation
 import Octopus
@@ -91,11 +92,17 @@ final class AppModel {
     private static var closedLedger: ConsentLedger {
         var ledger = ConsentLedger()
         ledger.revoke(.weatherFetch)
+        ledger.revoke(.streetImagery)
         return ledger
     }
     private var loadStarted = false
     /// Whether the user allows forecast requests at all (Profil → Gizlilik). Off stops even the tap.
     private(set) var weatherConsent: ConsentState = .notAsked
+    /// Whether the home may show Apple Look Around street photos (city sheet switch). Off = owned scene.
+    private(set) var streetImageryConsent: ConsentState = .notAsked
+    /// True once the gate has been rebuilt from the stored ledger (or loading gave up and it stays closed).
+    /// Until then a network feature must wait, not report "off": the closed start ledger is not the user's choice.
+    private(set) var consentLoaded = false
     /// Shown after "delete everything": counts and the copies a local delete cannot reach (§116.3).
     private(set) var lastDeletionReceipt: DeletionReceipt?
     /// Records that exist but could not be read. We refuse to overwrite them (no silent data loss).
@@ -140,6 +147,8 @@ final class AppModel {
             default:
                 loadError = "Şifreli kasa okunamadı. Hiçbir şey silinmedi."
             }
+            // The gate stays on the closed ledger: network features report "off", honestly.
+            consentLoaded = true
             return
         }
         self.vault = vault
@@ -157,6 +166,8 @@ final class AppModel {
         let ledger = unreadable.contains(Records.consent.id) ? Self.closedLedger : (stored ?? ConsentLedger())
         gate = CitadelGate(registry: .p0(), ledger: ledger)
         weatherConsent = ledger.state(.weatherFetch)
+        streetImageryConsent = ledger.state(.streetImagery)
+        consentLoaded = true
         await openBodyStudio(vault: vault)
         if !unreadable.isEmpty {
             loadError = "Bazı kayıtlar okunamadı (\(unreadable.sorted().joined(separator: ", "))). Silinmediler ve üzerlerine yazılmayacak."
@@ -537,6 +548,20 @@ final class AppModel {
         save([Records.consent.id]) { try await $0.put(ledger, Records.consent, schemaVersion: ConsentLedger.schemaVersion) }
     }
 
+    /// EG-003, on a user choice of a world street (or opening the home with one chosen while allowed).
+    func lookAroundScene(for street: FamousStreet) async throws -> LookAroundSceneBox? {
+        try await LookAroundProvider(gate: gate).scene(for: street)
+    }
+
+    /// City sheet switch "Cadde fotoğrafı". Revoking stops further requests and the home falls back
+    /// to the owned 3D street or the studio (§112.3 chain FALL_BACK_TO_OWNED_SCENE).
+    func setStreetImageryAllowed(_ allowed: Bool) async {
+        if allowed { await gate.grantConsent(.streetImagery) } else { await gate.revokeConsent(.streetImagery) }
+        let ledger = await gate.ledger
+        streetImageryConsent = ledger.state(.streetImagery)
+        save([Records.consent.id]) { try await $0.put(ledger, Records.consent, schemaVersion: ConsentLedger.schemaVersion) }
+    }
+
     func choose(_ candidate: OutfitCandidate, tripID: String) {
         guard var plan = plans[tripID], let trip = trip(id: tripID) else { return }
         plan.choose(candidate)
@@ -606,6 +631,7 @@ final class AppModel {
         pendingReplans = [:]
         weatherStatus = [:]
         weatherConsent = .notAsked
+        streetImageryConsent = .notAsked
         gate = CitadelGate(registry: .p0())
         // Explicit user request: this is the one path allowed to remove unreadable records too.
         unreadable = []

@@ -38,6 +38,9 @@ public struct EgressRoute: Hashable, Sendable {
     /// an intent declares (V15-T-SEC-06).
     public static let registered: [EgressRoute] = [
         EgressRoute(registerID: "EG-001", host: "weatherkit.apple.com", method: .get, path: "/api/v1/weather", purpose: .weatherForecast),
+        // MapKit makes the HTTP call itself and picks Apple's hosts; this entry names the framework call
+        // the gate authorises (a MapKit Look Around scene request for one catalogue point), see EGRESS_REGISTER.md.
+        EgressRoute(registerID: "EG-003", host: "mapkit.apple.com", method: .get, path: "/look-around/scene", purpose: .streetImagery),
     ]
 }
 
@@ -242,6 +245,7 @@ public actor CitadelGate {
         switch purpose {
         case .productLookup: .networkProductOnly
         case .weatherForecast: .weatherFetch
+        case .streetImagery: .streetImageryFetch
         }
     }
 
@@ -249,6 +253,7 @@ public actor CitadelGate {
         switch purpose {
         case .productLookup: .productLookup
         case .weatherForecast: .weatherFetch
+        case .streetImagery: .streetImagery
         }
     }
 
@@ -275,6 +280,29 @@ public struct WeatherForecastRequest: EgressPayload, Hashable {
     public static func coordinate(from authorized: AuthorizedEgress) -> (latitude: Double, longitude: Double)? {
         guard authorized.intent.purpose == .weatherForecast,
               let raw = authorized.fields[CodingKeys.cityCenterCoordinate.rawValue] else { return nil }
+        let parts = raw.split(separator: ",")
+        guard parts.count == 2, let lat = Double(parts[0]), let lon = Double(parts[1]),
+              (-90...90).contains(lat), (-180...180).contains(lon) else { return nil }
+        return (lat, lon)
+    }
+}
+
+/// EG-003. A point on a street from the bundled catalogue (`FamousStreetCatalog`), rounded to 4
+/// decimals: the same for everyone who picks that city, never a device location.
+public struct StreetImageryRequest: EgressPayload, Hashable {
+    public static var egressClassification: DataClassification? { .localPrivate }
+
+    public let streetCoordinate: String
+
+    public init(latitude: Double, longitude: Double) {
+        streetCoordinate = String(format: "%.4f,%.4f", locale: Locale(identifier: "en_US_POSIX"), latitude, longitude)
+    }
+
+    enum CodingKeys: String, CodingKey { case streetCoordinate = "street_coordinate" }
+
+    public static func coordinate(from authorized: AuthorizedEgress) -> (latitude: Double, longitude: Double)? {
+        guard authorized.intent.purpose == .streetImagery,
+              let raw = authorized.fields[CodingKeys.streetCoordinate.rawValue] else { return nil }
         let parts = raw.split(separator: ",")
         guard parts.count == 2, let lat = Double(parts[0]), let lon = Double(parts[1]),
               (-90...90).contains(lat), (-180...180).contains(lon) else { return nil }

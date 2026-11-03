@@ -1,6 +1,7 @@
 import AvatarDressing
 import BodyGeometry
 import LivingWorld
+import MapKit
 import MorningReady
 import SwiftUI
 import TodayOutfit
@@ -37,6 +38,7 @@ struct HomeWorldView: View {
                     // Reframe while the garment sheet is up: the figure lifts into the top two thirds.
                     .offset(y: sheetFor == nil ? 0 : -geo.size.height * 0.09)
                     .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: sheetFor)
+                scrims
                 VStack(spacing: 0) {
                     header
                     Spacer(minLength: 0)
@@ -53,6 +55,17 @@ struct HomeWorldView: View {
         .onChange(of: model.wardrobe) { refresh() }
         .onChange(of: world.city) { refresh() }
         .onChange(of: avatarRevision) { refresh() }
+        .task(id: StreetRequest(id: world.street?.id, allowed: model.streetImageryConsent != .revoked, ready: model.consentLoaded)) {
+            // Before the stored consent is read the gate is closed by design; wait instead of saying "off".
+            guard model.consentLoaded else { return }
+            await world.loadStreetScene(allowed: model.streetImageryConsent != .revoked) { try await model.lookAroundScene(for: $0) }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: ProcessInfo.thermalStateDidChangeNotification).receive(on: RunLoop.main)) { _ in
+            world.readDeviceState()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .NSProcessInfoPowerStateDidChange).receive(on: RunLoop.main)) { _ in
+            world.readDeviceState()
+        }
         .navigationDestination(for: WorldRoute.self) { route in
             switch route {
             case .plan: TodayView(onScan: onTryOn, onOpenWardrobe: onOpenWardrobe, onOpenMe: onOpenMe)
@@ -89,32 +102,54 @@ struct HomeWorldView: View {
         }
     }
 
-    /// The city backdrop: an owned Blender render matched to the 3D camera (a 2D image behind the 3D
-    /// figure, ADR-011 Karar 6), scaled with zoom about the centre.
+    private var quality: SceneQuality { world.quality(reduceMotion: reduceMotion) }
+    private var shownTier: SceneRenderTier { world.shownTier(reduceMotion: reduceMotion) }
+
+    /// The labelled 2D frame: an owned Blender render matched to the 3D camera, shown while the 3D street
+    /// loads, when it is stepped down to the frame (heat, very slow frames) or when it failed to load.
     private var backdrop: some View {
         GeometryReader { geo in
             Group {
-                if let manifest = world.manifest {
-                    Image(world.sceneWeather.wetGround ? manifest.wetBackdrop : manifest.dryBackdrop)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: geo.size.width, height: geo.size.height)
-                        .scaleEffect(CGFloat(zoom))
-                        .clipped()
+                if let box = world.streetScene {
+                    // Apple's Maps logo and Look Around badge must stay fully visible: the photo ends above the
+                    // footer pills (measured on the iPhone 17 simulator: the "Örnek beden" pill clipped it at 250).
+                    VStack(spacing: 0) {
+                        LookAroundPreview(scene: .constant(box.scene), allowsNavigation: false, showsRoadLabels: false,
+                                          pointsOfInterest: .excludingAll, badgePosition: .bottomTrailing)
+                            .frame(height: max(0, geo.size.height + geo.safeAreaInsets.top - 290))
+                            .allowsHitTesting(false)
+                        Atelier.canvas
+                    }
+                    .ignoresSafeArea()
+                } else if let manifest = world.manifest {
+                    if shownTier == .frame2D {
+                        Image(world.sceneWeather.wetGround ? manifest.wetBackdrop : manifest.dryBackdrop)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: geo.size.width, height: geo.size.height)
+                            .scaleEffect(CGFloat(zoom))
+                            .clipped()
+                    }
                 } else {
                     LinearGradient(colors: [Atelier.surfaceSecondary, Atelier.sand], startPoint: .top, endPoint: .bottom)
                 }
             }
-            .overlay(alignment: .top) {
-                // Scrim behind the header only (v2.8 §04 contrast rule): text never sits on the bare scene.
-                LinearGradient(colors: [Color(rgb: 0x221913).opacity(0.55), .clear], startPoint: .top, endPoint: .bottom).frame(height: 170)
-            }
-            .overlay(alignment: .bottom) {
-                LinearGradient(stops: [.init(color: Atelier.canvas.opacity(0), location: 0), .init(color: Atelier.canvas.opacity(0.85), location: 0.6),
-                                       .init(color: Atelier.canvas.opacity(0.97), location: 1)], startPoint: .top, endPoint: .bottom).frame(height: 250)
-            }
         }
         .ignoresSafeArea()
+        .accessibilityHidden(true)
+    }
+
+    /// Scrims for legibility (v2.8 §04 contrast rule): text never sits on the bare scene. They lie over
+    /// the 3D street too, but end above the figure's feet.
+    private var scrims: some View {
+        VStack(spacing: 0) {
+            LinearGradient(colors: [Color(rgb: 0x221913).opacity(0.55), .clear], startPoint: .top, endPoint: .bottom).frame(height: 170)
+            Spacer(minLength: 0)
+            LinearGradient(stops: [.init(color: Atelier.canvas.opacity(0), location: 0), .init(color: Atelier.canvas.opacity(0.85), location: 0.6),
+                                   .init(color: Atelier.canvas.opacity(0.97), location: 1)], startPoint: .top, endPoint: .bottom).frame(height: 250)
+        }
+        .ignoresSafeArea()
+        .allowsHitTesting(false)
         .accessibilityHidden(true)
     }
 
@@ -122,7 +157,8 @@ struct HomeWorldView: View {
         if let mesh = model.heroMesh, let snapshot = model.heroSnapshot {
             DressedAvatarView(
                 body3D: mesh, snapshot: snapshot, outfit: world.outfit, prewarm: world.looks?.looks.map(\.outfit) ?? [],
-                light: light, rainIntensity: world.sceneWeather.rainIntensity,
+                light: world.streetScene != nil ? .day : light,
+                rainIntensity: world.streetScene != nil ? 0 : world.sceneWeather.rainIntensity * quality.rainScale,
                 alive: model.allowsLivelyMotion && !reduceMotion,
                 selectedSlot: Binding(get: { world.selectedSlot }, set: { world.selectedSlot = $0 }),
                 zoom: $zoom, yaw: $yaw,
@@ -130,7 +166,13 @@ struct HomeWorldView: View {
                     guard let slot else { world.selectedSlot = nil; return }
                     open(slot)
                 },
-                onSlotAction: { open($0) }
+                onSlotAction: { open($0) },
+                city: world.manifest?.model3D,
+                wetCity: world.sceneWeather.wetGround,
+                showCity: quality.tier != .frame2D && world.streetScene == nil,
+                cameraDrift: quality.cameraDrift && model.allowsLivelyMotion,
+                onFrameRate: { world.reportFrameRate($0) },
+                onCityReady: { world.cityDidLoad($0) }
             )
             .ignoresSafeArea()
             .onChange(of: yaw) { turnedOnce = true }
@@ -181,7 +223,7 @@ struct HomeWorldView: View {
             VStack(alignment: .trailing, spacing: 1) {
                 HStack(spacing: 6) {
                     Image(systemName: symbol(for: chip.state)).foregroundStyle(Atelier.copper)
-                    Text(world.city.displayName).font(AtelierType.secondary.weight(.semibold))
+                    Text(world.street?.city ?? world.city.displayName).font(AtelierType.secondary.weight(.semibold))
                 }
                 Text(chip.weatherLine).font(AtelierType.caption)
                 if chip.state != .noData {
@@ -295,11 +337,12 @@ struct HomeWorldView: View {
                 .accessibilityHint("Barkod, dolap ya da Canlı Ayna ile bir ürünü dene")
                 .accessibilityIdentifier("homeTryOn")
             }
-            Text("Temsili 3B giysi · şehir Blender kadrajı · beden uyumunu göstermez")
+            Text(world.manifest == nil && world.streetScene == nil ? SceneQualityPolicy.studioLine : SceneQualityPolicy.truthLine(shownTier))
                 .font(.caption2)
                 .foregroundStyle(Atelier.inkSecondary)
                 .multilineTextAlignment(.center)
                 .accessibilityIdentifier("worldTruthLabel")
+                .accessibilityValue(shownTier.rawValue)
         }
         .padding(.horizontal, Atelier.Space.l)
         .padding(.bottom, 8)
@@ -343,6 +386,12 @@ enum WorldRoute: Hashable {
     case plan
 }
 
-extension GarmentSlotID: Identifiable {
+extension GarmentSlotID: @retroactive Identifiable {
     public var id: String { rawValue }
+}
+
+private struct StreetRequest: Equatable {
+    let id: String?
+    let allowed: Bool
+    let ready: Bool
 }

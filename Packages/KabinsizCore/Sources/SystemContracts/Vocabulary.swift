@@ -28,6 +28,8 @@ public enum Capability: String, Codable, CaseIterable, Sendable {
     case travelReadPrivate = "travel.readPrivate"
     case catalogReadLicensed = "catalog.readLicensed"
     case weatherFetch = "weather.fetch"
+    /// One Apple Look Around scene for a catalogue street (EG-002). Never the device position.
+    case streetImageryFetch = "streetImagery.fetch"
     case networkProductOnly = "network.productOnly"
     case vaultExport = "vault.export"
     case vaultDelete = "vault.delete"
@@ -37,7 +39,7 @@ public enum Capability: String, Codable, CaseIterable, Sendable {
     case diagnosticsReadRedacted = "diagnostics.readRedacted"
 
     /// Capabilities that open a network path. Granting one always needs an `EgressIntent` as well.
-    public var isNetwork: Bool { self == .networkProductOnly || self == .weatherFetch }
+    public var isNetwork: Bool { self == .networkProductOnly || self == .weatherFetch || self == .streetImageryFetch }
 }
 
 /// Runtime specialist IDs from §104.1. An ID existing here does not mean the module is registered.

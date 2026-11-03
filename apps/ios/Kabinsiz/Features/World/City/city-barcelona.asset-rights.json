@@ -1,0 +1,78 @@
+{
+  "schema": "kabinsiz.asset-rights.v1",
+  "asset_id": "city-barcelona",
+  "source_owner": "Kabinsiz (built by tools/scenes from primitives)",
+  "provenance": "OWNED_ORIGINAL",
+  "licence_document_id": null,
+  "commercial_allowed": true,
+  "derivative_allowed": true,
+  "on_device_distribution_allowed": true,
+  "attribution": null,
+  "territory": "worldwide",
+  "expiry": null,
+  "revocation_policy": "not applicable (owned)",
+  "third_party_inputs": [],
+  "generator": "tools/scenes/build_city_usdz.py --city barcelona --atlas 2048 --samples 192",
+  "blender": "5.2.3 LTS",
+  "lighting": "baked for the app camera (Cycles); geometry, depth and rain are real time",
+  "triangles": 56667,
+  "texels_per_metre": {
+    "ground": {
+      "16-20m": 46.8,
+      "20-24m": 42.7,
+      "24-28m": 38.9,
+      "28-32m": 35.5,
+      "32-36m": 32.5,
+      "36-40m": 29.7,
+      "40-44m": 17.9
+    },
+    "near": {
+      "0-4m": 170.3,
+      "4-8m": 82.2,
+      "8-12m": 73.8,
+      "12-16m": 43.2,
+      "16-20m": 37.6
+    },
+    "left": {
+      "8-12m": 25.0,
+      "12-16m": 25.1,
+      "16-20m": 20.0,
+      "20-24m": 16.1,
+      "24-28m": 15.7,
+      "28-32m": 13.9,
+      "32-36m": 11.3,
+      "36-40m": 12.7,
+      "40-44m": 8.2
+    },
+    "right": {
+      "12-16m": 23.4,
+      "16-20m": 19.8,
+      "20-24m": 16.3,
+      "24-28m": 15.3,
+      "28-32m": 13.2,
+      "32-36m": 11.4,
+      "36-40m": 12.2,
+      "40-44m": 8.0
+    },
+    "far": {
+      "40-44m": 10.7
+    }
+  },
+  "artifact_hash": {
+    "city-barcelona.usdz": "85fb98ff48ecf8456f089f9d60071c45154fd5e68f259c14783995a344f38a78",
+    "city-barcelona-ground-dry.jpg": "f90bd28259bc64705fcf12e39f7d078e7180f9abd84db551855ad91666c48b0b",
+    "city-barcelona-near-dry.jpg": "1afb8b01629a6635673305cd9eae26803be793ba771f41c2a02fe94d60ae388d",
+    "city-barcelona-left-dry.jpg": "94531bceef36686ba9cab7f3763d8893f29cd6b9b0a5ed4f2daf6d39545d6e5b",
+    "city-barcelona-right-dry.jpg": "b30110f7e7dc3d3f720b7c626496c1c8eddda770f360b73de187f2baf623ae76",
+    "city-barcelona-far-dry.jpg": "53d946fd6a4a4a70bc2c127c01fe270c71f27c8464b7e54428ba471a2641f0ad",
+    "city-barcelona-sky-dry.jpg": "fc297910f8584db11fa6959f4cd66dd90eb56ea273cdb6fcffa4a4422a23b4e9",
+    "city-barcelona-ground-wet.jpg": "076771df7f9ddce8433965223b13cee42ac3f84c3124e0b9a264afeeb891b1d5",
+    "city-barcelona-near-wet.jpg": "f590c94b12479fb4260060b1695ec91de97277c65666f48b92a3a8fa4629fd18",
+    "city-barcelona-left-wet.jpg": "0a9241ae73383f938c64baf4fdcfbf082015f39d85b0b5b825babd245cc34908",
+    "city-barcelona-right-wet.jpg": "ee8fe307b7b8d8acba933a2a0da1deb34b6ece11aaa9d7a4dbe79ad1474521ac",
+    "city-barcelona-far-wet.jpg": "0c0e0547190c4e55110e08cc521b7863258d2eeaa949093435537e09d24ecf49",
+    "city-barcelona-sky-wet.jpg": "45880e86fa325012cee8b21f2b595fed8588a81105ffbccd60a274ff12c7d242"
+  },
+  "reviewer": null,
+  "approved_at": null
+}

@@ -175,9 +175,17 @@ final class AcceptanceDemoUITests: XCTestCase {
         XCTAssertTrue((waist.value as? String)?.hasSuffix("santimetre") == true, "spoken value must name the unit")
 
         bringIntoView(waist, in: app)
+        sleep(1) // let the list's scroll momentum settle, or the slider drag lands on a moving row
         waist.adjust(toNormalizedSliderPosition: 0.2)
         let shaped = app.staticTexts["value-WAIST"]
-        XCTAssertTrue(wait(shaped, NSPredicate(format: "label != '82 cm'")))
+        let changed = NSPredicate(format: "label != '82 cm'")
+        if !wait(shaped, changed) {
+            // Seen in full-suite runs only (2026-11-04): the first drag can be swallowed by a settling scroll.
+            bringIntoView(waist, in: app)
+            sleep(1)
+            waist.adjust(toNormalizedSliderPosition: 0.25)
+        }
+        XCTAssertTrue(wait(shaped, changed))
         sleep(1) // commit debounce
         let draggedLabel = shaped.label
         attach(app, "09-body-studio-slider")
