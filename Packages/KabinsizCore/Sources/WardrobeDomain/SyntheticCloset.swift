@@ -72,3 +72,31 @@ public struct SeededGenerator: RandomNumberGenerator, Sendable {
         return z ^ (z >> 31)
     }
 }
+
+extension SyntheticCloset {
+    /// The example the home screen dresses the figure in while the user's own wardrobe cannot dress
+    /// it yet (v2.5 §4.1). Every piece is fictional and tagged SYNTHETIC_DEMO_ONLY; it is never added
+    /// to the user's wardrobe and the screen says it is an example.
+    public static let studio: Wardrobe = Wardrobe(garments: [
+        studioPiece("ex-top-cream-knit", "Krem triko kazak", .top, .casual ... .smart, "krem", neutral: true),
+        studioPiece("ex-top-white-tee", "Beyaz basic tişört", .top, .relaxed ... .casual, "beyaz", neutral: true),
+        studioPiece("ex-top-navy-shirt", "Lacivert gömlek", .top, .casual ... .formal, "lacivert", neutral: true),
+        studioPiece("ex-bottom-charcoal", "Antrasit kumaş pantolon", .bottom, .casual ... .formal, "antrasit", neutral: true),
+        studioPiece("ex-bottom-jeans", "Mavi jean", .bottom, .relaxed ... .casual, "mavi", neutral: true),
+        studioPiece("ex-outer-brown-coat", "Kahverengi yün kaban", .outerwear, .casual ... .formal, "kahverengi", neutral: true),
+        studioPiece("ex-outer-camel-jacket", "Camel ceket", .outerwear, .casual ... .smart, "camel", neutral: true),
+        studioPiece("ex-shoes-white", "Beyaz sneaker", .shoes, .relaxed ... .casual, "beyaz", neutral: true, walking: true),
+        studioPiece("ex-shoes-boots", "Kahverengi bot", .shoes, .casual ... .smart, "kahverengi", neutral: true, walking: true),
+        studioPiece("ex-acc-scarf", "Bordo atkı", .accessory, .casual ... .smart, "bordo", neutral: false),
+        studioPiece("ex-acc-belt", "Taba deri kemer", .accessory, .casual ... .formal, "taba", neutral: true),
+        studioPiece("ex-acc-tote", "Siyah deri çanta", .accessory, .casual ... .smart, "siyah", neutral: true),
+    ])
+
+    private static func studioPiece(
+        _ id: String, _ name: String, _ category: GarmentCategory, _ formality: ClosedRange<Formality>,
+        _ color: String, neutral: Bool, walking: Bool? = nil
+    ) -> Garment {
+        Garment(id: id, name: name, category: category, formalityRange: formality, colorName: color,
+                isNeutralColor: neutral, condition: .clean, walkingComfort: walking, provenance: .syntheticDemo)
+    }
+}

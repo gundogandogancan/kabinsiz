@@ -173,3 +173,13 @@ public struct OutfitCandidateGenerator: Sendable {
         return shoes
     }
 }
+
+extension OutfitSlot {
+    /// An ordinary day, not a trip (Today screen, v2.5 §4): one full-day slot with no events. Weather
+    /// is "no data" unless real evidence is passed in; nothing is assumed about the day.
+    public static func everyday(_ date: LocalDate, formality: Formality = .casual, weather: WeatherSnapshot? = nil) -> OutfitSlot {
+        OutfitSlot(id: "\(date)-today", localDate: date, dayIndex: 0, timeBlock: .fullDay, activities: [.other],
+                   formality: formality, needsWalkingShoes: false, outdoors: true,
+                   weather: weather ?? .noData(date), userDressCode: nil, eventIDs: [])
+    }
+}

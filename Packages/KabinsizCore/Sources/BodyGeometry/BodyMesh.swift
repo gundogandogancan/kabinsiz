@@ -62,71 +62,18 @@ public struct BodyMesh: Codable, Hashable, Sendable {
     // MARK: Build
 
     public static func make(from snapshot: AvatarSnapshot, detail: Detail = .standard) throws(BodyEditError) -> BodyMesh {
-        let shape = snapshot.silhouette
-        try shape.validate()
-        let h = shape.heightCm
+        let rig = try BodyRig(snapshot.silhouette)
+        let h = rig.h
         let segments = detail.rawValue
-        let outline = shape.rightOutline
-        let depths = depthProfile(shape)
-        guard depths.count == outline.count else { throw .unsafeGeometry("depth") }
-        let crotchIndex = outline.firstIndex { $0.y >= crotchFraction * h } ?? outline.count / 2
-
-        // Torso + head: crown to crotch, then a short tuck that narrows inside the legs, so the seat has
-        // no ledge where the legs begin.
-        var torsoRings: [Ring] = []
-        for i in 0...crotchIndex {
-            let p = outline[i]
-            torsoRings.append(Ring(center: SIMD3(0, h - p.y, 0), a: p.x, b: depths[i], u: SIMD3(1, 0, 0)))
-        }
-        for k in 1...tuckRings where crotchIndex + k < outline.count {
-            let p = outline[crotchIndex + k]
-            let f = 1 - 0.1 * Double(k)
-            torsoRings.append(Ring(center: SIMD3(0, h - p.y, 0), a: p.x * f, b: depths[crotchIndex] * f, u: SIMD3(1, 0, 0)))
-        }
-        let torsoBottom = torsoRings.last!.center.y - 0.006 * h
-        let torso = loft(.torso, torsoRings, segments: segments, topCap: SIMD3(0, h, 0), bottomCap: SIMD3(0, torsoBottom, 0))
-
-        // Right leg (viewer's right, +x): outer edge on the silhouette, inner edge at the gap.
-        var legRings: [Ring] = []
-        let legStart = max(crotchIndex - 3, 0) // starts inside the torso so the joint has no seam
-        let blendEnd = min(crotchIndex + tuckRings + 2, outline.count - 1)
-        for i in legStart..<outline.count {
-            let w = outline[i].x
-            let r = max((w - legGap(outline[i].y / h) * h) / 2, 0.004 * h)
-            var depth = r * legDepthRatio(outline[i].y / h)
-            // Near the seat the leg takes the torso's depth and hands over gradually, so front and back
-            // have no ledge where the torso ends inside the legs.
-            if i < blendEnd {
-                let t = Double(i - legStart) / Double(blendEnd - legStart)
-                let s = t * t * (3 - 2 * t)
-                depth = depths[min(i, crotchIndex)] * (1 - s) + depth * s
-            }
-            legRings.append(Ring(center: SIMD3(w - r, h - outline[i].y, 0), a: r, b: depth, u: SIMD3(1, 0, 0)))
-        }
-        // Foot: one short ring down to the floor, flat sole.
-        if let ankle = legRings.last {
-            legRings.append(Ring(center: SIMD3(ankle.center.x, 0.004 * h, 0.012 * h), a: ankle.a * 1.05, b: ankle.b * 1.6, u: SIMD3(1, 0, 0)))
-        }
+        let torsoBottom = rig.torsoRings.last!.center.y - 0.006 * h
+        let torso = loft(.torso, rig.torsoRings, segments: segments, topCap: SIMD3(0, h, 0), bottomCap: SIMD3(0, torsoBottom, 0))
+        let legRings = rig.legRings
         let rightLeg = loft(.rightLeg, legRings, segments: segments, topCap: legRings[0].center + SIMD3(0, 0.01 * h, 0),
                             bottomCap: SIMD3(legRings.last!.center.x, 0, legRings.last!.center.z))
-
-        // Right arm: a straight tube in the x-y plane, tilted out just enough to clear the hips.
-        let shoulderHalf = shape.halfWidthsCm[.shoulder] ?? outline[0].x
-        let jointY = h * (1 - 0.195)
-        let (tilt, jointX) = armPlacement(shape: shape, jointX: max(shoulderHalf - armRadii[0].r * h * 0.85, 0.01 * h), jointY: jointY)
-        let axis = SIMD3(sin(tilt), -cos(tilt), 0)
-        let side = SIMD3(cos(tilt), sin(tilt), 0) // perpendicular to the axis, in the x-y plane
-        let length = armLengthFraction * h
-        let samples = 24
-        var armRings: [Ring] = []
-        for k in 0...samples {
-            let t = Double(k) / Double(samples)
-            let r = armRadius(at: t) * h
-            armRings.append(Ring(center: SIMD3(jointX, jointY, 0) + axis * (t * length), a: r, b: r * 0.92, u: side))
-        }
-        let rightArm = loft(.rightArm, armRings, segments: max(segments / 2, 12),
-                            topCap: SIMD3(jointX, jointY, 0) - axis * (0.01 * h),
-                            bottomCap: SIMD3(jointX, jointY, 0) + axis * (length + 0.006 * h))
+        let arm = rig.arm
+        let rightArm = loft(.rightArm, rig.armRings, segments: max(segments / 2, 12),
+                            topCap: arm.joint - arm.axis * (0.01 * h),
+                            bottomCap: arm.joint + arm.axis * (arm.length + 0.006 * h))
 
         let pieces = [torso, rightLeg.mirrored(as: .leftLeg), rightLeg, rightArm.mirrored(as: .leftArm), rightArm]
             .map { $0.scaled(0.01) } // cm → m

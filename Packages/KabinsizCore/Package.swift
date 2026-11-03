@@ -18,6 +18,8 @@ let package = Package(
         .library(name: "DomainSchemas", targets: ["DomainSchemas"]),
         .library(name: "LiveMirror", targets: ["LiveMirror"]),
         .library(name: "DesignTokens", targets: ["DesignTokens"]),
+        .library(name: "AvatarDressing", targets: ["AvatarDressing"]),
+        .library(name: "TodayOutfit", targets: ["TodayOutfit"]),
     ],
     targets: [
         .target(name: "DomainContracts"),
@@ -38,6 +40,8 @@ let package = Package(
         // LM21-WP03 / ADR-008: live mirror contracts, state machine, admission policy, frame guard. No camera code yet.
         .target(name: "LiveMirror", dependencies: ["DomainContracts", "SystemContracts", "DomainSchemas"]),
         .target(name: "DesignTokens"),
+        .target(name: "AvatarDressing", dependencies: ["DomainContracts", "BodyGeometry"]),
+        .target(name: "TodayOutfit", dependencies: ["AvatarDressing", "DomainContracts", "WardrobeDomain", "TravelEngine"]),
         .target(
             name: "ShoppingCopilot",
             dependencies: ["DomainContracts", "WardrobeDomain", "FitPassport"],
@@ -61,6 +65,7 @@ let package = Package(
             dependencies: ["LiveMirror", "DomainSchemas", "SystemContracts", "DomainContracts"]
         ),
         .testTarget(name: "DesignTokensTests", dependencies: ["DesignTokens"]),
+        .testTarget(name: "LivingWorldTests", dependencies: ["AvatarDressing", "TodayOutfit", "BodyGeometry", "DomainContracts", "WardrobeDomain", "TravelEngine"]),
         .testTarget(
             name: "SecurityTests",
             dependencies: ["SystemContracts", "Vault", "LocalStore", "DomainContracts", "WardrobeDomain", "TravelEngine", "FitPassport", "ShoppingCopilot"]
