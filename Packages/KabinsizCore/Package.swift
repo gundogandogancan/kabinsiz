@@ -16,6 +16,7 @@ let package = Package(
         .library(name: "BodyGeometry", targets: ["BodyGeometry"]),
         .library(name: "Octopus", targets: ["Octopus"]),
         .library(name: "DomainSchemas", targets: ["DomainSchemas"]),
+        .library(name: "LiveMirror", targets: ["LiveMirror"]),
     ],
     targets: [
         .target(name: "DomainContracts"),
@@ -33,6 +34,8 @@ let package = Package(
         .target(name: "Octopus", dependencies: ["DomainContracts", "SystemContracts", "BodyGeometry", "Vault"]),
         // v1.7 §4 / R17-02 + R18-WP02: versioned product, fabric, body v2, fit, thermal, try-on and commerce DTOs.
         .target(name: "DomainSchemas", dependencies: ["DomainContracts", "SystemContracts", "BodyGeometry"]),
+        // LM21-WP03 / ADR-008: live mirror contracts, state machine, admission policy, frame guard. No camera code yet.
+        .target(name: "LiveMirror", dependencies: ["DomainContracts", "SystemContracts", "DomainSchemas"]),
         .target(
             name: "ShoppingCopilot",
             dependencies: ["DomainContracts", "WardrobeDomain", "FitPassport"],
@@ -50,6 +53,10 @@ let package = Package(
         .testTarget(
             name: "OctopusTests",
             dependencies: ["SystemContracts", "BodyGeometry", "Octopus", "Vault"]
+        ),
+        .testTarget(
+            name: "LiveMirrorTests",
+            dependencies: ["LiveMirror", "DomainSchemas", "SystemContracts", "DomainContracts"]
         ),
         .testTarget(
             name: "SecurityTests",

@@ -1,0 +1,58 @@
+evidence_schema: 1
+work_package: LM21-WP03
+title: "LiveMirror contracts: MirrorMode, MirrorStatus state machine, MirrorSessionSpec, reason-coded faults, fidelity/truth labels, admission policy, session lifecycle, frame revision guard"
+status: PASS   # macOS unit tests; no camera, no UI, no device
+commit_sha: null   # filled by the commit that adds this file; see git log
+branch: main
+spec: "v2.1 LM21-04 (state machine), LM21-06 (device budget, latency labels), LM21-07 (stop/cleanup, no reconnect), LM21-08 (truth labels), LM21-10 (Swift contract draft), LM21-11 (10/15/30 s cloud packs, price shown first), ADR-008 (cloud off)"
+decision: D-022
+threat: T35
+implementation_paths:
+  - Packages/KabinsizCore/Sources/LiveMirror/MirrorContracts.swift
+  - Packages/KabinsizCore/Sources/LiveMirror/MirrorStateMachine.swift
+  - Packages/KabinsizCore/Sources/LiveMirror/MirrorSession.swift
+test_paths:
+  - Packages/KabinsizCore/Tests/LiveMirrorTests/LiveMirrorTests.swift
+unit_test_command: "cd Packages/KabinsizCore && swift test"
+unit_test_exit_code: 0
+unit_test_count: 279   # whole package; 18 in LiveMirrorTests
+ui_test_command: null   # no app wiring yet
+hardware: "Apple M5 Mac, macOS 26.4 (package tests only)"
+benchmarks: []
+spec_deviation:
+  - "LM21-10 draft has `catalogRevision: Int`; implemented as `catalogVersion: String` to match ProductIdentityV1 (D-020). Spec additionally carries assetRevision and bodyProfileRevision so every frame can be checked against all four (D-022)"
+  - "Draft `prepare/start` are untyped `throws`; implemented as `throws(MirrorFault)` so every failure is reason-coded"
+spec_cases:
+  - "LM21-T01 PASS (contract level): permission denied → FAILED/PERMISSION_DENIED, provider.prepare never called, nothing open"
+  - "LM21-T04 PASS: candidate, not-found, other identity or expired verification → PRODUCT_UNVERIFIED before any provider call"
+  - "LM21-T05 PASS: ambiguous match → PRODUCT_AMBIGUOUS (user chooses first)"
+  - "LM21-T06 PASS: catalogue revision differs at admission → STALE_REVISION; product/catalogue/asset/body revision change mid-session → stop PRODUCT_CHANGED, provider closed; frames with any other revision never shown"
+  - "LM21-T14 PASS (contract level): cloud mode with production flags → CLOUD_DISABLED from MirrorPolicy, before provider/token; flag initialiser is internal"
+  - "LM21-T18 PASS: every one of 10 stop reasons closes the provider exactly once; repeated stop/fail signals neither re-close nor change the first reason"
+  - "LM21-T19 PASS: STOPPED/FAILED absorb every event; start() on a finished session opens nothing; cloud network loss stops, does not reconnect"
+  - "LM21-T20 PASS (contract level): background, lock, incoming call each stop and close; stop arriving during prepare or during start wins and the late camera/stream is closed again"
+  - "LM21-T23 PASS: cloud spec only 10/15/30 s with consent and a known price; duration cap fires at exactly maxDuration"
+  - "LM21-T25 PASS: local mode admitted with cloud off and with the offline budget; local session keeps running when the network goes"
+  - "LM21-T30 PASS (contract level): conserve budget → DEGRADED with visible note, recover clears it; survival → stop THERMAL_CRITICAL; survival/locked refuse admission"
+  - "LM21-T32 PASS: MirrorFidelity.mayInformSizeAdvice and VisualTryOnV1.mayInformSizeAdvice both false; overlay=G1, cloud=G3"
+other_cases:
+  - "Transition table checked over every (mode, state, event): terminal never moves, camera-holding state never jumps to terminal, local never enters PREFLIGHT/CONNECTING, cloud reaches LIVE only via CONNECTING"
+  - "2 000 random event storms: terminal absorbing, first cause recorded, CLOSED accepted only from STOPPING, a run that held the camera ends only after CLOSED"
+  - "Frame guard: <0.5 s show, ≥0.5 s show with delay note, ≥1.5 s / out of order / future / NaN timestamp dropped"
+  - "User texts (faults, degrade notes) contain no digits, % or °; truth labels say 'not fit evidence'"
+mutation_checks:   # 50/50 killed (scratchpad mutate_lm21.py); 3 survived the first suite and were killed after adding tests
+  summary: "47/50 killed on first run; survivors: 'closed accepted from any state', 'cloud goes LIVE without preflight', 'no re-check after provider.start'. Added: CLOSED-only-from-STOPPING assertion in eventStorms, cloud LIVE-only-via-CONNECTING in transitionTable, stopDuringStart test. Re-run: all 3 killed"
+  killed: ["cloud consent not required", "cloud price not required", "cloud any duration", "local carries consent/price", "preview does not hold camera", "overlay labelled G0", "mirror informs size", "ambiguous reported as unverified", "candidate admitted", "other product admitted", "expired verification admitted", "catalogue revision ignored", "survival admitted", "locked admitted", "overlay ignores budget", "overlay without asset", "cloud flag ignored", "cloud network ignored", "frame asset revision ignored", "frame body revision ignored", "frame catalogue ignored", "reordered frame shown", "future frame shown", "very late frame shown", "drop boundary off by one", "no delay label", "NaN frame shown", "terminal not absorbing", "stop skips stopping", "fail skips stopping", "closed from anywhere (after fix)", "last cause wins", "cloud goes live without preflight (after fix)", "local preflights", "recover keeps degrade note", "permission ignored", "no re-check after prepare", "no re-check after start (after fix)", "late open not closed", "stop never closes provider", "provider error not closed", "duration cap off by one", "duration cap never armed", "warm ignored", "critical heat ignored", "lock wrong reason", "cloud offline ignored", "local offline stops", "body revision change ignored", "catalogue change ignored"]
+not_in_scope:
+  - "Real camera provider (AVFoundation capture, Vision person matte, RealityKit overlay): LM21-WP04+ on a real iPhone"
+  - "App lifecycle wiring (scenePhase, AVCaptureSession interruption, CallKit) into MirrorSession.stop: needs the provider"
+  - "Cloud provider, token broker, consent ledger, budget: stays contract-only, flag OFF (ADR-008, LM21-T40); no vendor call made"
+  - "LM21-T02/T03/T15/T16/T17/T21/T22 (egress and token tests) need the network layer; LM21-T26..T29 need a device"
+independent_reviewer: null
+review_independence_level: INTERNAL_SELF_REVIEW
+residual_risks:
+  - "Thresholds 0.5 s / 1.5 s and the 1800 s local cap are design defaults, not measured on device (REAL_DEVICE_BLOCKED)"
+  - "Provider contract assumes `stop()` is idempotent and closes everything; a real provider must be tested for that on device"
+  - "Cloud cost is only checked to be present and positive; vendor price-change handling (LM21-T24) is not built"
+open_p0: []
+open_p1: []
