@@ -41,6 +41,8 @@ targets:
         product: BodyGeometry
       - package: KabinsizCore
         product: Octopus
+      - package: KabinsizCore
+        product: DesignTokens
       - sdk: WeatherKit.framework
     info:
       path: Kabinsiz/Info.plist

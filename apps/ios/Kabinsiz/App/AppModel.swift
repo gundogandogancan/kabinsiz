@@ -334,6 +334,27 @@ final class AppModel {
         }
     }
 
+    /// The figure the home and "Ben" screens show. The user's own committed body when there is one;
+    /// before that, a neutral stand-in computed from `BodyProfile.neutral()` and never saved, so the
+    /// first screen already shows a model without asking for any data. nil when the device budget
+    /// allows 2D only (UI20-T-014): the caller then shows its 2D fallback.
+    var heroMesh: BodyMesh? {
+        guard governor.budget.maxVisualTier != .flat2D else { return nil }
+        if bodyStatus == .ready { return bodyScene?.mesh }
+        return Self.neutralStandIn
+    }
+
+    /// True while the figure on screen is the unsaved neutral stand-in, not the user's body.
+    var heroIsStandIn: Bool { bodyStatus != .ready }
+
+    /// Idle breathing/sway only when the budget has headroom (no thermal or Low Power note).
+    var allowsLivelyMotion: Bool { deviceNote == nil && governor.budget.maxVisualTier != .flat2D }
+
+    private static let neutralStandIn: BodyMesh? = {
+        guard let snapshot = try? AvatarSnapshot.make(for: .neutral()) else { return nil }
+        return try? BodyMesh.make(from: snapshot)
+    }()
+
     func createNeutralBody(unit: LengthUnit) async {
         guard let studio = bodyStudio else { return }
         await untilVaultReachable()

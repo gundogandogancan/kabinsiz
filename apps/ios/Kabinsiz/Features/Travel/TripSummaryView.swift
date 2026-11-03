@@ -24,7 +24,7 @@ struct TripSummaryView: View {
                 if let plan = model.plans[tripID] {
                     summaryCard(trip, plan)
                     if let pending = model.pendingReplans[tripID] { ReplanCard(tripID: tripID, diff: pending.diff) }
-                    NavigationLink { SuitcaseView(tripID: tripID) } label: {
+                    NavigationLink { SuitcaseView(tripID: tripID).scanAction() } label: {
                         Label("Akıllı valiz", systemImage: "checklist").frame(maxWidth: .infinity)
                     }
                     .buttonStyle(PrimaryButtonStyle())

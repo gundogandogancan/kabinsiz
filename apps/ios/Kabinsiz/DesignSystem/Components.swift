@@ -66,7 +66,7 @@ struct ToggleChip: View {
                 .font(.subheadline)
                 .padding(.horizontal, 12)
                 .frame(minHeight: 44)
-                .foregroundStyle(isOn ? Token.surfaceCard : Token.textPrimary)
+                .foregroundStyle(isOn ? Atelier.onBrand : Token.textPrimary)
                 .background(isOn ? Token.brandInk : Token.surfaceCard, in: Capsule())
                 .overlay(Capsule().stroke(isOn ? Color.clear : Token.borderHairline))
         }
@@ -79,9 +79,9 @@ struct PrimaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.headline)
-            .frame(maxWidth: .infinity, minHeight: 50)
-            .foregroundStyle(Token.surfaceCard)
-            .background(Token.brandInk.opacity(configuration.isPressed ? 0.8 : 1), in: RoundedRectangle(cornerRadius: Token.Radius.small, style: .continuous))
+            .frame(maxWidth: .infinity, minHeight: 52)
+            .foregroundStyle(Atelier.onBrand)
+            .background(Atelier.brand.opacity(configuration.isPressed ? 0.85 : 1), in: RoundedRectangle(cornerRadius: Atelier.Radius.chip, style: .continuous))
     }
 }
 

@@ -1,0 +1,42 @@
+evidence_schema: 1
+work_package: UI20-WP02/03/04
+title: "Quiet Atelier tokens + contrast golden, K-001..K-020 component catalogue, three-tab IA with Tara as an action, living 3D model as the home hero"
+status: PASS   # macOS unit tests + iPhone simulators (SIMULATOR_ONLY); glass/transparency contrast and device rendering REAL_DEVICE_BLOCKED
+commit_sha: null   # filled by the commit that adds this file; see git log
+branch: main
+spec: "v2.0 §04 (tokens/type), §06 P0 (IA), §08.1 (Today), §09 (K-001..K-020), §10 (migration); UI20-T-001/002/003/005/006/007/008/009; ADR-009; user decision 2026-11-03: the person's own model, alive, is the home screen"
+decision: D-023
+implementation_paths:
+  - Packages/KabinsizCore/Sources/DesignTokens/AtelierPalette.swift
+  - apps/ios/Kabinsiz/DesignSystem/
+  - apps/ios/Kabinsiz/Features/Today/TodayView.swift
+  - apps/ios/Kabinsiz/Features/Profile/BodyModel3DView.swift
+  - apps/ios/Kabinsiz/Features/Profile/BodyStudioView.swift
+  - apps/ios/Kabinsiz/App/KabinsizApp.swift
+  - apps/ios/Kabinsiz/App/AppModel.swift
+unit_test_command: "cd Packages/KabinsizCore && swift test"
+unit_test_exit_code: 0
+unit_test_count: 287   # whole package; 8 in DesignTokensTests
+ui_test_command: "scripts/check.sh"
+ui_test_exit_code: 0
+ui_test_count: 10   # all UI tests, one clean run (build/uitest-20261103-181452.xcresult)
+spec_cases:
+  - "UI20-T-001 PASS (simulator): 24 screenshots, iPhone 17e / 17 / 17 Pro Max × light / dark / light+IC / dark+IC × home + catalogue (docs/design/SCREENSHOT_REGISTER.md)"
+  - "UI20-T-002 PASS: AX-XXXL text, the primary action is reachable by scrolling over the model and does not overflow"
+  - "UI20-T-003 PARTIAL: every allowed colour pair passes 4.5:1 / 3:1 and 7:1 / 4.5:1 under Increase Contrast on flat surfaces (golden report); text on Liquid Glass not measured: REAL_DEVICE_BLOCKED"
+  - "UI20-T-005 PASS: idle breathing/sway off under Reduce Motion, device note, and the 2D budget (2D silhouette, no 3D)"
+  - "UI20-T-006 PASS: exactly one primary.* action on the home screen, empty and with a synthetic wardrobe"
+  - "UI20-T-007 PASS: tab routes survive tab switches and opening/closing Tara"
+  - "UI20-T-008 PASS: no permission prompt on first launch"
+  - "UI20-T-009 PASS: an empty wardrobe is never shown as having pieces; a synthetic one carries the badge"
+other_cases:
+  - "Home shows the 3D body (heroBody3D) before anything is saved; Ben still offers createNeutralBody afterwards (stand-in saves nothing)"
+  - "A vertical drag over the model scrolls the page (UIKit pan begins only on sideways motion); a sideways drag still turns it (testBody3DRotatesByHand)"
+  - "Catalogue: all 20 atoms on screen and every visible button >= 44x44 pt, light and dark"
+hardware: "Apple M5 Mac, macOS 26.4; iPhone 17e/17/17 Pro Max simulators iOS 26.4 (SIMULATOR_ONLY)"
+benchmarks: []   # no fps, battery or latency claim
+known_gaps:
+  - "Figure is a neutral procedural mannequin; a visible seam at the hips; far from a photoreal personal avatar (next: v2.2+ queue)"
+  - "No independent UX review (AG-02) yet"
+  - "iPhone 17e is the smallest simulator installed; no SE-size check"
+  - "Real-device rendering, thermal and glass contrast: REAL_DEVICE_BLOCKED (R-002)"

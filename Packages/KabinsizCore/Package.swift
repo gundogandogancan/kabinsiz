@@ -17,6 +17,7 @@ let package = Package(
         .library(name: "Octopus", targets: ["Octopus"]),
         .library(name: "DomainSchemas", targets: ["DomainSchemas"]),
         .library(name: "LiveMirror", targets: ["LiveMirror"]),
+        .library(name: "DesignTokens", targets: ["DesignTokens"]),
     ],
     targets: [
         .target(name: "DomainContracts"),
@@ -36,6 +37,7 @@ let package = Package(
         .target(name: "DomainSchemas", dependencies: ["DomainContracts", "SystemContracts", "BodyGeometry"]),
         // LM21-WP03 / ADR-008: live mirror contracts, state machine, admission policy, frame guard. No camera code yet.
         .target(name: "LiveMirror", dependencies: ["DomainContracts", "SystemContracts", "DomainSchemas"]),
+        .target(name: "DesignTokens"),
         .target(
             name: "ShoppingCopilot",
             dependencies: ["DomainContracts", "WardrobeDomain", "FitPassport"],
@@ -58,6 +60,7 @@ let package = Package(
             name: "LiveMirrorTests",
             dependencies: ["LiveMirror", "DomainSchemas", "SystemContracts", "DomainContracts"]
         ),
+        .testTarget(name: "DesignTokensTests", dependencies: ["DesignTokens"]),
         .testTarget(
             name: "SecurityTests",
             dependencies: ["SystemContracts", "Vault", "LocalStore", "DomainContracts", "WardrobeDomain", "TravelEngine", "FitPassport", "ShoppingCopilot"]

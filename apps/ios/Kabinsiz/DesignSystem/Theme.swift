@@ -1,46 +1,30 @@
 import SwiftUI
-import UIKit
 
-/// Design tokens from constitution §4.3. Light/dark pairs resolve at render time.
+/// Migration adapter (ADR-009, C-14). The old v1.5 token names stay so existing screens keep compiling,
+/// but each now resolves to its Quiet Atelier role (`LegacyTokenMigration`). Redesigned screens use
+/// `Atelier` directly; a name is removed once nothing uses it.
 enum Token {
-    static let surfaceBase = dynamic(0xF7F7F5, 0x111315)
-    static let surfaceCard = dynamic(0xFFFFFF, 0x1B1E20)
-    static let textPrimary = dynamic(0x17191B, 0xF5F6F6)
-    static let textSecondary = dynamic(0x667078, 0xACB4B8)
-    static let brandInk = dynamic(0x283D46, 0x8DAFBE)
-    static let accentWarm = dynamic(0xCEB79C, 0xB69A7B)
-    static let borderHairline = dynamic(0xE7E8E5, 0x303638)
-    static let statusOK = dynamic(0x217354, 0x83D3AE)
-    static let statusCaution = dynamic(0x946A23, 0xE9C077)
-    static let statusError = dynamic(0xA23738, 0xF1A09E)
+    static let surfaceBase = Atelier.canvas
+    static let surfaceCard = Atelier.surface
+    static let textPrimary = Atelier.ink
+    static let textSecondary = Atelier.inkSecondary
+    static let brandInk = Atelier.brand
+    static let accentWarm = Atelier.sand
+    static let borderHairline = Atelier.borderSoft
+    static let statusOK = Atelier.success
+    static let statusCaution = Atelier.warning
+    static let statusError = Atelier.danger
 
     enum Radius {
-        static let small: CGFloat = 12
-        static let card: CGFloat = 20
-        static let preview: CGFloat = 24
+        static let small = Atelier.Radius.small
+        static let card = Atelier.Radius.card
+        static let preview = Atelier.Radius.hero
     }
 
     enum Space {
-        static let gutter: CGFloat = 20
-        static let card: CGFloat = 16
-        static let tight: CGFloat = 8
-    }
-
-    private static func dynamic(_ light: UInt32, _ dark: UInt32) -> Color {
-        Color(UIColor { traits in
-            UIColor(rgb: traits.userInterfaceStyle == .dark ? dark : light)
-        })
-    }
-}
-
-private extension UIColor {
-    convenience init(rgb: UInt32) {
-        self.init(
-            red: CGFloat((rgb >> 16) & 0xFF) / 255,
-            green: CGFloat((rgb >> 8) & 0xFF) / 255,
-            blue: CGFloat(rgb & 0xFF) / 255,
-            alpha: 1
-        )
+        static let gutter = Atelier.Space.gutter
+        static let card = Atelier.Space.cardPadding
+        static let tight = Atelier.Space.xs
     }
 }
 
@@ -50,10 +34,10 @@ enum StatusTone {
 
     var color: Color {
         switch self {
-        case .ok: Token.statusOK
-        case .caution: Token.statusCaution
-        case .error: Token.statusError
-        case .neutral: Token.textSecondary
+        case .ok: Atelier.success
+        case .caution: Atelier.warning
+        case .error: Atelier.danger
+        case .neutral: Atelier.inkSecondary
         }
     }
 

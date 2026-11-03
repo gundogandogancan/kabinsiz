@@ -11,6 +11,8 @@ struct BodyStudioSection: View {
     @State private var unit: LengthUnit = .centimeters
     @State private var drafts: [BodyParameter: Double] = [:]
     @State private var pendingCommit: [BodyParameter: Task<Void, Never>] = [:]
+    /// Saving a typed value closes the keyboard so the changed row is visible again.
+    @FocusState private var entryFocused: Bool
     @State private var entryParameter: BodyParameter = .waist
     @State private var entryText = ""
     @State private var confirmDelete = false
@@ -50,6 +52,15 @@ struct BodyStudioSection: View {
 
     private var start: some View {
         VStack(alignment: .leading, spacing: Token.Space.tight) {
+            // The figure is on screen before anything is saved: the unsaved neutral stand-in.
+            if let mesh = model.heroMesh {
+                BodyModel3DView(mesh: mesh, summary: "Nötr başlangıç şekli; ölçü girilmedi.",
+                                alive: model.allowsLivelyMotion && !reduceMotion, showsAngleButtons: false, identifier: "standIn3D")
+                    .frame(height: 380)
+                    .frame(maxWidth: .infinity)
+                    .background(LinearGradient(colors: [Atelier.surfaceSecondary, Atelier.sand], startPoint: .top, endPoint: .bottom),
+                                in: RoundedRectangle(cornerRadius: Atelier.Radius.hero, style: .continuous))
+            }
             Text("Ölçü zorunlu değil. Nötr bir başlangıç şekliyle başla, sonra kaydırıcılarla kendine benzet.")
                 .font(.subheadline).foregroundStyle(Token.textSecondary)
             Text("Başlangıç değerleri bir norm ya da hedef değildir.")
@@ -71,9 +82,11 @@ struct BodyStudioSection: View {
     private func editor(_ profile: BodyProfile) -> some View {
         VStack(spacing: Token.Space.tight) {
             if let scene = model.bodyScene, !scene.isFallback, let mesh = scene.mesh {
-                BodyModel3DView(mesh: mesh, summary: summary(profile))
-                    .frame(height: 360)
+                BodyModel3DView(mesh: mesh, summary: summary(profile), alive: model.allowsLivelyMotion && !reduceMotion)
+                    .frame(height: 460)
                     .frame(maxWidth: .infinity)
+                    .background(LinearGradient(colors: [Atelier.surfaceSecondary, Atelier.sand], startPoint: .top, endPoint: .bottom),
+                                in: RoundedRectangle(cornerRadius: Atelier.Radius.hero, style: .continuous))
             } else {
                 // G0 fallback (ADR-007 §5): the 2D outline with the same controls, when the budget says
                 // 2D_CARD or the mesh could not be built.
@@ -235,12 +248,14 @@ struct BodyStudioSection: View {
         HStack {
             TextField("Değer (\(unit.symbol))", text: $entryText)
                 .keyboardType(.decimalPad)
+                .focused($entryFocused)
                 .accessibilityIdentifier("measurementValue")
             Button("Kaydet") {
                 let raw = entryText.replacingOccurrences(of: ",", with: ".")
                 guard let v = Double(raw) else { return }
                 let edit = BodyEdit.measured(entryParameter, v, unit)
                 entryText = ""
+                entryFocused = false
                 dropDrafts(entryParameter)
                 Task { await model.commitBody(edit) }
             }
