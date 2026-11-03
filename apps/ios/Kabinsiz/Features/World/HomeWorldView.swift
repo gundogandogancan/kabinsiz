@@ -142,11 +142,16 @@ struct HomeWorldView: View {
     /// Scrims for legibility (v2.8 §04 contrast rule): text never sits on the bare scene. They lie over
     /// the 3D street too, but end above the figure's feet.
     private var scrims: some View {
-        VStack(spacing: 0) {
+        ZStack {
+            // Spotlight falloff: the figure stays lit, the edges of the street sink a little.
+            RadialGradient(colors: [.clear, .clear, Color(rgb: 0x120C08).opacity(0.38)], center: UnitPoint(x: 0.5, y: 0.52),
+                           startRadius: 40, endRadius: 520)
+            VStack(spacing: 0) {
             LinearGradient(colors: [Color(rgb: 0x221913).opacity(0.55), .clear], startPoint: .top, endPoint: .bottom).frame(height: 170)
             Spacer(minLength: 0)
             LinearGradient(stops: [.init(color: Atelier.canvas.opacity(0), location: 0), .init(color: Atelier.canvas.opacity(0.85), location: 0.6),
-                                   .init(color: Atelier.canvas.opacity(0.97), location: 1)], startPoint: .top, endPoint: .bottom).frame(height: 250)
+                                   .init(color: Atelier.canvas.opacity(0.97), location: 1)], startPoint: .top, endPoint: .bottom).frame(height: 210)
+            }
         }
         .ignoresSafeArea()
         .allowsHitTesting(false)
@@ -171,6 +176,7 @@ struct HomeWorldView: View {
                 wetCity: world.sceneWeather.wetGround,
                 showCity: quality.tier != .frame2D && world.streetScene == nil,
                 cameraDrift: quality.cameraDrift && model.allowsLivelyMotion,
+                spotlight: true,
                 onFrameRate: { world.reportFrameRate($0) },
                 onCityReady: { world.cityDidLoad($0) }
             )
@@ -194,20 +200,22 @@ struct HomeWorldView: View {
     // MARK: Header
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .top, spacing: Atelier.Space.s) {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .center, spacing: Atelier.Space.s) {
                 Text("Kabinsiz")
-                    .font(.system(.title, design: .serif, weight: .medium))
+                    .font(.system(size: 34, weight: .regular, design: .serif))
                     .foregroundStyle(.white)
+                    .shadow(color: .black.opacity(0.35), radius: 6)
                     .lineLimit(1)
                     .accessibilityAddTraits(.isHeader)
                 Spacer(minLength: Atelier.Space.s)
-                weatherChip
+                ProfileButton(dark: true)
             }
+            weatherChip
             if world.isExample {
                 Text("Örnek kombin · sentetik")
                     .font(AtelierType.caption.weight(.medium))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.white.opacity(0.9))
                     .shadow(color: .black.opacity(0.5), radius: 3)
                     .lineLimit(1)
                     .accessibilityIdentifier("worldLookKind")
@@ -220,23 +228,21 @@ struct HomeWorldView: View {
     private var weatherChip: some View {
         let chip = world.chip
         return Button { showCity = true } label: {
-            VStack(alignment: .trailing, spacing: 1) {
-                HStack(spacing: 6) {
-                    Image(systemName: symbol(for: chip.state)).foregroundStyle(Atelier.copper)
-                    Text(world.street?.city ?? world.city.displayName).font(AtelierType.secondary.weight(.semibold))
-                }
-                Text(chip.weatherLine).font(AtelierType.caption)
-                if chip.state != .noData {
-                    Text(chip.provenance).font(.caption2).foregroundStyle(Atelier.inkSecondary)
-                }
+            HStack(spacing: 6) {
+                Image(systemName: symbol(for: chip.state))
+                Text(world.street?.city ?? world.city.displayName).fontWeight(.semibold)
+                Text("·").opacity(0.7)
+                Text(chip.weatherLine)
             }
+            .font(.subheadline)
             .lineLimit(1)
             .minimumScaleFactor(0.8)
-            .multilineTextAlignment(.trailing)
-            .foregroundStyle(Atelier.ink)
-            .padding(.horizontal, 12).padding(.vertical, 7)
+            .foregroundStyle(.white)
+            .padding(.horizontal, 12)
             .frame(minHeight: Atelier.minTap)
-            .paperSurface(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .background(.ultraThinMaterial.opacity(0.85), in: Capsule())
+            .environment(\.colorScheme, .dark)
+            .frame(minHeight: Atelier.minTap)
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .ignore)
@@ -295,47 +301,32 @@ struct HomeWorldView: View {
                 .accessibilityLabel("Örnek beden gösteriliyor. Kendi modelini oluştur")
                 .accessibilityIdentifier("worldCreateModel")
             } else if !turnedOnce {
-                Label("Döndürmek için yana kaydır · parçaya dokun", systemImage: "hand.draw")
-                    .font(AtelierType.caption)
-                    .foregroundStyle(Atelier.ink)
-                    .padding(.horizontal, 14).padding(.vertical, 8)
-                    .paperSurface(Capsule())
+                RotateHint()
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("Döndürmek için yana kaydır, değiştirmek için parçaya dokun")
             }
-            if let look = world.currentLook {
-                Button { showWhy = true } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: world.isLocked ? "lock.fill" : "sparkles").foregroundStyle(Atelier.copper)
-                        Text(reasonLine(look)).lineLimit(2)
-                        Image(systemName: "chevron.right").font(.caption2).foregroundStyle(Atelier.inkSecondary)
-                    }
-                    .font(AtelierType.caption.weight(.medium))
-                    .foregroundStyle(Atelier.ink)
-                    .padding(.horizontal, 14).padding(.vertical, 8)
-                    .frame(minHeight: Atelier.minTap)
-                    .paperSurface(Capsule())
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("worldReasonChip")
-                .accessibilityHint("Bu kombinin nedenleri, ruh hâli ve sabitleme")
-            }
+            // One primary action (v3.2 S02). Dene lives in its own tab.
+            // v2.8 UI28-T018: no "Yeni kombin" when there is no other prepared look to show.
             HStack(spacing: 10) {
-                // v2.8 UI28-T018: no "Yeni kombin" when there is no other prepared look to show.
                 if (world.looks?.looks.count ?? 0) > 1 {
-                    PrimaryAction(title: "Yeni kombin", systemImage: "sparkles", id: "newLook") { world.nextLook() }
+                    Button { world.nextLook() } label: {
+                        Label("Yeni kombin", systemImage: "sparkles").font(.headline).frame(maxWidth: .infinity, minHeight: 54)
+                    }
+                    .buttonStyle(CopperCapsuleStyle())
+                    .accessibilityIdentifier("primary.newLook")
                 }
-                Button(action: onTryOn) {
-                    Label("Dene", systemImage: "camera.viewfinder")
-                        .font(.headline)
-                        .labelStyle(PaperLabelStyle())
-                        .foregroundStyle(Atelier.ink)
-                        .padding(.horizontal, 18)
-                        .frame(minHeight: 52)
-                        .paperSurface(RoundedRectangle(cornerRadius: Atelier.Radius.chip, style: .continuous))
+                // The look's reason is one tap away instead of a sentence on the scene.
+                if let look = world.currentLook {
+                    Button { showWhy = true } label: {
+                        Image(systemName: world.isLocked ? "lock.fill" : "info")
+                            .font(.headline).foregroundStyle(Atelier.ink)
+                            .frame(width: 54, height: 54)
+                            .paperSurface(Circle())
+                    }
+                    .buttonStyle(AtelierPressStyle())
+                    .accessibilityLabel("Neden bu kombin: \(reasonLine(look))")
+                    .accessibilityIdentifier("worldReasonChip")
                 }
-                .buttonStyle(AtelierPressStyle())
-                .fixedSize(horizontal: true, vertical: false)
-                .accessibilityHint("Barkod, dolap ya da Canlı Ayna ile bir ürünü dene")
-                .accessibilityIdentifier("homeTryOn")
             }
             Text(world.manifest == nil && world.streetScene == nil ? SceneQualityPolicy.studioLine : SceneQualityPolicy.truthLine(shownTier))
                 .font(.caption2)
@@ -394,4 +385,41 @@ private struct StreetRequest: Equatable {
     let id: String?
     let allowed: Bool
     let ready: Bool
+}
+
+
+/// "360°" with two arcs under the figure (visual reference 2), shown until the first turn.
+struct RotateHint: View {
+    var body: some View {
+        ZStack {
+            HStack(spacing: 96) {
+                Image(systemName: "arrow.turn.left.down").rotationEffect(.degrees(-20))
+                Image(systemName: "arrow.turn.right.down").rotationEffect(.degrees(20))
+            }
+            .font(.title3.weight(.light))
+            Text("360°").font(.subheadline.weight(.medium))
+        }
+        .foregroundStyle(.white)
+        .shadow(color: .black.opacity(0.45), radius: 4)
+        .padding(.vertical, 4)
+    }
+}
+
+/// The profile entrance at the top right of each tab (v3.2: three tabs, "Ben" secondary).
+struct ProfileButton: View {
+    var dark = false
+    @Environment(\.openProfile) private var openProfile
+
+    var body: some View {
+        Button { openProfile() } label: {
+            Image(systemName: "person.crop.circle")
+                .font(.title2)
+                .foregroundStyle(dark ? .white : Atelier.ink)
+                .frame(width: 44, height: 44)
+                .background(dark ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.white.opacity(0.8)), in: Circle())
+                .environment(\.colorScheme, dark ? .dark : .light)
+        }
+        .accessibilityLabel("Ben: modelim, stilim, verilerim")
+        .accessibilityIdentifier("openProfile")
+    }
 }

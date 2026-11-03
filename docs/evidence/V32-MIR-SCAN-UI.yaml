@@ -1,0 +1,41 @@
+evidence_schema: 1
+work_package: [MIR-WP02, SCAN-WP02, UI32-SLICE]
+title: "Live Mirror draws the chosen product on the person; product detail with sourced facts; 3 tabs, spotlight, suggestion cards, drawn wardrobe, model bar"
+status: PASS_SIMULATOR_ONLY   # live camera + on-device Vision latency/FPS/heat REAL_DEVICE_BLOCKED (B1/B12)
+commit_sha: null   # filled by the commit that adds this file; see git log
+branch: v25/living-world
+spec: "User request 2026-11-04 (live mirror 'üstündeymiş gibi', product facts, spot light without a visible lamp, 12 mockups); v3.2 V32-UI-01, V32-UI-10, V32-WEB-02, V32-MIR-*; CLAUDE_SCREEN_DESIGN_HANDOFF.md; ADR-015; D-038..D-041"
+implementation_paths:
+  - Packages/KabinsizCore/Sources/LiveMirror/GarmentRig.swift
+  - Packages/KabinsizCore/Sources/ProductCapture/GS1Prefix.swift
+  - apps/ios/Kabinsiz/Features/Mirror/LocalMirrorView.swift
+  - apps/ios/Kabinsiz/Features/Mirror/GarmentSprites.swift
+  - apps/ios/Kabinsiz/Features/Mirror/Garments/   # OWNED_ORIGINAL Blender drawings + garments.json + MirrorFixture.jpg + MirrorFixturePose.json
+  - apps/ios/Kabinsiz/Features/TryOn/ProductDetailView.swift
+  - apps/ios/Kabinsiz/Features/TryOn/TryOnHubView.swift
+  - apps/ios/Kabinsiz/Features/Wardrobe/WardrobeView.swift
+  - apps/ios/Kabinsiz/Features/World/WorldStage.swift          # SpotLight, light pool, soft beam
+  - apps/ios/Kabinsiz/Features/World/HomeWorldView.swift       # vignette, Yeni kombin + i, profile button
+  - apps/ios/Kabinsiz/Features/World/WorldSheets.swift         # suggestion cards, drawn swap tiles
+  - apps/ios/Kabinsiz/Features/Profile/MyModelView.swift       # Beden/Ölçüler/Yüz/Saç bar
+  - apps/ios/Kabinsiz/App/KabinsizApp.swift                    # 3 tabs, profile full-screen cover
+  - tools/garments/build_garment_sprites.py                   # Blender 5.2.3 headless generator
+  - tools/garments/fixture_pose.swift                         # macOS Vision pose of the fixture
+unit_tests:
+  - "GarmentRigTests MIR-T01..T10 (torso axis, raised arm, hidden joints, nobody/two people/partial, frame gate, One Euro, hips hidden, manifest provenance, bottoms, shoes + light)"
+  - "GS1AndSourceTests SCAN-T020..T022 (GS1 member/restricted/book, brand-page gate, code-only search refuses '<script>')"
+  - "StoreAndPrivacyTests T-TRV-087: ProductDetailView is the single justified openURL exception; one call; URL from BrandSourceGate"
+ui_tests:
+  - "LiveMirrorUITests.testMirrorFollowsFixtureChangesProductAndCaptures: tracking state, truth label, no fallback card, product changed in place, capture sheet + share"
+  - "LiveMirrorUITests.testProductDetailIsHonest"
+  - "LiveMirrorUITests.testWardrobeGrid"
+  - "LiveMirrorUITests.testSuggestionsAndModelBar: 'Uygula' changes the figure; face says 'bu sürümde yok'"
+  - "AtelierNavigationUITests / AcceptanceDemoUITests updated to 3 tabs + profile button"
+measured_on_simulator:
+  - "VNDetectHumanBodyPoseRequest fails on the iOS 26 simulator: 'Unable to setup request' (CPU compute device pinned, still fails) -> fixture uses the pose macOS Vision read from the same image (14 joints), labelled on screen"
+  - "Blender render of the 6 top forms: ~6 min on CPU"
+not_done:
+  - "Real camera mirror on an iPhone (REAL_DEVICE_BLOCKED)"
+  - "Product-specific garment assets and brand facts (licensed feed, BLOCKED_EXTERNAL R-004)"
+  - "Cloth simulation, side-view garment turning (T1 drawing stays frontal)"
+  - "Face and hair personalisation (HUMAN_APPROVAL_PENDING, B5)"

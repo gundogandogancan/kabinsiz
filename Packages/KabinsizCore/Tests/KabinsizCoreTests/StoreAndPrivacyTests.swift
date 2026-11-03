@@ -106,6 +106,9 @@ struct StoreAndPrivacyTests {
             "apps/ios/Kabinsiz/Features/World/HomeWorldView.swift": ["LookAroundPreview"],
             // UI28-T060: one reduced-accuracy fix on a tap, matched on device, never stored or sent.
             "apps/ios/Kabinsiz/Services/CoarseCityLocator.swift": ["CLLocationManager"],
+            // SCAN-T022 / V32-WEB-02: the user's own Safari search for a product code they tapped; the URL
+            // comes only from `BrandSourceGate.userSearchURL` (code only) and Kabinsiz reads nothing back.
+            "apps/ios/Kabinsiz/Features/TryOn/ProductDetailView.swift": ["openURL"],
         ]
         for file in files {
             let relative = String(file.standardizedFileURL.path.dropFirst(repo.standardizedFileURL.path.count + 1))
@@ -118,6 +121,12 @@ struct StoreAndPrivacyTests {
             }
             if !(allowed[relative]?.contains("EgressRoute(") ?? false) {
                 #expect(!compact.contains("EgressRoute.init("), "\(relative) builds an EgressRoute")
+            }
+            if relative == "apps/ios/Kabinsiz/Features/TryOn/ProductDetailView.swift" {
+                // One call, and its URL is the code-only search built by the gate.
+                #expect(compact.components(separatedBy: "openURL(").count - 1 == 1, "one user-tapped open")
+                #expect(compact.contains("leturl=BrandSourceGate.userSearchURL(forCode:code){openURL(url)}")
+                        || compact.contains("leturl=BrandSourceGate.userSearchURL(forCode:code)"), "the URL comes from the gate")
             }
             if relative == "apps/ios/Kabinsiz/Services/CoarseCityLocator.swift" {
                 #expect(compact.contains("kCLLocationAccuracyReduced"), "the locator asks for reduced accuracy")

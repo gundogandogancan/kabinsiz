@@ -1,44 +1,124 @@
+import AvatarDressing
 import DomainContracts
 import SwiftUI
 
+/// Dolabım (v3.2 S05, visual reference 4): an ivory room with a clean grid of the user's pieces,
+/// small category chips and one "+". Pictures are the representative garment drawings tinted to the
+/// recorded colour; no photo is read and nothing is shown as owned unless the user added it.
 struct WardrobeView: View {
     @Environment(AppModel.self) private var model
     @State private var showAdd = false
+    @State private var filter: GarmentCategory?
+
+    private static let chips: [GarmentCategory?] = [nil, .top, .bottom, .outerwear, .shoes, .accessory]
+    private let columns = [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
+
+    private var shown: [Garment] {
+        let all = GarmentCategory.allCases.flatMap { model.wardrobe.garments(in: $0) }
+        guard let filter else { return all }
+        return all.filter { $0.category == filter || (filter == .outerwear && $0.category == .weatherProtection) }
+    }
 
     var body: some View {
-        List {
-            if model.wardrobe.isEmpty {
-                Section {
-                    EmptyState(symbol: "hanger", title: "Dolabın boş", message: "Kıyafetlerini elle ekle veya örnek dolapla dene. Fotoğraf izni gerekmez.")
-                    Button("Örnek dolabı yükle (sentetik)") { model.loadSyntheticCloset() }
-                        .accessibilityIdentifier("loadSyntheticCloset")
-                }
-            }
-            ForEach(GarmentCategory.allCases, id: \.self) { category in
-                let items = model.wardrobe.garments(in: category)
-                if !items.isEmpty {
-                    Section(category.displayName) {
-                        ForEach(items) { garment in
-                            GarmentRow(garment: garment)
-                                .accessibilityIdentifier("garment-\(garment.id)")
-                                .swipeActions {
-                                    Button("Sil", role: .destructive) { model.removeGarment(id: garment.id) }
-                                }
-                        }
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                HStack(alignment: .center) {
+                    Text("Dolabım").font(.system(size: 34, weight: .regular, design: .serif)).accessibilityAddTraits(.isHeader)
+                    Spacer()
+                    Button { showAdd = true } label: {
+                        Image(systemName: "plus").font(.title3.weight(.semibold)).foregroundStyle(.white)
+                            .frame(width: 46, height: 46)
+                            .background(Color(red: 0.45, green: 0.27, blue: 0.15), in: Circle())
+                            .shadow(color: .black.opacity(0.15), radius: 6, y: 3)
                     }
+                    .accessibilityLabel("Kıyafet ekle")
+                    .accessibilityIdentifier("addGarment")
+                    ProfileButton()
+                }
+                if model.wardrobe.isEmpty {
+                    VStack(spacing: 14) {
+                        EmptyState(symbol: "hanger", title: "Dolabın boş", message: "Kıyafetlerini elle ekle ya da örnek dolapla dene. Fotoğraf izni gerekmez.")
+                        Button("Örnek dolabı yükle (sentetik)") { model.loadSyntheticCloset() }
+                            .buttonStyle(.bordered).tint(Atelier.brand)
+                            .accessibilityIdentifier("loadSyntheticCloset")
+                    }
+                    .padding(.top, 40)
+                } else {
+                    chipRow
+                    LazyVGrid(columns: columns, spacing: 12) {
+                        ForEach(shown) { garment in GarmentCard(garment: garment) }
+                    }
+                    if shown.contains(where: { $0.provenance.isSynthetic }) {
+                        Label("Örnek dolap · sentetik veri", systemImage: "flask").font(.caption).foregroundStyle(.secondary)
+                    }
+                    Text("Görseller temsilî çizimdir; rengini senin yazdığın renkten alır.")
+                        .font(.caption2).foregroundStyle(.secondary)
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 24)
+        }
+        .background(Atelier.surface.ignoresSafeArea())
+        .toolbar(.hidden, for: .navigationBar)
+        .sheet(isPresented: $showAdd) { AddGarmentView() }
+    }
+
+    private var chipRow: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(Self.chips, id: \.self) { chip in
+                    let on = filter == chip
+                    Button { filter = chip } label: {
+                        Text(chip?.displayName ?? "Tümü")
+                            .font(.subheadline.weight(on ? .semibold : .regular))
+                            .foregroundStyle(on ? .white : Atelier.ink)
+                            .padding(.horizontal, 16).frame(minHeight: 38)
+                            .background(on ? AnyShapeStyle(Color(red: 0.55, green: 0.36, blue: 0.22)) : AnyShapeStyle(Color.white.opacity(0.75)), in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityAddTraits(on ? .isSelected : [])
+                    .accessibilityIdentifier("wardrobeChip-\(chip?.rawValue ?? "all")")
                 }
             }
         }
-        .scrollContentBackground(.hidden)
-        .background(Token.surfaceBase)
-        .navigationTitle("Dolabım")
-        .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                Button { showAdd = true } label: { Label("Ekle", systemImage: "plus") }
-                    .accessibilityIdentifier("addGarment")
+    }
+}
+
+/// One wardrobe piece: picture on a soft card, name, and its state in a menu (clean, worn, …).
+struct GarmentCard: View {
+    @Environment(AppModel.self) private var model
+    let garment: Garment
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 20, style: .continuous).fill(Color.white.opacity(0.75))
+                if let item = GarmentAppearance.dressItem(for: garment) {
+                    GarmentThumb(item: item, padding: 10)
+                } else {
+                    Image(systemName: "hanger").font(.title).foregroundStyle(.secondary)
+                }
             }
+            .aspectRatio(0.86, contentMode: .fit)
+            .overlay(alignment: .topTrailing) {
+                if garment.condition != .clean {
+                    Text(garment.condition.displayName).font(.caption2.weight(.semibold))
+                        .padding(.horizontal, 6).padding(.vertical, 2)
+                        .background(.thinMaterial, in: Capsule()).padding(6)
+                }
+            }
+            Text(garment.name).font(.caption.weight(.medium)).lineLimit(2).foregroundStyle(Atelier.ink)
         }
-        .sheet(isPresented: $showAdd) { AddGarmentView() }
+        .contentShape(.rect)
+        .contextMenu {
+            ForEach(ItemCondition.allCases, id: \.self) { c in
+                Button(c.displayName) { model.setCondition(c, garmentID: garment.id) }
+            }
+            Button("Sil", role: .destructive) { model.removeGarment(id: garment.id) }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(garment.name), \(garment.colorName), \(garment.condition.displayName)\(garment.provenance.isSynthetic ? ", örnek veri" : "")")
+        .accessibilityIdentifier("garment-\(garment.id)")
     }
 }
 

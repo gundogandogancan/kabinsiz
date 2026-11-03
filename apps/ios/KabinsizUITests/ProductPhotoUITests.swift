@@ -11,7 +11,7 @@ final class ProductPhotoUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-resetForUITest", "-productPhotoFixture", fixture]
         app.launch()
-        app.tabBars.buttons["Dene"].tap()
+        app.tab("Dene")
         let photo = app.buttons["tryOnPhoto"]
         XCTAssertTrue(photo.waitForExistence(timeout: 8))
         XCTAssertTrue(photo.isEnabled, "photo intake is available, not 'bu sürümde yok'")

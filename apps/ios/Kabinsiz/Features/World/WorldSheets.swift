@@ -102,17 +102,14 @@ struct OutfitSwapSheet: View {
         return Button { world.wear(item) } label: {
             VStack(alignment: .leading, spacing: 6) {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color(rgb: item.colorHex))
-                    .frame(width: 96, height: 76)
-                    .overlay {
-                        Image(systemName: slot.symbol).font(.title2).foregroundStyle(.white.opacity(0.85))
-                            .shadow(radius: 2)
-                    }
+                    .fill(Color.white.opacity(0.75))
+                    .frame(width: 96, height: 96)
+                    .overlay { GarmentThumb(item: item, padding: 8) }
                     .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous)
                         .stroke(worn ? Atelier.brand : .primary.opacity(0.12), lineWidth: worn ? 3 : 1))
                 Text(item.name).font(AtelierType.caption.weight(.medium)).lineLimit(2)
                     .frame(width: 96, alignment: .leading)
-                Text(worn ? "Üzerinde" : "Tahmini 3B").font(.caption2).foregroundStyle(.secondary)
+                Text(worn ? "Üzerinde" : "Temsilî çizim").font(.caption2).foregroundStyle(.secondary)
                     .lineLimit(1).frame(width: 96, alignment: .leading)
             }
             .frame(width: 96)
@@ -172,6 +169,28 @@ struct WhyThisLookSheet: View {
     var body: some View {
         NavigationStack {
             List {
+                if let looks = world.looks?.looks, looks.count > 1 {
+                    Section {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 12) {
+                                ForEach(Array(looks.enumerated()), id: \.element.id) { index, look in
+                                    LookSuggestionCard(look: look, index: index, isOn: look.outfit == world.outfit) {
+                                        world.wearLook(at: index)
+                                    }
+                                }
+                            }
+                            .padding(.vertical, 4)
+                            .scrollTargetLayout()
+                        }
+                        .scrollTargetBehavior(.viewAligned)
+                        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                        .accessibilityIdentifier("lookSuggestions")
+                    } header: {
+                        Text("Kombin önerileri")
+                    } footer: {
+                        Text("Hepsi bugün bu cihazda dolabından hazırlandı\(world.isExample ? "; örnek dolap, sentetik" : "").")
+                    }
+                }
                 if let look = world.currentLook {
                     Section("Neden bu kombin") {
                         ForEach(look.reasons, id: \.self) { Text($0) }
@@ -236,6 +255,50 @@ struct WhyThisLookSheet: View {
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Kapat") { dismiss() } } }
         }
         .presentationDetents([.medium, .large])
+    }
+}
+
+/// One prepared look as a card (v3.2 S07): the pieces as garment drawings, its first true reason,
+/// and "Uygula" to put it on the figure. Nothing in the card is a fit or weather claim.
+struct LookSuggestionCard: View {
+    let look: TodayLook
+    let index: Int
+    let isOn: Bool
+    let apply: () -> Void
+
+    private var pieces: [DressItem] { look.outfit.slots.compactMap { look.outfit[$0] } }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(RadialGradient(colors: [.white, Atelier.surface], center: .center, startRadius: 4, endRadius: 140))
+                let main = Array(pieces.prefix(3))
+                HStack(spacing: -10) {
+                    ForEach(main) { item in GarmentThumb(item: item, padding: 4).frame(width: 74, height: 110) }
+                }
+            }
+            .frame(width: 236, height: 132)
+            Text("Kombin \(index + 1)").font(AtelierType.cardTitle)
+            Text(look.reasons.first ?? "Dolabından hazırlandı")
+                .font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                .frame(width: 236, alignment: .leading)
+            Button(action: apply) {
+                Label(isOn ? "Üzerinde" : "Uygula", systemImage: isOn ? "checkmark" : "sparkles")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity, minHeight: 44)
+            }
+            .buttonStyle(CopperCapsuleStyle())
+            .opacity(isOn ? 0.55 : 1)
+                .disabled(isOn)
+                .accessibilityIdentifier("lookApply-\(index)")
+        }
+        .padding(12)
+        .frame(width: 260)
+        .background(Color.white.opacity(0.6), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(isOn ? Atelier.brand : .clear, lineWidth: 2))
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("lookCard-\(index)")
     }
 }
 

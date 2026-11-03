@@ -9,6 +9,9 @@ struct MyModelView: View {
     var body: some View {
         @Bindable var model = model
         List {
+            Section { ModelPartsBar() }
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
             BodyStudioSection()
 
             Section {
@@ -71,6 +74,60 @@ struct MyModelView: View {
             Button("Dolap, vücut profili, seyahatler ve Fit Passport silinsin", role: .destructive) { model.deleteAllData() }
         } message: {
             Text("Bu işlem geri alınamaz.")
+        }
+    }
+}
+
+/// v3.2 S09 "Benim Modelim" bar: Beden · Ölçüler · Yüz · Saç. Only the body and its measurements exist
+/// in this build; face and hair say so plainly instead of offering a control that does nothing. No face
+/// image is taken or sent (v3.2 privacy rules).
+struct ModelPartsBar: View {
+    enum Part: String, CaseIterable, Identifiable {
+        case body = "Beden", measures = "Ölçüler", face = "Yüz", hair = "Saç"
+        var id: String { rawValue }
+        var symbol: String {
+            switch self {
+            case .body: "figure.stand"
+            case .measures: "ruler"
+            case .face: "face.smiling"
+            case .hair: "comb"
+            }
+        }
+        var note: String {
+            switch self {
+            case .body: "Nötr 3B gövden aşağıda; kaydırıcılarla şekillendirirsin."
+            case .measures: "Mezura ölçünü aşağıdaki alana yazarsın; fotoğraftan ölçü çıkarmayız."
+            case .face: "Yüz kişiselleştirme bu sürümde yok. Yüz fotoğrafın alınmaz, hiçbir yere gönderilmez."
+            case .hair: "Saç seçimi bu sürümde yok; model nötr başla kalır."
+            }
+        }
+        var available: Bool { self == .body || self == .measures }
+    }
+
+    @State private var part: Part = .body
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                ForEach(Part.allCases) { p in
+                    Button { part = p } label: {
+                        VStack(spacing: 4) {
+                            Image(systemName: p.symbol).font(.title3)
+                            Text(p.rawValue).font(.caption.weight(.semibold))
+                        }
+                        .frame(maxWidth: .infinity, minHeight: 58)
+                        .foregroundStyle(part == p ? Color.white : (p.available ? Atelier.ink : Atelier.ink.opacity(0.45)))
+                        .background(part == p ? AnyShapeStyle(Atelier.brand) : AnyShapeStyle(Color.white.opacity(0.7)),
+                                    in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityAddTraits(part == p ? .isSelected : [])
+                    .accessibilityValue(p.available ? "" : "Bu sürümde yok")
+                    .accessibilityIdentifier("modelPart-\(p)")
+                }
+            }
+            Text(part.note).font(.footnote).foregroundStyle(.secondary)
+                .accessibilityIdentifier("modelPartNote")
         }
     }
 }

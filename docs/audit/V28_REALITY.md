@@ -59,6 +59,9 @@
 | UI28-14 | Erişilebilirlik | Kısmen: AX-XXXL testi ve VoiceOver slot eylemleri CODED. Karanlık mod ve Reduce Motion için ayrı UI testi yok | `testHomeAtAccessibilityTextSize` |
 | UI28-15 | Görsel karşılaştırma ve performans | Simülatör ekranları alındı. Bağımsız tasarım incelemesi ve cihaz performansı: UNKNOWN | |
 | UI28-16 | Kanon belgeleri | CODED | CLAUDE.md v2.8'i gösteriyor |
+| MIR-WP02 | Canlı Ayna: giysi kişinin üstünde (v3.2 S13) | PASS_SIMULATOR_ONLY. Vision 14 eklem → `GarmentRig`, Blender çizimleri (13 kalıp), iki kişide/eksik eklemde çizim yok, ürün aynada değişir, fotoğraf yalnız deklanşörle. Simülatörde poz önceden okunmuş (Vision kurulamıyor), ekranda yazar. Cihazda canlı kamera: REAL_DEVICE_BLOCKED | ADR-015, `docs/evidence/V32-MIR-SCAN-UI.yaml` |
+| SCAN-WP02 | Ürün detayı ve bilgi kaynağı | PASS_SIMULATOR_ONLY. Beden/kumaş yalnız katalogdan; GS1 notu; marka sitesi okunmaz; kullanıcının Safari araması (yalnız kod) | D-039 |
+| UI32 | 3 sekme, profil sağ üstte, spot ışığı, öneri kartları, çizimli dolap, model çubuğu | PASS_SIMULATOR_ONLY | D-040 |
 
 ## 4. Engeller (v2.8 hedefine karşı)
 
@@ -75,6 +78,8 @@
 | B8 | Cloud VTON | BLOCKED_EXTERNAL |
 | B9 | Kullanılabilirlik testi (5 kişi, UI28-T051) | HUMAN_APPROVAL_PENDING |
 | B10 | Nötr baş: yüz hatları yok, oyuncak hissi (v2.7 §1 baseline) | CODED olarak kaldı. Parametrik baş ve saç işi B5'e bağlı |
+| B12 | Canlı Ayna gerçek kamera: Vision gecikmesi, FPS, ısı, yan dönüşte giysi | REAL_DEVICE_BLOCKED (B1'e bağlı). Giysi kategori kalıbı (T1), kumaş benzetimi yok |
+| B13 | Marka/ürün bilgisi için lisanslı ortak beslemesi | BLOCKED_EXTERNAL (R-004); `BrandSourceGate.licensedHosts` boş |
 
 ## 5. Sıradaki en küçük iş
 

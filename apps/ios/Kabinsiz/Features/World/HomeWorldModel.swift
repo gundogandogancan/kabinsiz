@@ -283,6 +283,16 @@ final class HomeWorldModel {
 
     // MARK: Dressing
 
+    /// "Uygula" on a suggestion card: that prepared look, atomically.
+    func wearLook(at index: Int) {
+        guard let looks, looks.looks.indices.contains(index), index != lookIndex || dressing.outfit != looks.looks[index].outfit else { return }
+        let start = ContinuousClock.now
+        lookIndex = index
+        apply(.wear(looks.looks[index].outfit))
+        lastSwapMillis = Self.millis(ContinuousClock.now - start)
+        say("Kombin uygulandı")
+    }
+
     /// "Yeni kombin": the next prepared look, atomically. With one look there is nothing new to show.
     func nextLook() {
         guard let looks, looks.looks.count > 1 else { return }

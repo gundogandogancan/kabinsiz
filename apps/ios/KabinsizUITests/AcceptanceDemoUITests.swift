@@ -60,7 +60,7 @@ final class AcceptanceDemoUITests: XCTestCase {
         app.buttons["Seyahati ve valiz listesini sil"].firstMatch.tap()
         XCTAssertTrue(app.buttons["demoTripButton"].waitForExistence(timeout: 5))
         XCTAssertFalse(tile.exists)
-        app.tabBars.buttons["Dolabım"].tap()
+        app.tab("Dolabım")
         XCTAssertTrue(app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'garment-'")).firstMatch.waitForExistence(timeout: 5))
     }
 
@@ -68,10 +68,10 @@ final class AcceptanceDemoUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-resetForUITest"]
         app.launch()
-        app.tabBars.buttons["Dolabım"].tap()
+        app.tab("Dolabım")
         app.buttons["loadSyntheticCloset"].tap()
         // v2.8: scanning lives in Dene (ADR-011); without a camera scanner the code entry is the way in.
-        app.tabBars.buttons["Dene"].tap()
+        app.tab("Dene")
         XCTAssertTrue(app.buttons["mirrorScan"].waitForExistence(timeout: 5))
         app.buttons["mirrorScan"].tap()
 
@@ -102,7 +102,7 @@ final class AcceptanceDemoUITests: XCTestCase {
         XCTAssertTrue(source.waitForExistence(timeout: 5))
         XCTAssertTrue(source.label.contains("KB-TEE-01-WHT"), source.label)
         attach(app, "07b-dene-product-from-code")
-        let onModel = app.buttons["primary.tryOnModel"]
+        let onModel = app.buttons["tryOnModel"]
         for _ in 0..<4 where !onModel.isHittable { app.swipeUp() }
         onModel.tap()
         XCTAssertTrue(app.tabBars.buttons["Bugün"].isSelected)
@@ -119,11 +119,11 @@ final class AcceptanceDemoUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-uiTestVault", vaultName]
         app.launch()
-        app.tabBars.buttons["Dolabım"].tap()
+        app.tab("Dolabım")
         app.buttons["loadSyntheticCloset"].tap()
         let garment = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'garment-'")).firstMatch
         XCTAssertTrue(garment.waitForExistence(timeout: 5))
-        app.tabBars.buttons["Ben"].tap()
+        app.openProfile()
         let toggle = app.switches["weatherConsentToggle"]
         for _ in 0..<6 where !toggle.isHittable { app.swipeUp() }
         XCTAssertEqual(toggle.value as? String, "1")
@@ -133,9 +133,9 @@ final class AcceptanceDemoUITests: XCTestCase {
         app.terminate()
 
         app.launch()
-        app.tabBars.buttons["Dolabım"].tap()
+        app.tab("Dolabım")
         XCTAssertTrue(garment.waitForExistence(timeout: 5), "wardrobe must be read back from the encrypted vault")
-        app.tabBars.buttons["Ben"].tap()
+        app.openProfile()
         for _ in 0..<6 where !toggle.isHittable { app.swipeUp() }
         XCTAssertEqual(toggle.value as? String, "0", "consent revocation must persist")
         let delete = app.buttons["deleteAllData"]
@@ -150,7 +150,7 @@ final class AcceptanceDemoUITests: XCTestCase {
         app.terminate()
 
         app.launch()
-        app.tabBars.buttons["Dolabım"].tap()
+        app.tab("Dolabım")
         XCTAssertTrue(app.buttons["loadSyntheticCloset"].waitForExistence(timeout: 5), "wardrobe must be empty after delete-all")
         XCTAssertFalse(garment.exists)
     }
@@ -161,7 +161,7 @@ final class AcceptanceDemoUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-uiTestVault", "body-\(UUID().uuidString)"]
         app.launch()
-        app.tabBars.buttons["Ben"].tap()
+        app.openProfile()
         app.buttons["createNeutralBody"].tap()
 
         XCTAssertTrue(app.descendants(matching: .any)["body3D"].waitForExistence(timeout: 5), "a 3D-capable budget shows the neutral 3D body")
@@ -216,7 +216,7 @@ final class AcceptanceDemoUITests: XCTestCase {
         app.terminate()
 
         app.launch()
-        app.tabBars.buttons["Ben"].tap()
+        app.openProfile()
         bringIntoView(shaped, in: app)
         XCTAssertTrue(shaped.waitForExistence(timeout: 5))
         XCTAssertEqual(shaped.label, draggedLabel, "the saved body must come back from the encrypted vault")
@@ -237,7 +237,7 @@ final class AcceptanceDemoUITests: XCTestCase {
         app.terminate()
 
         app.launch()
-        app.tabBars.buttons["Ben"].tap()
+        app.openProfile()
         XCTAssertTrue(app.buttons["createNeutralBody"].waitForExistence(timeout: 5), "deleted body must stay deleted")
         XCTAssertFalse(app.sliders["slider-WAIST"].exists)
     }
@@ -250,7 +250,7 @@ final class AcceptanceDemoUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-uiTestVault", "hot-\(UUID().uuidString)", "-deviceFault", "thermalCritical"]
         app.launch()
-        app.tabBars.buttons["Ben"].tap()
+        app.openProfile()
         app.buttons["createNeutralBody"].tap()
 
         let note = app.staticTexts["deviceNote"]
@@ -276,7 +276,7 @@ final class AcceptanceDemoUITests: XCTestCase {
 
         app.terminate()
         app.launch()
-        app.tabBars.buttons["Ben"].tap()
+        app.openProfile()
         let relaunched = app.staticTexts["value-WAIST"]
         bringIntoView(relaunched, in: app)
         XCTAssertTrue(wait(relaunched, NSPredicate(format: "label == %@", saved)), "saved while hot survives relaunch")
@@ -287,7 +287,7 @@ final class AcceptanceDemoUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-uiTestVault", "turn-\(UUID().uuidString)"]
         app.launch()
-        app.tabBars.buttons["Ben"].tap()
+        app.openProfile()
         app.buttons["createNeutralBody"].tap()
 
         let model = app.descendants(matching: .any)["body3D"]

@@ -45,6 +45,7 @@ struct RootView: View {
     @State private var router = TryOnRouter()
     @State private var todayPath = NavigationPath()
     @SceneStorage("selectedTab") private var selected: AtelierTab = .today
+    @State private var showProfile = false
 
     var body: some View {
         #if DEBUG
@@ -62,7 +63,7 @@ struct RootView: View {
         TabView(selection: $selected) {
             Tab(AtelierTab.today.title, systemImage: AtelierTab.today.symbol, value: AtelierTab.today) {
                 NavigationStack(path: $todayPath) {
-                    HomeWorldView(onTryOn: { selected = .tryOn }, onOpenMe: { selected = .me },
+                    HomeWorldView(onTryOn: { selected = .tryOn }, onOpenMe: { showProfile = true },
                                   onOpenWardrobe: { selected = .wardrobe }, onPlan: { todayPath.append(WorldRoute.plan) })
                 }
             }
@@ -70,8 +71,20 @@ struct RootView: View {
             Tab(AtelierTab.tryOn.title, systemImage: AtelierTab.tryOn.symbol, value: AtelierTab.tryOn) {
                 tab { TryOnHubView(onShowOnModel: { todayPath = NavigationPath(); selected = .today }) }
             }
-            Tab(AtelierTab.me.title, systemImage: AtelierTab.me.symbol, value: AtelierTab.me) { tab { MyModelView() } }
         }
+        // v3.2 / V32-UI-01: three tabs; "Ben" opens from the profile button at the top right.
+        .fullScreenCover(isPresented: $showProfile) {
+            NavigationStack {
+                MyModelView()
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Kapat") { showProfile = false }.accessibilityIdentifier("profileClose")
+                        }
+                    }
+            }
+        }
+        .onAppear { if selected == .me { selected = .today } }
+        .environment(\.openProfile) { showProfile = true }
         .environment(world)
         .environment(router)
         .environment(\.openScan) {
@@ -100,6 +113,8 @@ struct RootView: View {
 }
 
 extension EnvironmentValues {
+    /// Opens "Ben" (model, style, data) from the profile button on any tab.
+    @Entry var openProfile: @MainActor () -> Void = {}
     /// Opens Dene's code entry from any screen ("Ürünü Tara" buttons on older screens).
     @Entry var openScan: @MainActor () -> Void = {}
 }

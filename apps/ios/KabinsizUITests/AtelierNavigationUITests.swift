@@ -5,8 +5,8 @@ import XCTest
 final class AtelierNavigationUITests: XCTestCase {
     override func setUp() { continueAfterFailure = false }
 
-    /// v2.8 H01 + UI20-T-006/T-008 (ADR-011): the first screen is the dressed figure in the city. Four
-    /// tabs `Bugün | Dolabım | Dene | Ben`, no scan tab or toolbar button, no slot rails or side
+    /// v2.8 H01 + UI20-T-006/T-008 (ADR-011): the first screen is the dressed figure in the city. v3.2
+    /// V32-UI-01: three tabs `Bugün | Dolabım | Dene`, profile at the top right, no scan tab or toolbar button, no slot rails or side
     /// columns, at most two strong actions, no permission prompt, no invented weather.
     func testFirstLaunchWorldAndTabs() throws {
         let app = XCUIApplication()
@@ -19,7 +19,8 @@ final class AtelierNavigationUITests: XCTestCase {
         XCTAssertEqual(springboard.alerts.count, 0, "UI20-T-008: no permission prompt on first launch")
 
         let tabs = app.tabBars.buttons
-        XCTAssertEqual((0..<tabs.count).map { tabs.element(boundBy: $0).label }, ["Bugün", "Dolabım", "Dene", "Ben"])
+        XCTAssertEqual((0..<tabs.count).map { tabs.element(boundBy: $0).label }, ["Bugün", "Dolabım", "Dene"])
+        XCTAssertTrue(app.buttons["openProfile"].isHittable, "profile is a secondary entry at the top right")
         XCTAssertFalse(app.buttons["scanButton"].exists, "no separate Tara button (v2.6/v2.8)")
 
         // UI28-T015: no persistent slot rail or side column on the scene.
@@ -28,11 +29,11 @@ final class AtelierNavigationUITests: XCTestCase {
             XCTAssertFalse(app.buttons[gone].exists, gone)
         }
         XCTAssertEqual(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'primary.'")).count, 1, "one dominant action")
-        for id in ["primary.newLook", "homeTryOn", "weatherChip"] {
+        for id in ["primary.newLook", "worldReasonChip", "weatherChip"] {
             XCTAssertTrue(app.buttons[id].isHittable, id)
             XCTAssertGreaterThanOrEqual(app.buttons[id].frame.height, 44, id)
         }
-        XCTAssertGreaterThan(app.buttons["primary.newLook"].frame.width, app.buttons["homeTryOn"].frame.width, "Yeni kombin leads")
+        XCTAssertGreaterThan(app.buttons["primary.newLook"].frame.width, app.buttons["worldReasonChip"].frame.width, "Yeni kombin leads")
         XCTAssertTrue(app.buttons["weatherChip"].label.contains("İstanbul · Hava verisi yok"), "UI28-T008: no weather is invented")
         XCTAssertTrue(app.staticTexts["worldLookKind"].label.contains("sentetik"), "an example look says so")
         XCTAssertTrue(app.staticTexts["worldTruthLabel"].label.contains("beden uyumunu göstermez"))
@@ -41,7 +42,7 @@ final class AtelierNavigationUITests: XCTestCase {
 
         // The stand-in saved nothing.
         app.buttons["worldCreateModel"].tap()
-        XCTAssertTrue(app.tabBars.buttons["Ben"].isSelected)
+        XCTAssertTrue(app.buttons["profileClose"].waitForExistence(timeout: 5), "the profile opens over the tabs")
         XCTAssertTrue(app.buttons["createNeutralBody"].waitForExistence(timeout: 5))
     }
 
@@ -138,12 +139,12 @@ final class AtelierNavigationUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-resetForUITest"]
         app.launch()
-        XCTAssertTrue(app.buttons["homeTryOn"].waitForExistence(timeout: 10))
-        app.buttons["homeTryOn"].tap()
+        XCTAssertTrue(app.descendants(matching: .any)["worldAvatar"].waitForExistence(timeout: 10))
+        app.tab("Dene")
         XCTAssertTrue(app.tabBars.buttons["Dene"].isSelected)
-        let open = app.buttons["primary.openMirror"]
+        let open = app.buttons["openMirror"]
         XCTAssertTrue(open.waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["primary.tryOnModel"].exists, "the same selection can go on the 3D model")
+        XCTAssertTrue(app.buttons["tryOnModel"].exists, "the same selection can go on the 3D model")
         // SCAN-T011: photo intake is live (read on the device); only the store link is still not in this build.
         XCTAssertNotEqual(app.buttons["tryOnPhoto"].value as? String, "Bu sürümde yok")
         XCTAssertEqual(app.buttons["tryOnLink"].value as? String, "Bu sürümde yok")
@@ -177,18 +178,20 @@ final class AtelierNavigationUITests: XCTestCase {
         let summary = app.staticTexts["capsuleSummary"]
         XCTAssertTrue(summary.waitForExistence(timeout: 10))
 
-        app.tabBars.buttons["Ben"].tap()
+        // The profile opens from a tab's top-right button (pushed screens keep their own bar).
+        app.tab("Dolabım")
+        app.openProfile()
         XCTAssertTrue(app.navigationBars["Benim Modelim"].waitForExistence(timeout: 5))
-        app.tabBars.buttons["Bugün"].tap()
+        app.tab("Bugün")
         XCTAssertTrue(summary.waitForExistence(timeout: 5), "Bugün's route survived a tab switch")
 
-        app.tabBars.buttons["Dene"].tap()
+        app.tab("Dene")
         XCTAssertTrue(app.buttons["mirrorScan"].waitForExistence(timeout: 5))
         app.buttons["mirrorScan"].tap()
         let close = app.buttons["Kapat"]
         XCTAssertTrue(close.waitForExistence(timeout: 5))
         close.tap()
-        app.tabBars.buttons["Bugün"].tap()
+        app.tab("Bugün")
         XCTAssertTrue(summary.waitForExistence(timeout: 5), "a visit to Dene returns to where the user was")
     }
 
@@ -199,7 +202,7 @@ final class AtelierNavigationUITests: XCTestCase {
         app.launch()
 
         XCTAssertTrue(app.descendants(matching: .any)["worldAvatar"].waitForExistence(timeout: 10))
-        for id in ["primary.newLook", "homeTryOn", "weatherChip"] {
+        for id in ["primary.newLook", "worldReasonChip", "weatherChip", "openProfile"] {
             let b = app.buttons[id]
             XCTAssertTrue(b.isHittable, id)
             XCTAssertLessThanOrEqual(b.frame.maxX, app.frame.maxX + 0.5, "no horizontal overflow: \(id)")

@@ -47,6 +47,8 @@ final class WorldStage {
     private let camera = PerspectiveCamera()
     private let lights = Entity()
     private let rain = Entity()
+    /// Today's spotlight: a light from above whose lamp is never in frame (user decision 2026-11-04).
+    private let spot = Entity()
     private var updates: EventSubscription?
 
     private(set) var yaw: Float = 0
@@ -82,6 +84,7 @@ final class WorldStage {
         pivot.addChild(garments)
         root.addChild(pivot)
         root.addChild(Self.contactShadow())
+        root.addChild(spot)
         root.addChild(rain)
         content.add(root)
         updates = content.subscribe(to: SceneEvents.Update.self) { [weak self] event in
@@ -400,6 +403,81 @@ final class WorldStage {
             d.look(at: SIMD3(0, 0.9, 0), from: spec.from, relativeTo: nil)
             lights.addChild(d)
         }
+    }
+
+    /// A spotlight straight above the figure: a real RealityKit spot light (lights the figure and its
+    /// garments from the top, with a shadow), a warm pool of light on the ground and a faint beam that
+    /// fades out well below the top of the frame, so the lamp itself is never seen.
+    private var shownSpot: Bool?
+    func spotlight(_ on: Bool) {
+        guard on != shownSpot else { return }
+        shownSpot = on
+        spot.children.removeAll()
+        guard on else { return }
+        let light = SpotLight()
+        light.light.color = UIColor(red: 1.0, green: 0.93, blue: 0.82, alpha: 1)
+        light.light.intensity = 26_000
+        light.light.innerAngleInDegrees = 16
+        light.light.outerAngleInDegrees = 34
+        light.light.attenuationRadius = 9
+        light.shadow = SpotLightComponent.Shadow()
+        light.look(at: SIMD3(0, 0.9, 0), from: SIMD3(0.15, 4.6, 0.55), relativeTo: nil)
+        spot.addChild(light)
+        spot.addChild(Self.lightPool())
+        if let beam = Self.beam() { spot.addChild(beam) }
+    }
+
+    /// Warm radial glow on the ground under the figure.
+    private static func lightPool() -> Entity {
+        let size = 256
+        let ctx = CGContext(data: nil, width: size, height: size, bitsPerComponent: 8, bytesPerRow: 0,
+                            space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        let colors = [CGColor(red: 1, green: 0.90, blue: 0.74, alpha: 0.55), CGColor(red: 1, green: 0.88, blue: 0.70, alpha: 0.22),
+                      CGColor(red: 1, green: 0.86, blue: 0.68, alpha: 0)] as CFArray
+        let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors, locations: [0, 0.45, 1])!
+        let c = CGPoint(x: size / 2, y: size / 2)
+        ctx.drawRadialGradient(gradient, startCenter: c, startRadius: 0, endCenter: c, endRadius: CGFloat(size) / 2, options: [])
+        var material = UnlitMaterial(applyPostProcessToneMap: false)
+        if let image = ctx.makeImage(), let texture = try? TextureResource(image: image, options: .init(semantic: .color)) {
+            material.color = .init(tint: .white, texture: .init(texture))
+        }
+        material.blending = .transparent(opacity: 1.0)
+        let plane = ModelEntity(mesh: .generatePlane(width: 1.9, depth: 1.3), materials: [material])
+        plane.position = SIMD3(0, 0.003, 0.05)
+        plane.name = "spotPool"
+        return plane
+    }
+
+    /// A soft shaft of light behind the figure: transparent in its upper part (no visible source),
+    /// a faint warm glow towards the ground, falling off sideways like haze in a beam.
+    private static func beam() -> Entity? {
+        let w = 128, h = 256
+        var pixels = [UInt8](repeating: 0, count: w * h * 4)
+        for y in 0..<h {
+            // y = 0 is the top row of the image (the top of the shaft).
+            let v = Double(y) / Double(h - 1)
+            let vertical = v < 0.38 ? 0 : pow((v - 0.38) / 0.62, 1.6) * 0.16
+            let spread = 0.10 + 0.30 * v   // the shaft widens towards the ground
+            for x in 0..<w {
+                let u = (Double(x) / Double(w - 1) - 0.5)
+                let side = exp(-(u * u) / (2 * spread * spread))
+                let a = vertical * side
+                let i = (y * w + x) * 4
+                pixels[i] = UInt8(255 * a); pixels[i + 1] = UInt8(236 * a); pixels[i + 2] = UInt8(205 * a); pixels[i + 3] = UInt8(255 * a)
+            }
+        }
+        guard let provider = CGDataProvider(data: Data(pixels) as CFData),
+              let image = CGImage(width: w, height: h, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: w * 4,
+                                  space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
+                                  provider: provider, decode: nil, shouldInterpolate: true, intent: .defaultIntent),
+              let texture = try? TextureResource(image: image, options: .init(semantic: .color)) else { return nil }
+        var material = UnlitMaterial(applyPostProcessToneMap: false)
+        material.color = .init(tint: .white, texture: .init(texture))
+        material.blending = .transparent(opacity: 1.0)
+        let plane = ModelEntity(mesh: .generatePlane(width: 2.6, height: 3.6), materials: [material])
+        plane.position = SIMD3(0, 1.8, -0.35)
+        plane.name = "spotBeam"
+        return plane
     }
 
     /// Rain in depth around the figure and small splashes where drops meet the ground (§3.3).

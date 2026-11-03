@@ -1,0 +1,739 @@
+{
+ "forms": {
+  "boots": {
+   "family": "shoe",
+   "form": "boots",
+   "parts": {
+    "shoe": {
+     "a": [
+      72.0,
+      106.4
+     ],
+     "b": [
+      72.0,
+      196.5
+     ],
+     "files": {
+      "fabric": "boots-shoe-fabric.png",
+      "fixed": "boots-shoe-fixed.png"
+     },
+     "size": [
+      144,
+      226
+     ]
+    }
+   },
+   "pxPerMetre": 820,
+   "thumb": {
+    "files": {
+     "fabric": "boots-thumb-fabric.png",
+     "fixed": "boots-thumb-fixed.png"
+    },
+    "size": [
+     336,
+     255
+    ]
+   }
+  },
+  "coat": {
+   "family": "top",
+   "form": "coat",
+   "parts": {
+    "lowerSleeve": {
+     "a": [
+      85.5,
+      37.6
+     ],
+     "b": [
+      85.5,
+      246.5
+     ],
+     "files": {
+      "fabric": "coat-lowerSleeve-fabric.png",
+      "fixed": "coat-lowerSleeve-fixed.png"
+     },
+     "size": [
+      171,
+      288
+     ]
+    },
+    "torso": {
+     "a": [
+      257.7,
+      69.7
+     ],
+     "b": [
+      257.7,
+      488.1
+     ],
+     "files": {
+      "fabric": "coat-torso-fabric.png",
+      "fixed": "coat-torso-fixed.png"
+     },
+     "refWidth": 311.8,
+     "size": [
+      515,
+      940
+     ]
+    },
+    "upperSleeve": {
+     "a": [
+      95.7,
+      77.3
+     ],
+     "b": [
+      95.7,
+      315.1
+     ],
+     "files": {
+      "fabric": "coat-upperSleeve-fabric.png"
+     },
+     "size": [
+      192,
+      361
+     ]
+    }
+   },
+   "pxPerMetre": 820,
+   "thumb": {
+    "files": {
+     "fabric": "coat-thumb-fabric.png",
+     "fixed": "coat-thumb-fixed.png"
+    },
+    "size": [
+     685,
+     943
+    ]
+   }
+  },
+  "jacket": {
+   "family": "top",
+   "form": "jacket",
+   "parts": {
+    "lowerSleeve": {
+     "a": [
+      81.6,
+      37.4
+     ],
+     "b": [
+      81.6,
+      246.5
+     ],
+     "files": {
+      "fabric": "jacket-lowerSleeve-fabric.png",
+      "fixed": "jacket-lowerSleeve-fixed.png"
+     },
+     "size": [
+      163,
+      288
+     ]
+    },
+    "torso": {
+     "a": [
+      229.0,
+      69.7
+     ],
+     "b": [
+      229.0,
+      487.8
+     ],
+     "files": {
+      "fabric": "jacket-torso-fabric.png",
+      "fixed": "jacket-torso-fixed.png"
+     },
+     "refWidth": 311.5,
+     "size": [
+      459,
+      644
+     ]
+    },
+    "upperSleeve": {
+     "a": [
+      90.8,
+      77.4
+     ],
+     "b": [
+      90.8,
+      315.2
+     ],
+     "files": {
+      "fabric": "jacket-upperSleeve-fabric.png"
+     },
+     "size": [
+      182,
+      361
+     ]
+    }
+   },
+   "pxPerMetre": 820,
+   "thumb": {
+    "files": {
+     "fabric": "jacket-thumb-fabric.png",
+     "fixed": "jacket-thumb-fixed.png"
+    },
+    "size": [
+     678,
+     646
+    ]
+   }
+  },
+  "jeans": {
+   "family": "bottom",
+   "form": "jeans",
+   "parts": {
+    "seat": {
+     "a": [
+      185.1,
+      129.9
+     ],
+     "b": [
+      185.1,
+      482.3
+     ],
+     "files": {
+      "fabric": "jeans-seat-fabric.png",
+      "fixed": "jeans-seat-fixed.png"
+     },
+     "refWidth": 155.7,
+     "size": [
+      370,
+      511
+     ]
+    },
+    "shin": {
+     "a": [
+      93.5,
+      37.2
+     ],
+     "b": [
+      93.5,
+      381.2
+     ],
+     "files": {
+      "fabric": "jeans-shin-fabric.png",
+      "fixed": "jeans-shin-fixed.png"
+     },
+     "size": [
+      185,
+      435
+     ]
+    },
+    "thigh": {
+     "a": [
+      111.0,
+      53.8
+     ],
+     "b": [
+      111.0,
+      406.4
+     ],
+     "files": {
+      "fabric": "jeans-thigh-fabric.png"
+     },
+     "size": [
+      222,
+      452
+     ]
+    }
+   },
+   "pxPerMetre": 820,
+   "thumb": {
+    "files": {
+     "fabric": "jeans-thumb-fabric.png",
+     "fixed": "jeans-thumb-fixed.png"
+    },
+    "size": [
+     398,
+     881
+    ]
+   }
+  },
+  "knit": {
+   "family": "top",
+   "form": "knit",
+   "parts": {
+    "lowerSleeve": {
+     "a": [
+      78.5,
+      37.3
+     ],
+     "b": [
+      78.5,
+      246.5
+     ],
+     "files": {
+      "fabric": "knit-lowerSleeve-fabric.png"
+     },
+     "size": [
+      157,
+      288
+     ]
+    },
+    "torso": {
+     "a": [
+      223.4,
+      69.7
+     ],
+     "b": [
+      223.4,
+      487.7
+     ],
+     "files": {
+      "fabric": "knit-torso-fabric.png"
+     },
+     "refWidth": 311.4,
+     "size": [
+      448,
+      562
+     ]
+    },
+    "upperSleeve": {
+     "a": [
+      88.1,
+      77.4
+     ],
+     "b": [
+      88.1,
+      315.3
+     ],
+     "files": {
+      "fabric": "knit-upperSleeve-fabric.png"
+     },
+     "size": [
+      176,
+      361
+     ]
+    }
+   },
+   "pxPerMetre": 820,
+   "thumb": {
+    "files": {
+     "fabric": "knit-thumb-fabric.png"
+    },
+    "size": [
+     672,
+     577
+    ]
+   }
+  },
+  "loafers": {
+   "family": "shoe",
+   "form": "loafers",
+   "parts": {
+    "shoe": {
+     "a": [
+      69.0,
+      28.8
+     ],
+     "b": [
+      69.0,
+      119.2
+     ],
+     "files": {
+      "fabric": "loafers-shoe-fabric.png",
+      "fixed": "loafers-shoe-fixed.png"
+     },
+     "size": [
+      138,
+      148
+     ]
+    }
+   },
+   "pxPerMetre": 820,
+   "thumb": {
+    "files": {
+     "fabric": "loafers-thumb-fabric.png",
+     "fixed": "loafers-thumb-fixed.png"
+    },
+    "size": [
+     344,
+     145
+    ]
+   }
+  },
+  "longSleeveTee": {
+   "family": "top",
+   "form": "longSleeveTee",
+   "parts": {
+    "lowerSleeve": {
+     "a": [
+      75.9,
+      37.3
+     ],
+     "b": [
+      75.9,
+      246.5
+     ],
+     "files": {
+      "fabric": "longSleeveTee-lowerSleeve-fabric.png"
+     },
+     "size": [
+      152,
+      288
+     ]
+    },
+    "torso": {
+     "a": [
+      214.5,
+      69.7
+     ],
+     "b": [
+      214.5,
+      487.7
+     ],
+     "files": {
+      "fabric": "longSleeveTee-torso-fabric.png"
+     },
+     "refWidth": 311.5,
+     "size": [
+      430,
+      579
+     ]
+    },
+    "upperSleeve": {
+     "a": [
+      85.0,
+      77.3
+     ],
+     "b": [
+      85.0,
+      315.3
+     ],
+     "files": {
+      "fabric": "longSleeveTee-upperSleeve-fabric.png"
+     },
+     "size": [
+      169,
+      361
+     ]
+    }
+   },
+   "pxPerMetre": 820,
+   "thumb": {
+    "files": {
+     "fabric": "longSleeveTee-thumb-fabric.png"
+    },
+    "size": [
+     666,
+     580
+    ]
+   }
+  },
+  "shirt": {
+   "family": "top",
+   "form": "shirt",
+   "parts": {
+    "lowerSleeve": {
+     "a": [
+      75.9,
+      37.3
+     ],
+     "b": [
+      75.9,
+      246.5
+     ],
+     "files": {
+      "fabric": "shirt-lowerSleeve-fabric.png",
+      "fixed": "shirt-lowerSleeve-fixed.png"
+     },
+     "size": [
+      152,
+      288
+     ]
+    },
+    "torso": {
+     "a": [
+      214.5,
+      103.5
+     ],
+     "b": [
+      214.5,
+      521.4
+     ],
+     "files": {
+      "fabric": "shirt-torso-fabric.png",
+      "fixed": "shirt-torso-fixed.png"
+     },
+     "refWidth": 311.4,
+     "size": [
+      430,
+      661
+     ]
+    },
+    "upperSleeve": {
+     "a": [
+      85.0,
+      77.3
+     ],
+     "b": [
+      85.0,
+      315.3
+     ],
+     "files": {
+      "fabric": "shirt-upperSleeve-fabric.png"
+     },
+     "size": [
+      169,
+      361
+     ]
+    }
+   },
+   "pxPerMetre": 820,
+   "thumb": {
+    "files": {
+     "fabric": "shirt-thumb-fabric.png",
+     "fixed": "shirt-thumb-fixed.png"
+    },
+    "size": [
+     666,
+     661
+    ]
+   }
+  },
+  "shorts": {
+   "family": "bottom",
+   "form": "shorts",
+   "parts": {
+    "seat": {
+     "a": [
+      185.1,
+      129.9
+     ],
+     "b": [
+      185.1,
+      482.3
+     ],
+     "files": {
+      "fabric": "shorts-seat-fabric.png",
+      "fixed": "shorts-seat-fixed.png"
+     },
+     "refWidth": 155.7,
+     "size": [
+      370,
+      511
+     ]
+    },
+    "thigh": {
+     "a": [
+      111.9,
+      53.4
+     ],
+     "b": [
+      111.9,
+      406.3
+     ],
+     "files": {
+      "fabric": "shorts-thigh-fabric.png"
+     },
+     "size": [
+      224,
+      435
+     ]
+    }
+   },
+   "pxPerMetre": 820,
+   "thumb": {
+    "files": {
+     "fabric": "shorts-thumb-fabric.png",
+     "fixed": "shorts-thumb-fixed.png"
+    },
+    "size": [
+     400,
+     353
+    ]
+   }
+  },
+  "skirt": {
+   "family": "bottom",
+   "form": "skirt",
+   "parts": {
+    "seat": {
+     "a": [
+      265.1,
+      123.4
+     ],
+     "b": [
+      265.1,
+      476.1
+     ],
+     "files": {
+      "fabric": "skirt-seat-fabric.png"
+     },
+     "refWidth": 155.9,
+     "size": [
+      530,
+      546
+     ]
+    }
+   },
+   "pxPerMetre": 820,
+   "thumb": {
+    "files": {
+     "fabric": "skirt-thumb-fabric.png"
+    },
+    "size": [
+     530,
+     546
+    ]
+   }
+  },
+  "sneakers": {
+   "family": "shoe",
+   "form": "sneakers",
+   "parts": {
+    "shoe": {
+     "a": [
+      71.5,
+      28.6
+     ],
+     "b": [
+      71.5,
+      118.6
+     ],
+     "files": {
+      "fabric": "sneakers-shoe-fabric.png",
+      "fixed": "sneakers-shoe-fixed.png"
+     },
+     "size": [
+      143,
+      148
+     ]
+    }
+   },
+   "pxPerMetre": 820,
+   "thumb": {
+    "files": {
+     "fabric": "sneakers-thumb-fabric.png",
+     "fixed": "sneakers-thumb-fixed.png"
+    },
+    "size": [
+     349,
+     155
+    ]
+   }
+  },
+  "tee": {
+   "family": "top",
+   "form": "tee",
+   "parts": {
+    "torso": {
+     "a": [
+      214.5,
+      69.7
+     ],
+     "b": [
+      214.5,
+      487.7
+     ],
+     "files": {
+      "fabric": "tee-torso-fabric.png"
+     },
+     "refWidth": 311.5,
+     "size": [
+      430,
+      579
+     ]
+    },
+    "upperSleeve": {
+     "a": [
+      84.1,
+      76.3
+     ],
+     "b": [
+      84.1,
+      314.3
+     ],
+     "files": {
+      "fabric": "tee-upperSleeve-fabric.png"
+     },
+     "size": [
+      168,
+      343
+     ]
+    }
+   },
+   "pxPerMetre": 820,
+   "thumb": {
+    "files": {
+     "fabric": "tee-thumb-fabric.png"
+    },
+    "size": [
+     560,
+     579
+    ]
+   }
+  },
+  "trousers": {
+   "family": "bottom",
+   "form": "trousers",
+   "parts": {
+    "seat": {
+     "a": [
+      185.1,
+      129.9
+     ],
+     "b": [
+      185.1,
+      482.3
+     ],
+     "files": {
+      "fabric": "trousers-seat-fabric.png",
+      "fixed": "trousers-seat-fixed.png"
+     },
+     "refWidth": 155.7,
+     "size": [
+      370,
+      511
+     ]
+    },
+    "shin": {
+     "a": [
+      93.5,
+      37.2
+     ],
+     "b": [
+      93.5,
+      381.2
+     ],
+     "files": {
+      "fabric": "trousers-shin-fabric.png"
+     },
+     "size": [
+      185,
+      435
+     ]
+    },
+    "thigh": {
+     "a": [
+      111.0,
+      53.8
+     ],
+     "b": [
+      111.0,
+      406.4
+     ],
+     "files": {
+      "fabric": "trousers-thigh-fabric.png"
+     },
+     "size": [
+      222,
+      452
+     ]
+    }
+   },
+   "pxPerMetre": 820,
+   "thumb": {
+    "files": {
+     "fabric": "trousers-thumb-fabric.png",
+     "fixed": "trousers-thumb-fixed.png"
+    },
+    "size": [
+     398,
+     881
+    ]
+   }
+  }
+ },
+ "generator": "tools/garments/build_garment_sprites.py",
+ "provenance": "OWNED_ORIGINAL"
+}

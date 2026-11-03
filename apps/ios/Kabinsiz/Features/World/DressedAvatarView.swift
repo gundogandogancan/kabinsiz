@@ -27,6 +27,8 @@ struct DressedAvatarView: View {
     var wetCity = false
     var showCity = false
     var cameraDrift = false
+    /// Today's spotlight from above (lamp out of frame).
+    var spotlight = false
     /// Scene update rate, reported every two seconds.
     var onFrameRate: (Double) -> Void = { _ in }
     /// True once the street is on screen; false when it could not be loaded.
@@ -88,6 +90,7 @@ struct DressedAvatarView: View {
 
     private func sync() {
         stage.light(light)
+        stage.spotlight(spotlight)
         stage.show(body: body3D)
         stage.prewarm(prewarm, snapshot: snapshot)
         stage.dress(outfit, snapshot: snapshot)
