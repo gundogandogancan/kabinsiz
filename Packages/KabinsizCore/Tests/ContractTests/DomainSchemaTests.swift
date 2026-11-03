@@ -55,12 +55,13 @@ struct DomainSchemaTests {
         case "thermal_advice_v1": try check(ThermalAdviceV1.self, Goldens.thermal)
         case "visual_try_on_v1": try check(VisualTryOnV1.self, Goldens.tryOn)
         case "brand_registry_v1": try check(BrandRegistryV1.self, Goldens.registry)
+        case "catalog_rights_v1": try check(CatalogRightsV1.self, Goldens.rights)
         default: try check(CommerceGraphV1.self, Goldens.graph)
         }
     }
 
     static let names = ["product_identity_v1", "product_physical_spec_v1", "fabric_spec_v1", "body_profile_v2", "regional_fit_v1",
-                        "thermal_advice_v1", "visual_try_on_v1", "brand_registry_v1", "commerce_graph_v1"]
+                        "thermal_advice_v1", "visual_try_on_v1", "brand_registry_v1", "commerce_graph_v1", "catalog_rights_v1"]
 
     private func decodeAny(_ name: String, _ data: Data) throws(FaultCode) {
         switch name {
@@ -72,6 +73,7 @@ struct DomainSchemaTests {
         case "thermal_advice_v1": _ = try decode(ThermalAdviceV1.self, data)
         case "visual_try_on_v1": _ = try decode(VisualTryOnV1.self, data)
         case "brand_registry_v1": _ = try decode(BrandRegistryV1.self, data)
+        case "catalog_rights_v1": _ = try decode(CatalogRightsV1.self, data)
         default: _ = try decode(CommerceGraphV1.self, data)
         }
     }
@@ -112,6 +114,7 @@ struct DomainSchemaTests {
             "ClaimAttribute": ClaimEvidence.Attribute.allCases.map(\.rawValue),
             "ClaimedBy": ClaimEvidence.ClaimedBy.allCases.map(\.rawValue),
             "Stock": Offer.Stock.allCases.map(\.rawValue),
+            "CoverageLevel": EvidenceCoverageGate.CoverageLevel.allCases.map(\.rawValue),
         ].mapValues { $0.sorted() }
         let url = Self.fixtureDir.appendingPathComponent("frozen_raw_values_r17.json")
         if ProcessInfo.processInfo.environment["REGENERATE_GOLDENS"] == "1" {

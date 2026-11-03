@@ -129,6 +129,11 @@ enum Goldens {
         ]
     )
 
+    static let rights = CatalogRightsV1(rightsRevision: 1, licenses: [
+        .init(licenseID: "lic-synth-demo", grantorID: "owner-synth-1", allowedAttributes: [.identity, .sizeLabel, .color, .finishedMeasurement],
+              countryScope: ["TR"], validFrom: t(-24), validUntil: t(24 * 30), offlineCacheRights: true),
+    ])
+
     /// File name → encoded golden.
     static func all() throws -> [(String, Data)] {
         [
@@ -141,6 +146,7 @@ enum Goldens {
             ("visual_try_on_v1", try ContractCoder.encode(tryOn)),
             ("brand_registry_v1", try ContractCoder.encode(registry)),
             ("commerce_graph_v1", try ContractCoder.encode(graph)),
+            ("catalog_rights_v1", try ContractCoder.encode(rights)),
         ]
     }
 }

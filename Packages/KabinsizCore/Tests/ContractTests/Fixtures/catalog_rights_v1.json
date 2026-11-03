@@ -1,0 +1,26 @@
+{
+  "licenses" : [
+    {
+      "affiliate_link_rights" : false,
+      "allowed_attributes" : [
+        "IDENTITY",
+        "SIZE_LABEL",
+        "COLOR",
+        "FINISHED_MEASUREMENT"
+      ],
+      "country_scope" : [
+        "TR"
+      ],
+      "derivative_3d_rights" : false,
+      "grantor_id" : "owner-synth-1",
+      "image_rights" : false,
+      "license_id" : "lic-synth-demo",
+      "offline_cache_rights" : true,
+      "revoked" : false,
+      "valid_from" : "2026-11-02T09:00:00.000Z",
+      "valid_until" : "2026-12-03T09:00:00.000Z"
+    }
+  ],
+  "rights_revision" : 1,
+  "schema_version" : 1
+}

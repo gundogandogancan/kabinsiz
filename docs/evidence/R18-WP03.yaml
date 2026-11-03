@@ -1,0 +1,65 @@
+evidence_schema: 1
+work_package: R18-WP03
+title: "EvidenceCoverageGate: which product statements may be said now; source conflict, licence TTL/scope, fail closed; CatalogRightsV1"
+status: PASS   # macOS unit tests; no UI, no device
+commit_sha: null   # filled by the commit that adds this file; see git log
+branch: main
+spec: "v1.8 V18-00.1 (coverage levels), V18-04.2 (tiers, Unknown ≠ false, expired licence stops VERIFIED, purge cache, close affiliate), V18-04.3 (rights per source), V18-04.4 (CONFLICTING_SOURCES stops fit), V18-08.1 (EvidenceCoverageGate module card), V18-T-003, 010, 011, 015, 020, 025"
+decision: D-021
+implementation_paths:
+  - Packages/KabinsizCore/Sources/DomainSchemas/CoverageGate.swift
+test_paths:
+  - Packages/KabinsizCore/Tests/ContractTests/CoverageGateTests.swift
+  - Packages/KabinsizCore/Tests/ContractTests/Fixtures/catalog_rights_v1.json
+unit_test_command: "cd Packages/KabinsizCore && swift test"
+unit_test_exit_code: 0
+unit_test_count: 261   # whole package; 13 in CoverageGateTests, CatalogRightsV1 also in DomainSchemaTests golden/newer/extra-key cases
+ui_test_command: null   # no app wiring yet
+hardware: "Apple M5 Mac, macOS 26.4 (package tests only)"
+benchmarks: []
+spec_cases:
+  - "V18-T-003 PASS: GTIN known only via GS1 → VERIFIED_BASIC_IDENTITY; size chart, finished measurements and material UNKNOWN; not commerce-eligible"
+  - "V18-T-010 PASS: two live sources disagree on composition → CONFLICTING_SOURCES, nothing said, FIT_ELIGIBLE removed; same value written differently is agreement; variant vs model contradiction in measurements also conflicts"
+  - "V18-T-011 PASS: licence ends or is revoked → facts, media and 3D blocked at that instant, offline cache set empty, purge list names every claim"
+  - "V18-T-015 PASS: offer TTL ends → STALE, closed for buying, COMMERCE_ELIGIBLE removed, product facts unaffected; offer TTL wins even when the seller's claims last longer"
+  - "V18-T-020 PASS: affiliate right removed → link disabled (revocation list), offer still purchasable, organic attributes and levels identical"
+  - "V18-T-025 PASS: each market sees only its own offers and currency; a TR claim never prices a DE offer; a TR-scoped claim never speaks for DE"
+other_cases:
+  - "Unknown vs blocked: no claim → UNKNOWN; claim present but no licence / outside licence scope / evidence missing / evidence withdrawn / claim superseded → BLOCKED with that reason"
+  - "Media needs the image right; TRYON_ASSET_READY needs the 3D-derivative right; offline cache needs the cache right; each checked alone"
+  - "User label reading (Tier D) → userEvidence (partial), never fact, never cached; disagreeing with a brand fact → conflict"
+  - "Synthetic world → only UNIVERSAL_SCHEMA_SUPPORTED + BRAND_IDENTIFIABLE, every value labelled synthetic, no purchasable offer"
+  - "LIVE_PARTNER is not in the gate's vocabulary at all: never derived from data"
+  - "Bad input refuses the gate: duplicate evidence IDs, 3D right without image right, unregistered brand, unknown variant, lower-case market"
+mutation_checks:   # 20/20 killed (scratchpad mutate_r18.py); 4 survived the first suite and were killed after adding rightsOneByOne
+  - "conflict ignored (first source wins): killed"
+  - "licence window ignored: killed"
+  - "licence scope ignored: killed"
+  - "unlicensed brand data usable: killed"
+  - "image right not needed for media: killed"
+  - "claim market ignored: SURVIVED first; killed after rightsOneByOne (licence covering both markets)"
+  - "missing evidence tolerated: killed"
+  - "tombstoned evidence used: killed"
+  - "superseded claim still live: killed"
+  - "user evidence promoted to fact: killed"
+  - "GS1 identity verifies variant: killed"
+  - "fit despite conflict: killed"
+  - "3D without derivative right: SURVIVED first; killed after rightsOneByOne"
+  - "stale offer purchasable: SURVIVED first (claims expired at the same instant); killed after rightsOneByOne with longer claims"
+  - "affiliate right not checked: killed"
+  - "no purge on licence end: killed"
+  - "commerce without verified variant: killed"
+  - "cache right not checked: SURVIVED first; killed after rightsOneByOne"
+  - "3D right without image right accepted: killed"
+  - "case-sensitive comparison: killed"
+not_in_scope:
+  - "App-side cache purger and catalogue sync (no real catalogue cache exists yet)"
+  - "Signature/HMAC/ETag feed verification (V18-04.4) belongs to the backend feed adapters, not built"
+independent_reviewer: null
+review_independence_level: INTERNAL_SELF_REVIEW
+residual_risks:
+  - "Value comparison is normalised text (whitespace, case, unit). Two sources writing the same composition in a different order ('ELASTANE:2, COTTON:98') count as a conflict: fail closed, but noisier than needed until the R17-04 parser emits a canonical form"
+  - "Claims inherit from colourway and style model to variant; a claim at brand or collection level is not inherited (deliberately: too broad to state as a variant fact)"
+  - "No real licensed catalogue; all worlds in tests are synthetic data tiered as if real"
+open_p0: []
+open_p1: []

@@ -104,7 +104,7 @@ Durum sütunu: TESTED / IN_PROGRESS / KUYRUKTA / SPEC_ONLY / BLOCKED_EXTERNAL / 
 | 8 | WP15-06 (R17-06, WP19-01 termal, LM21-WP07 temeli) | Device governor + hata enjeksiyonu | 2 | TESTED (simülatör + macOS; `docs/evidence/WP15-06.yaml`) | Gerçek termal ölçüm cihaz |
 | 9 | WP15-07/08 (BODY-3D, R17-06, WP19-07, UI20-WP07 kabuğu) | Nötr mesh + morph kaydırıcıları + RealityKit + 360° manuel döndürme + VoiceOver; V19-T-023..025, 028, R17-FIT-05 | 5,8 | TESTED (simülatör; `docs/evidence/WP15-07-08.yaml`; V19-T-025 giysi önizlemesi yokken açık) | Cihaz perf `REAL_DEVICE_BLOCKED` |
 | 10 | R17-02 (R18-WP02, WP19-04/05 şema kısmı) | `ProductIdentityV1, ProductPhysicalSpecV1, FabricSpecV1, BodyProfileV2, RegionalFitV1, ThermalAdviceV1, VisualTryOnV1` + `BrandRegistry/CommerceGraph/Offer/ClaimEvidence` + golden fixture + göç | 2 (paralel dal) | TESTED (macOS; `docs/evidence/R17-02.yaml`; D-020) | Uygulama v2'ye R17-05'te geçer; gerçek katalog yok |
-| 11 | R18-WP03 | `EvidenceCoverageGate`: kaynak çatışması, lisans TTL, fail-closed | 10 | KUYRUKTA | — |
+| 11 | R18-WP03 | `EvidenceCoverageGate`: kaynak çatışması, lisans TTL, fail-closed | 10 | TESTED (macOS; `docs/evidence/R18-WP03.yaml`; D-021) | Gerçek lisanslı katalog yok; uygulama önbellek temizleyicisi yok |
 | 12 | LM21-WP03 | LiveMirror sözleşmeleri: `MirrorMode`, `MirrorStatus`, `MirrorSessionSpec`, hata/fidelity, revizyon koruması | 7,10 | KUYRUKTA | — |
 | 13 | UI20-WP02→WP03→WP04 | Token göç ADR'ı (C-14) → tipografi + 20 atomlu bileşen kataloğu (`K-001..K-020`) → 3 sekme/sheet/CTA IA | 6 | KUYRUKTA | Kontrast cihazda |
 | 14 | WP15-18 (R17-12, WP19-16 kısmı) | Bağımsız kalite kapısı: güvenlik negatif, perf, a11y | 1–9 | KUYRUKTA | — |

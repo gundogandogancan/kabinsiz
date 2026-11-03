@@ -57,6 +57,15 @@
     "SYNTHETIC",
     "USER_TYPED"
   ],
+  "CoverageLevel" : [
+    "BRAND_IDENTIFIABLE",
+    "COMMERCE_ELIGIBLE",
+    "FIT_ELIGIBLE",
+    "TRYON_ASSET_READY",
+    "UNIVERSAL_SCHEMA_SUPPORTED",
+    "VARIANT_VERIFIED",
+    "VERIFIED_BASIC_IDENTITY"
+  ],
   "Dimension" : [
     "CIRCUMFERENCE",
     "FLAT_HALF_WIDTH",
