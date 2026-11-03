@@ -4,11 +4,12 @@
 
 ## Bağlayıcı kaynak
 
-- **Kanonik:** `docs/constitution/WEARFORM_GOD_LEVEL_CLAUDE_MASTER_EXECUTION_CONSTITUTION_v1.5.md`. Bu dosya §§0–135'i kapsar (taban + v1.1 + v1.2 Travel + v1.3 Fit Passport / Shopping / Trust + v1.4 Evidence & Engineering §§75–100 + v1.5 Octopus / CITADEL §§101–135). v1.5 = v1.3 + v1.4 eki + v1.5 eki; yalnız başlık satırları farklı (difflib ile doğrulandı, 2026-11-03).
-- **Okuma sırası (v1.5 emri):** §§101–135 → §0 → §§75–100 → eski ürün bölümleri (§§59–74, §§39–58, §§23–38, §§1–22) gerektikçe.
-- **Öncelik (v1.5):** hukuk/platform/güvenlik → rıza/mahremiyet değişmezleri → v1.5 §§101–135 → §§0–100 (daha sıkı güvenlik kuralı korunur) → repo kanıtı → ADR.
-- **Sıradaki iş:** `docs/audit/V15_QUEUE_AND_CONFLICT_MAP.md`.
-- `docs/constitution/archive/` sadece geçmiş içindir. Çatışmada v1.5 kazanır.
+- **Kanonik:** `docs/constitution/KABINSIZ_GOD_LEVEL_CLAUDE_MASTER_EXECUTION_CONSTITUTION_v2.1.md` = v1.5 + v1.6..v2.1 ekleri; yalnız başlık/ayraç satırları farklı (difflib, 2026-11-03; ayrıntı `docs/audit/V21_QUEUE_AND_CONFLICT_MAP.md` §1). Ekler ayrıca `docs/constitution/addenda/`; v1.5 ve öncesi `docs/constitution/archive/`. v1.6 ana metni hiç yok (yalnız ek).
+- **Okuma sırası (v2.1 emri):** LM21-00, -01, -06, -07, -14, -16 → v2.0 güvenlik/avatar/ürün doğruluğu/Quiet Atelier → V19-00, V19-20, V19-22 → V18-00..son → v1.7 BÖLÜM C → v1.6 BÖLÜM B → v1.5 BÖLÜM A gerektikçe (önce §§101–135).
+- **Öncelik:** hukuk/KVKK/platform → kullanıcı rızası ve yerel-öncelikli mahremiyet → güvenlik/kanıt ve v1.9 fail-closed → v2.1 LM21 (yalnız canlı ayna konularında) → v2.0 UI → v1.8 → v1.7 → v1.6 → v1.5 → kanıtlı repo durumu → eski ADR. Daha sıkı güvenlik kuralı her zaman kazanır; daha zayıf yeni kural eski güvenlik kontrolünü geçersiz kılamaz; çatışma ADR ile çözülür. Bulut VTON asla varsayılan değil: açık rıza + sağlayıcı sözleşmesi/DPA + maliyet sınırı + gerçek iPhone testi olmadan kapalı (`BLOCKED_EXTERNAL`).
+- **Sıradaki iş:** `docs/audit/V21_QUEUE_AND_CONFLICT_MAP.md` (V15 haritasının yerini aldı).
+- `docs/constitution/archive/` sadece geçmiş içindir. Çatışmada v2.1 öncelik zinciri geçerlidir.
+- Araştırma: `docs/research/VTON_LANDSCAPE_2026-11.md` (VTON/avatar modelleri ve lisans hükümleri: NC lisanslılar ve SMPL/SMPL-X ticari kullanılamaz).
 - Karar hiyerarşisi: güvenlik/hukuk/platform → kullanıcının açık kararları → anayasanın değişmez ilkeleri → teknik varsayımlar → ADR.
 
 ## Çalışma kuralları (özet; ayrıntı anayasada)
@@ -44,6 +45,6 @@ AG-06 (Fit Science), AG-07 (Styling), AG-08 (Retail) ve AG-11 (Perf/SRE) için h
 
 ## Skill'ler
 
-- **Projeye özel (`.claude/skills/`):** `swiftui-patterns`, `swift-concurrency-6-2`, `swift-actor-persistence`, `swift-protocol-di-testing`, `ios-icon-gen` (ECC); `spec-to-code-compliance`, `differential-review`, `sharp-edges`, `audit-context-building` (Trail of Bits).
+- **Projeye özel (`.claude/skills/`):** `design-motion-principles` (MIT, kylezantos; hareket/etkileşim: mobil = incelikli cila önce, sık işlem animasyonsuz, Hareketi Azalt'a uy), `swiftui-patterns`, `swift-concurrency-6-2`, `swift-actor-persistence`, `swift-protocol-di-testing`, `ios-icon-gen` (ECC); `spec-to-code-compliance`, `differential-review`, `sharp-edges`, `audit-context-building` (Trail of Bits).
 - **Global (zaten kurulu):** superpowers (TDD, planlama, debugging, verification), planning-with-files, impeccable, ui-ux-pro-max, plugin87 tasarım skill'leri (design-doctrine, a11y-audit, design-review, design-tokens …), context-engineering, Trail of Bits çekirdek seti.
 - Hangi repodan neyin alındığı ve neyin neden alınmadığı: `docs/VENDOR_INTEGRATION.md`.

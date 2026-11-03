@@ -1,3 +1,5 @@
+> **YERİNE GEÇTİ (2026-11-03):** Bu dosyanın yerini `docs/audit/V21_QUEUE_AND_CONFLICT_MAP.md` aldı; yalnız geçmiş kaydı olarak tutulur.
+
 # v1.5 iş sırası ve çatışma haritası (§133 adım 1)
 
 Tarih: 2026-11-03 · Kanonik: `docs/constitution/WEARFORM_GOD_LEVEL_CLAUDE_MASTER_EXECUTION_CONSTITUTION_v1.5.md`
