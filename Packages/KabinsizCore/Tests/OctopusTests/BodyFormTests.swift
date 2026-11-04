@@ -119,4 +119,10 @@ struct BodyFormTests {
             #expect(checked >= 150, "\(g): \(checked)")
         }
     }
+
+    @Test("BFORM-T08: the unsaved starting body of each form draws differently (what the start screen shows)")
+    func startingBodiesDiffer() throws {
+        let meshes = try BodyForm.allCases.map { try BodyMesh.make(from: AvatarSnapshot.make(for: .neutral(form: $0))) }
+        #expect(Set(meshes).count == BodyForm.allCases.count)
+    }
 }

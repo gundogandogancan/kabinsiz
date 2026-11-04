@@ -352,8 +352,12 @@ final class AppModel {
     var heroMesh: BodyMesh? {
         guard governor.budget.maxVisualTier != .flat2D else { return nil }
         if bodyStatus == .ready { return bodyScene?.mesh }
-        return Self.neutralStandIn
+        return Self.standIn(standInForm).mesh
     }
+
+    /// The form the unsaved stand-in is drawn in, chosen on the start screen (ADR-017). Not stored: it
+    /// becomes the body's form only when the user creates the body.
+    var standInForm: BodyForm = .neutral
 
     /// True while the figure on screen is the unsaved neutral stand-in, not the user's body.
     var heroIsStandIn: Bool { bodyStatus != .ready }
@@ -362,23 +366,34 @@ final class AppModel {
     var heroSnapshot: AvatarSnapshot? {
         guard governor.budget.maxVisualTier != .flat2D else { return nil }
         if bodyStatus == .ready, let body, let snapshot = try? AvatarSnapshot.make(for: body) { return snapshot }
-        return Self.neutralSnapshot
+        return Self.standIn(standInForm).snapshot
     }
 
-    private static let neutralSnapshot: AvatarSnapshot? = try? AvatarSnapshot.make(for: .neutral())
+    /// One unsaved starting body per form, built once.
+    private static let standIns: [BodyForm: (snapshot: AvatarSnapshot?, mesh: BodyMesh?)] = Dictionary(uniqueKeysWithValues:
+        BodyForm.allCases.map { form in
+            let snapshot = try? AvatarSnapshot.make(for: .neutral(form: form))
+            return (form, (snapshot, snapshot.flatMap { try? BodyMesh.make(from: $0) }))
+        })
+
+    private static func standIn(_ form: BodyForm) -> (snapshot: AvatarSnapshot?, mesh: BodyMesh?) {
+        standIns[form] ?? (nil, nil)
+    }
 
     /// Idle breathing/sway only when the budget has headroom (no thermal or Low Power note).
     var allowsLivelyMotion: Bool { deviceNote == nil && governor.budget.maxVisualTier != .flat2D }
 
-    private static let neutralStandIn: BodyMesh? = {
-        guard let snapshot = try? AvatarSnapshot.make(for: .neutral()) else { return nil }
-        return try? BodyMesh.make(from: snapshot)
-    }()
-
     func createNeutralBody(unit: LengthUnit) async {
         guard let studio = bodyStudio else { return }
         await untilVaultReachable()
-        await apply(await studio.createNeutral(unit: unit), from: studio)
+        await apply(await studio.createNeutral(unit: unit, form: standInForm), from: studio)
+    }
+
+    /// Kadın / Erkek / Nötr. Typed measurements stay; undoable.
+    func setBodyForm(_ form: BodyForm) async {
+        guard let studio = bodyStudio else { return }
+        await untilVaultReachable()
+        await apply(await studio.setForm(form), from: studio)
     }
 
     /// Live drag: latest-wins, nothing saved. A superseded preview changes nothing on screen.

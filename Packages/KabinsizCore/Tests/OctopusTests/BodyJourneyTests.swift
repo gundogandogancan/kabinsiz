@@ -164,6 +164,41 @@ struct BodyJourneyTests {
         #expect(await s.setUnit(.centimeters) == nil, "no-op switch writes nothing")
     }
 
+    // MARK: Body form (ADR-017)
+
+    @Test("BFORM-T07: the studio saves the chosen form, keeps typed values, undoes it, and keeps it across a relaunch")
+    func formThroughStudio() async throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("form-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let keys = EphemeralKeyStore()
+        let vault = try Vault.open(directory: dir, keyStore: keys)
+        let s = studio(store: VaultBodyStore { vault })
+        _ = await s.createNeutral(form: .feminine)
+        let created = try #require(await s.profile)
+        #expect(created.form == .feminine && created.cm(.height) == BodyForm.feminine.startCm(.height))
+        _ = await s.commit(.measured(.waist, 71, .centimeters))
+        let changed = await s.setForm(.masculine)
+        #expect(changed?.value != nil)
+        let male = try #require(await s.profile)
+        #expect(male.form == .masculine && male.cm(.waist) == 71 && male[.waist].source == .userMeasured)
+        #expect(male.cm(.height) == BodyForm.masculine.startCm(.height))
+        #expect(await s.setForm(.masculine) == nil, "same form writes nothing")
+        #expect(await s.undo()?.value != nil)
+        #expect(try #require(await s.profile).form == .feminine, "a form change is undoable")
+        _ = await s.redo()
+        let saved = try #require(await s.profile)
+        #expect(saved.form == .masculine)
+        // A unit switch or an edit never drops the form (the studio restamps every revision).
+        _ = await s.setUnit(.inches)
+        _ = await s.commit(.slider(.hip, cm: 99))
+        #expect(try #require(await s.profile).form == .masculine)
+        await vault.close()
+        let reopened = try Vault.open(directory: dir, keyStore: keys)
+        let again = studio(store: VaultBodyStore { reopened })
+        #expect(await again.load() == .ready)
+        #expect(await again.profile?.form == .masculine)
+    }
+
     // MARK: BOD-06 / offline
 
     @Test("V15-T-BOD-06: the manual flow needs no photos and no network, and works on an offline budget")

@@ -48,6 +48,12 @@ ADR16-*: figür yalnız elle döner (sürükle/savur, "Önden" ile geri), Giydir
 
 <sub>08-deletion-receipt · 08b-body-neutral-start · 09-body-studio-slider · 10-body-studio-measured · 11-body-deleted · 12-body-studio-thermal-critical · 13-body-3d-front · 14-body-3d-side · 15-body-3d-back · 16-body-3d-dragged · G12-benim-modelim · G13-benim-modelim-3b-govde · G14-gizlilik · v32-S09-model-bar</sub>
 
+V36-01 (ADR-017): Kadın / Erkek / Nötr beden formu. Başlangıç şekli seçilen formla çizilir; form değişince girilen ölçü (71 cm) aynen kalır, başlangıç değerleri forma göre değişir. BFORM-UI-02 aynı testin 06:02 koşusundan: son koşuda 3B alan boş çekildi (ADR-016 bilinen açığı, simülatörde RealityView bazen çizilmiyor).
+
+<img src="07-benim-modelim/BFORM-UI-01-start-picker.jpg" width="220" alt="BFORM-UI-01-start-picker" title="BFORM-UI-01-start-picker"> <img src="07-benim-modelim/BFORM-UI-02-feminine.jpg" width="220" alt="BFORM-UI-02-feminine" title="BFORM-UI-02-feminine"> <img src="07-benim-modelim/BFORM-UI-03-masculine.jpg" width="220" alt="BFORM-UI-03-masculine" title="BFORM-UI-03-masculine"> <img src="07-benim-modelim/BFORM-UI-04-relaunched.jpg" width="220" alt="BFORM-UI-04-relaunched" title="BFORM-UI-04-relaunched"> <img src="07-benim-modelim/BFORM-UI-05-home-follows-form.jpg" width="220" alt="BFORM-UI-05-home-follows-form" title="BFORM-UI-05-home-follows-form">
+
+<sub>BFORM-UI-01-start-picker · BFORM-UI-02-feminine · BFORM-UI-03-masculine · BFORM-UI-04-relaunched · BFORM-UI-05-home-follows-form</sub>
+
 ## Seyahat
 
 <img src="08-seyahat/01-today-with-trip.jpg" width="220" alt="01-today-with-trip" title="01-today-with-trip"> <img src="08-seyahat/02-trip-summary.jpg" width="220" alt="02-trip-summary" title="02-trip-summary"> <img src="08-seyahat/03-replan-diff.jpg" width="220" alt="03-replan-diff" title="03-replan-diff"> <img src="08-seyahat/04-suitcase.jpg" width="220" alt="04-suitcase" title="04-suitcase">

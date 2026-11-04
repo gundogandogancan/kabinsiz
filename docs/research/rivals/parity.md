@@ -10,8 +10,8 @@ Durum değerleri:
 | Özellik | En iyi rakip | Kabinsiz | Kanıt |
 |---|---|---|---|
 | Ölçüden avatar (boy, omuz, göğüs/büst, bel, kalça) | Alta (boy ve kilo) | **DONE**, rakipten ileri | BodyProfile, BFORM-T01..T06, BodyJourney testleri |
-| Kadın / Erkek / Nötr beden formu | — (belirtilmiyor) | **PARTIAL**: paket DONE; seçici UI V36-01'de | BFORM-T02/T04 |
-| Avatarı baştan kur | Doji (C) | **PARTIAL**: başlangıç değerlerine dön var; formu değiştir V36-01'de | BodyProfile.neutral(form:) |
+| Kadın / Erkek / Nötr beden formu | — (belirtilmiyor) | **DONE** (SIMULATOR_TESTED; cihaz R-002) | BFORM-T01..T07, BodyFormUITests |
+| Avatarı baştan kur | Doji (C) | **DONE**: başlangıç şekli formla seçilir, form sonradan değişir, geri alınır | BFORM-T07, BodyFormUITests |
 | Canlı ayna | Anywear | **PARTIAL**: F1 yerel ayna SIMULATOR_TESTED; cihaz R-002 | MIR-T*, ADR-015 |
 | Fotoğrafsız deneme | Anywear | **DONE** | 3B model ve canlı ayna |
 | Fotogerçekçi tek kare | Google / Doji | **MISSING**: FASHN PoC çalıştı (2026-11-04), bizim avatarda fotogerçekçi değil, kullanıcı fotoğrafı buluta gitmez → cihazda yol yok | `docs/research/fashn-poc/`, D-049 |
@@ -37,8 +37,8 @@ Durum değerleri:
 
 **Özet:** 25 satır var. Dağılım:
 
-- DONE: 6 satır.
-- PARTIAL: 13 satır. Paket mantığı hazır, ekran ya da cihaz eksik.
+- DONE: 8 satır.
+- PARTIAL: 11 satır. Paket mantığı hazır, ekran ya da cihaz eksik.
 - MISSING: 5 satır.
 - BLOCKED_EXTERNAL: 1 satır.
 

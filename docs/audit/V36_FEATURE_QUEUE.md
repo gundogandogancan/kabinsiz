@@ -11,7 +11,7 @@
 
 | # | İş paketi | Rakipten alınan iş | Kabinsiz yolu (cihazda) | Mahremiyet sınırı | Testler | Durum |
 |---|---|---|---|---|---|---|
-| V36-01 | Beden formu seçici + ölçü ekranı | Alta (ölçüden avatar), Doji (yeniden kur) | Benim Modelim → "Beden formu: Kadın / Erkek / Nötr"; göğüs (büst), bel, kalça ve omuz öne çıkar; ana ekran figürü formu izler | Form yalnız kullanıcının seçimi, hiçbir şeyden çıkarılmaz | BFORM-T01..T06 (paket); UI testi ve ekran görüntüleri | Paket SIMULATOR_TESTED; UI sırada (ADR-016 ana dala girince) |
+| V36-01 | Beden formu seçici + ölçü ekranı | Alta (ölçüden avatar), Doji (yeniden kur) | Benim Modelim → "Beden formu: Kadın / Erkek / Nötr"; göğüs (büst), bel, kalça ve omuz öne çıkar; ana ekran figürü formu izler | Form yalnız kullanıcının seçimi, hiçbir şeyden çıkarılmaz | BFORM-T01..T07 (paket); BodyFormUITests + ekran görüntüleri | DONE, SIMULATOR_TESTED (2026-11-04): başlangıç ekranında ve stüdyoda segmentli seçici; Kadın'da göğüs satırı "Göğüs (büst) çevresi"; değer korunur, geri al/yinele, yeniden açılışta form kalır; ana ekran figürü formu izler. Simülatörde profildeki RealityView bazen çizilmiyor (ADR-016 bilinen açığı, OPEN). Cihaz REAL_DEVICE_BLOCKED (R-002) |
 | V36-02 | Takvimden günün ihtiyacı | Alta | EventKit okuma izni (isteğe bağlı) → başlık `OccasionReader` ile cihazda okunur → `DayNeeds` → TodayOutfit resmiyet tabanı; "neden bu kombin" satırı | Başlık saklanmaz, loglanmaz, gönderilmez; izin yoksa özellik kapalı | INS-T08; izin reddi UI testi | Paket CODED + test |
 | V36-03 | Fotoğraftan dolaba: kesip çıkarma, otomatik etiket, toplu ekleme | Alta (SAM), Cladwell | PhotosPicker çoklu seçim → `VNGenerateForegroundInstanceMaskRequest` (iOS 17+) → renk pikselden, kategori cihaz sınıflandırıcısından → kullanıcı onaylar | Fotoğraf cihazda kalır, kesilmiş görsel Vault'ta; SAM 3 yok (CUDA, lisans) | PHOTO-T01..T08 | Paket CODED + macOS test (2026-11-04): Vision ön plan maskesi cihazda; düz arka plan yedeği; renk Lab k-means (düğme/kıvrım karar vermez); piksel değişmez; tür önerisi Apple sınıflandırıcısı ≥0,3 değilse şekil kuralları — kendi 13 giysimizde 12/13 (ceket→üst bilinen eksik). UI (PhotosPicker toplu + onay kuyruğu) sırada |
 | V36-04 | Giyim günlüğü, stil takvimi, en çok/az giyilenler, giyim başı maliyet, boşluklar | Alta, Cladwell | "Bugün bunu giydim" → `WearLedger`; Dolabım'da "Dolap raporu" (`ClosetReport`, `ClosetGapFinder`); fiyatı yalnız kullanıcı girer | Yerel ve şifreli (Vault alanı); demo dolapta "örnek" etiketi | INS-T01..T06; UI testi | Paket CODED + test |
@@ -44,7 +44,7 @@
 
 | Düzeltme (feedback.md Top 8) | Paket |
 |---|---|
-| 1. Beden yazılan ölçülerden, Kadın/Erkek/Nötr formla | V36-01 (paket DONE) |
+| 1. Beden yazılan ölçülerden, Kadın/Erkek/Nötr formla | V36-01 (DONE, simülatör) |
 | 2. Giysi aslına sadık: orijinal fotoğraf esas, cihazda maske, önce/sonra, renk ve biçim değişmez | V36-03 |
 | 3. Yalnız kendi dolabından öneri | TodayOutfit değişmezi (zaten yalnız `Wardrobe`); V36-02/04'te "sessize al" ve mevsim bayrakları |
 | 4. Hesap yok, veri yerel, dışa aktarma ve yedek | DONE (hesapsız, Vault); dışa aktarma → V36-14 |

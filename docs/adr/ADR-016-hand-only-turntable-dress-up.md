@@ -93,7 +93,7 @@ Denenip reddedilenler (simülatör, 2026-11-04):
 
 **Test:** `TurntableDressUpUITests.testWorldComesBackAfterProfileCover` profili açıp kapatır. Açı aynı kalmalı, sahne ekranda %2'den az değişmeli.
 
-## Bilinen açık — 3B bütçede profil kaydırıcısı (ADR-016'dan önce de var)
+## Bilinen açık — 3B bütçede profil kaydırıcısı ve çizilmeyen RealityView (ADR-016'dan önce de var)
 
 - **Hata:** `AcceptanceDemoUITests.testBodyStudioJourney` bel kaydırıcısında (satır 188) aralıklı düşüyor. Kaydırıcının topu ekranda kayıyor, ama değer başlangıçta (82 cm) kalıyor. Binding yalnız dokunuşun başında, 82 ile bir kez çağrılıyor.
 - **Önceden vardı:** aynı hata push edilmiş HEAD'de (9727105) de görüldü. 3B şehrin geldiği a101a1a'dan beri var; ondan önceki son yeşil koşu 2026-11-03 21:17.
@@ -102,6 +102,11 @@ Denenip reddedilenler (simülatör, 2026-11-04):
   - Profil açıkken ana sahne tamamen çıkarılınca bir koşuda düzeldi.
   - 3B gövde görünümünü ya da jest tanıyıcılarını kaldırmak düzeltmedi.
   - Yukarıdaki duraklatma varyantlarının hiçbiri güvenilir biçimde düzeltmedi.
+- **Ek gözlem (2026-11-04, V36-01):** `BodyFormUITests`'ta yaklaşık 21 koşunun 11'inde aynı takılma. Sürüklemeden hemen sonra değer değişmemiş; geri sıçrama yok, hata mesajı yok, kaydırıcı etkin ve çerçevesi sabit. 3B görünümün yan kaydırma tanıyıcısı dokunuşu almıyor (figürün açısı değişmiyor). Liste durana kadar beklemek de düzeltmedi. Yani dokunuş kaydırıcıya hiç ulaşmıyor. Aynı tam UI koşusunda `testBodyStudioJourney` geçti.
+- **Genişleme (2026-11-04, V36-01):** Aynı ailede iki belirti daha görüldü. Profil satırlarında dokunuşlar düşüyor: geri al, hava rızası anahtarı. Ayrıca profilde sonradan oluşturulan RealityView'lar bazen 15 saniyeden uzun süre hiç çizilmiyor: Kadın başlangıç şekli ve oluşturulduktan hemen sonraki gövde.
+  - Deney: ana sahne hiç kurulmadan form testi 2/2 geçti.
+  - Ana sahnenin RealityView'ı kapak açıkken hiyerarşiden çıkarıldığında form testi bir seferde 3/3 geçti, sonra tekrar düştü. Geri dönüşte ana sahne bembeyaz kaldı; hem eski varlıklar yeniden eklenince hem de yeni stage kurulunca. Bu yüzden geri alındı.
+  - Ara sonuç: bu simülatörde uygulamanın ömrünün ilerisinde oluşturulan RealityView'lar bazen hiç çizmiyor. Kök neden `UNKNOWN`.
 - **Durum:** `OPEN`; ayrı iş olarak izlenecek. Gerçek iPhone'da görülüp görülmediği `UNKNOWN` (`REAL_DEVICE_BLOCKED`).
 
 ## Kanıt

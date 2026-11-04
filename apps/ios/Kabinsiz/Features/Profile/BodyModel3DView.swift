@@ -46,20 +46,7 @@ struct BodyModel3DView: View {
 
     var body: some View {
         VStack(spacing: Token.Space.tight) {
-            RealityView { content in
-                content.camera = .virtual
-                stage.build(in: &content)
-                stage.show(mesh, dark: colorScheme == .dark)
-                stage.place(yaw: yaw, zoom: zoom, animated: false)
-                stage.onSpinSettled = { yaw = $0 }
-            } update: { _ in
-                stage.show(mesh, dark: colorScheme == .dark)
-            }
-            // The RealityView's UIView swallows touches, and a SwiftUI DragGesture holds the enclosing
-            // scroll view still. So the view takes no touches, and a clear layer carries UIKit
-            // recognisers: a pan that only begins when the finger moves sideways (a vertical drag
-            // never starts it and scrolls the page), and a two-finger pinch.
-            .allowsHitTesting(false)
+            stageView
             .overlay {
                 Color.clear
                     .contentShape(.rect)
@@ -71,7 +58,8 @@ struct BodyModel3DView: View {
             .accessibilityValue("\(angleDescription). \(summary)")
             .accessibilityHint("Döndürmek için yukarı veya aşağı kaydır.")
             .accessibilityAdjustableAction { direction in
-                turn(to: yaw + (direction == .increment ? .pi / 4 : -.pi / 4), animated: false)
+                let step: Float = direction == .increment ? .pi / 4 : -.pi / 4
+                turn(to: yaw + step, animated: false)
             }
             .accessibilityIdentifier(identifier)
 
@@ -87,6 +75,23 @@ struct BodyModel3DView: View {
                 }
             }
         }
+    }
+
+    /// The RealityKit stage. It takes no touches: the RealityView's UIView swallows them, and a SwiftUI
+    /// DragGesture holds the enclosing scroll view still. A clear overlay carries UIKit recognisers
+    /// instead: a pan that only begins when the finger moves sideways (a vertical drag never starts it
+    /// and scrolls the page), and a two-finger pinch.
+    private var stageView: some View {
+        RealityView { content in
+            content.camera = .virtual
+            stage.build(in: &content)
+            stage.show(mesh, dark: colorScheme == .dark)
+            stage.place(yaw: yaw, zoom: zoom, animated: false)
+            stage.onSpinSettled = { yaw = $0 }
+        } update: { _ in
+            stage.show(mesh, dark: colorScheme == .dark)
+        }
+        .allowsHitTesting(false)
     }
 
     // MARK: Gestures

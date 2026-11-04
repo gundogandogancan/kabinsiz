@@ -255,8 +255,18 @@ public actor BodyStudio {
 
     // MARK: Commits (serialized, not cancellable)
 
-    public func createNeutral(unit: LengthUnit = .centimeters) async -> DecisionEnvelope<PreviewScene> {
-        await serialized { studio in await studio.performCreateNeutral(unit: unit) }
+    public func createNeutral(unit: LengthUnit = .centimeters, form: BodyForm = .neutral) async -> DecisionEnvelope<PreviewScene> {
+        await serialized { studio in await studio.performCreateNeutral(unit: unit, form: form) }
+    }
+
+    /// The user's body form (Kadın / Erkek / Nötr, ADR-017). Typed measurements stay; only starting
+    /// values move to the new form's start. Undoable like any edit.
+    public func setForm(_ form: BodyForm) async -> DecisionEnvelope<PreviewScene>? {
+        await serialized { studio in
+            guard let base = await studio.profile, base.form != form else { return nil }
+            guard let target = try? base.withForm(form) else { return .failure(traceID: UUID().uuidString, .schemaInvalid) }
+            return await studio.perform(.restore(target))
+        }
     }
 
     public func commit(_ edit: BodyEdit) async -> DecisionEnvelope<PreviewScene> {
@@ -308,19 +318,19 @@ public actor BodyStudio {
             case .restore(let target):
                 next = target
             }
-            let stamped = BodyProfile(revision: revision, values: next.values, preferredUnit: next.preferredUnit)
+            let stamped = BodyProfile(revision: revision, values: next.values, preferredUnit: next.preferredUnit, form: next.form)
             try stamped.validate()
             return stamped
         }
     }
 
-    private func performCreateNeutral(unit: LengthUnit) async -> DecisionEnvelope<PreviewScene> {
+    private func performCreateNeutral(unit: LengthUnit, form: BodyForm) async -> DecisionEnvelope<PreviewScene> {
         // Only from empty: a double tap must never reset an existing body without undo.
         guard status == .noProfile else {
             return .failure(traceID: UUID().uuidString, status == .ready ? .schemaInvalid : .storageCorrupted)
         }
-        let start = BodyProfile.neutral(unit: unit)
-        let target = BodyProfile(revision: 0, values: start.values, preferredUnit: unit)
+        let start = BodyProfile.neutral(unit: unit, form: form)
+        let target = BodyProfile(revision: 0, values: start.values, preferredUnit: unit, form: form)
         return await perform(.restore(target), recordHistory: false, allowFromEmpty: true)
     }
 

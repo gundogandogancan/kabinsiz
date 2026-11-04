@@ -95,7 +95,7 @@ struct ModelPartsBar: View {
         }
         var note: String {
             switch self {
-            case .body: "Nötr 3B gövden aşağıda; kaydırıcılarla şekillendirirsin."
+            case .body: "3B gövden aşağıda; formunu seç, kaydırıcılarla şekillendir."
             case .measures: "Mezura ölçünü aşağıdaki alana yazarsın; fotoğraftan ölçü çıkarmayız."
             case .face: "Yüz kişiselleştirme bu sürümde yok. Yüz fotoğrafın alınmaz, hiçbir yere gönderilmez."
             case .hair: "Saç seçimi bu sürümde yok; model nötr başla kalır."

@@ -54,22 +54,26 @@ struct BodyStudioSection: View {
         VStack(alignment: .leading, spacing: Token.Space.tight) {
             // The figure is on screen before anything is saved: the unsaved neutral stand-in.
             if let mesh = model.heroMesh {
-                BodyModel3DView(mesh: mesh, summary: "Nötr başlangıç şekli; ölçü girilmedi.",
+                BodyModel3DView(mesh: mesh, summary: "\(model.standInForm.displayName) başlangıç şekli; ölçü girilmedi.",
                                 showsAngleButtons: false, identifier: "standIn3D")
+                    // A fresh stage per form: here the RealityView's `update` does not run when only
+                    // the mesh changes, so the old shape stayed (2026-11-04). Changes on a tap only.
+                    .id(model.standInForm)
                     .frame(height: 380)
                     .frame(maxWidth: .infinity)
                     .background(LinearGradient(colors: [Atelier.surfaceSecondary, Atelier.sand], startPoint: .top, endPoint: .bottom),
                                 in: RoundedRectangle(cornerRadius: Atelier.Radius.hero, style: .continuous))
             }
-            Text("Ölçü zorunlu değil. Nötr bir başlangıç şekliyle başla, sonra kaydırıcılarla kendine benzet.")
+            Text("Ölçü zorunlu değil. Bir başlangıç şekliyle başla, sonra kaydırıcılarla kendine benzet.")
                 .font(.subheadline).foregroundStyle(Token.textSecondary)
             Text("Başlangıç değerleri bir norm ya da hedef değildir.")
                 .font(.footnote).foregroundStyle(Token.textSecondary)
+            formPicker(selection: Binding(get: { model.standInForm }, set: { model.standInForm = $0 }), identifier: "startBodyForm")
             Picker("Birim", selection: $unit) {
                 ForEach(LengthUnit.allCases, id: \.self) { Text($0.symbol).tag($0) }
             }
             .pickerStyle(.segmented)
-            Button("Nötr başlangıç modeli oluştur") { Task { await model.createNeutralBody(unit: unit) } }
+            Button("Başlangıç modelini oluştur") { Task { await model.createNeutralBody(unit: unit) } }
                 .buttonStyle(PrimaryButtonStyle())
                 .accessibilityIdentifier("createNeutralBody")
         }
@@ -96,7 +100,7 @@ struct BodyStudioSection: View {
                     .animation(reduceMotion ? nil : .smooth(duration: 0.28), value: model.bodyScene?.bodyRevision)
             }
             if let scene = model.bodyScene, !scene.isFallback {
-                Text(scene.mesh == nil ? "Basit siluet. Görünüm, beden uyumunun kanıtı değildir." : "Nötr 3B model. Görünüm, beden uyumunun kanıtı değildir.")
+                Text(scene.mesh == nil ? "Basit siluet. Görünüm, beden uyumunun kanıtı değildir." : "\(Self.modelName(profile.form)). Görünüm, beden uyumunun kanıtı değildir.")
                     .font(.caption).foregroundStyle(Token.textSecondary)
                     .accessibilityIdentifier("bodyFidelityLabel")
             }
@@ -136,6 +140,12 @@ struct BodyStudioSection: View {
         }
         .listRowSeparator(.hidden)
 
+        formPicker(selection: Binding(get: { profile.form }, set: { new in
+            guard new != profile.form else { return }
+            dropDrafts()
+            Task { await model.setBodyForm(new) }
+        }), identifier: "bodyForm")
+
         ForEach(BodyParameter.allCases, id: \.self) { parameter in
             sliderRow(parameter, profile)
         }
@@ -150,9 +160,34 @@ struct BodyStudioSection: View {
         deleteButton
     }
 
+    /// Kadın / Erkek / Nötr (ADR-017): the user's choice only. It changes proportions (neck, chest
+    /// depth vs width, bust, thighs), never a typed measurement, and is never inferred from anything.
+    private func formPicker(selection: Binding<BodyForm>, identifier: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Beden formu").font(.subheadline.weight(.semibold))
+            Picker("Beden formu", selection: selection) {
+                ForEach(BodyForm.allCases) { Text($0.displayName).tag($0) }
+            }
+            .pickerStyle(.segmented)
+            .accessibilityIdentifier(identifier)
+            Text("Yalnız senin seçimin. Oranları değiştirir; girdiğin ölçüleri değiştirmez.")
+                .font(.caption).foregroundStyle(Token.textSecondary)
+        }
+        .padding(.vertical, 2)
+    }
+
+    /// The fidelity line names the drawn form; the neutral one keeps its old wording.
+    private static func modelName(_ form: BodyForm) -> String {
+        switch form {
+        case .neutral: "Nötr 3B model"
+        case .feminine: "3B model, kadın formu"
+        case .masculine: "3B model, erkek formu"
+        }
+    }
+
     /// What VoiceOver reads for the drawing: the values themselves, not a revision number.
     private func summary(_ profile: BodyProfile) -> String {
-        BodyParameter.allCases.map { "\($0.displayName) \(BodyLength(draftValue($0, profile), .centimeters).formatted(unit))" }
+        BodyParameter.allCases.map { "\(profile.form.label($0)) \(BodyLength(draftValue($0, profile), .centimeters).formatted(unit))" }
             .joined(separator: ", ")
     }
 
@@ -166,7 +201,7 @@ struct BodyStudioSection: View {
         let range = profile.allowedRange(p)
         return VStack(alignment: .leading, spacing: 2) {
             HStack(alignment: .firstTextBaseline) {
-                Text(p.displayName)
+                Text(profile.form.label(p))
                 Spacer()
                 Text(length.formatted(unit))
                     .monospacedDigit()
@@ -189,7 +224,7 @@ struct BodyStudioSection: View {
             .tint(Token.brandInk)
             // A typed measurement is not changed by a stray touch; the user turns it back into a shape on purpose.
             .disabled(profile[p].source == .userMeasured)
-            .accessibilityLabel(p.displayName)
+            .accessibilityLabel(profile.form.label(p))
             .accessibilityHint(profile[p].source == .userMeasured
                 ? "Elle girilmiş ölçü. Değiştirmek için yeni ölçü gir."
                 : "Yukarı ya da aşağı kaydırarak yarım santimetre değiştir.")
