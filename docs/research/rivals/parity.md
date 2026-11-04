@@ -14,7 +14,7 @@ Durum değerleri:
 | Avatarı baştan kur | Doji (C) | **PARTIAL**: başlangıç değerlerine dön var; formu değiştir V36-01'de | BodyProfile.neutral(form:) |
 | Canlı ayna | Anywear | **PARTIAL**: F1 yerel ayna SIMULATOR_TESTED; cihaz R-002 | MIR-T*, ADR-015 |
 | Fotoğrafsız deneme | Anywear | **DONE** | 3B model ve canlı ayna |
-| Fotogerçekçi tek kare | Google / Doji | **MISSING**: L1 FASHN PoC izin bekliyor | ADR-017 |
+| Fotogerçekçi tek kare | Google / Doji | **MISSING**: FASHN PoC çalıştı (2026-11-04), bizim avatarda fotogerçekçi değil, kullanıcı fotoğrafı buluta gitmez → cihazda yol yok | `docs/research/fashn-poc/`, D-049 |
 | Bağlantı ya da paylaşımla ürün ekleme | Doji / Google | **MISSING** → V36-06 | — |
 | Fotoğraftan kesip çıkarma | Alta (SAM) | **PARTIAL**: paket DONE (Vision maskesi, cihazda); UI V36-03'te | PHOTO-T01..T05, T07 |
 | Otomatik etiket (kategori, renk, mevsim) | Alta / Cladwell | **PARTIAL**: renk + tür önerisi paket DONE (12/13); mevsim yok; UI V36-03'te | PHOTO-T02, T06..T08 |
