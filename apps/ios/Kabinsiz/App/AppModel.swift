@@ -352,7 +352,7 @@ final class AppModel {
 
     private static let neutralStandIn: BodyMesh? = {
         guard let snapshot = try? AvatarSnapshot.make(for: .neutral()) else { return nil }
-        return try? BodyMesh.make(from: snapshot)
+        return BodyMesh.best(from: snapshot)
     }()
 
     func createNeutralBody(unit: LengthUnit) async {

@@ -12,6 +12,11 @@ import Foundation
 public struct BodyMesh: Codable, Hashable, Sendable {
     public enum Part: String, Codable, CaseIterable, Sendable {
         case torso, leftLeg, rightLeg, leftArm, rightArm
+        /// The whole sculpted body as one closed surface (ADR-010).
+        case body
+
+        /// The pieces of the procedural body (ADR-007).
+        public static let procedural: [Part] = [.torso, .leftLeg, .rightLeg, .leftArm, .rightArm]
     }
 
     /// One closed, watertight surface. Triangles are counter-clockwise seen from outside.
@@ -141,7 +146,10 @@ public struct BodyMesh: Codable, Hashable, Sendable {
     /// triangle, every piece closed (each directed edge appears once, its reverse once), outward-facing
     /// (positive signed volume), unit normals, and inside the body's height.
     public func validate() throws(BodyEditError) {
-        guard heightM.isFinite, heightM > 0, pieces.count == Part.allCases.count else { throw .unsafeGeometry("mesh-empty") }
+        // Either the five procedural pieces or the one sculpted body, each part once.
+        let parts = pieces.map(\.part)
+        guard heightM.isFinite, heightM > 0, Set(parts).count == parts.count,
+              Set(parts) == Set(Part.procedural) || parts == [.body] else { throw .unsafeGeometry("mesh-empty") }
         for piece in pieces {
             let n = piece.positions.count
             guard n >= 4, piece.normals.count == n, piece.indices.count >= 12, piece.indices.count % 3 == 0 else { throw .unsafeGeometry("mesh-shape") }

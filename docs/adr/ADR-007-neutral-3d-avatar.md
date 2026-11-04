@@ -2,6 +2,7 @@
 
 - Durum: KABUL · 2026-11-03 · C-11, C-12 · v1.5 §87.4, §108, §133.1; v1.6 VIZ-01/BODY-3D; v1.7 §3.2 G0..G3; v2.0 UI-06, §05.2; WP19-07
 - D-003'ü kapatır, D-005'i tamamlar.
+- **Güncelleme 2026-11-04:** §2 (mesh kaynağı) ADR-010 ile güncellendi: birincil gövde NAVER Anny tabanlı yontulmuş gövde; bu ADR’deki prosedürel gövde yedek olarak kalır.
 
 ## Karar
 

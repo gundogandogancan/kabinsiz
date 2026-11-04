@@ -44,6 +44,8 @@ public struct Silhouette: Codable, Hashable, Sendable {
     /// Front-view half-width of a roughly elliptical cross-section with circumference `c`. A torso is
     /// wider than deep (≈1.45:1), which makes the visible width ≈ c / 2.6. Drawing approximation only.
     static func halfWidth(circumference c: Double) -> Double { c / 2.6 / 2 }
+    /// Inverse of `halfWidth(circumference:)`: the girth a drawn half-width stands for.
+    static func circumference(halfWidth w: Double) -> Double { w * 2 * 2.6 }
 
     /// Geometry from a profile. Shoulder changes also widen the upper chest a little, so the outline
     /// stays one smooth shape instead of a step (correlated morph, §108.2).

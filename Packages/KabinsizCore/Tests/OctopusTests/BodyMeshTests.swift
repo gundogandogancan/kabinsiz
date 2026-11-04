@@ -16,7 +16,7 @@ struct BodyMeshTests {
     func neutralIsValid() throws {
         let (profile, m) = try mesh()
         try m.validate()
-        #expect(Set(m.pieces.map(\.part)) == Set(BodyMesh.Part.allCases))
+        #expect(Set(m.pieces.map(\.part)) == Set(BodyMesh.Part.procedural))
         #expect(abs(Double(m.heightM) - profile.cm(.height) / 100) < 1e-6)
         let ys = m.pieces.flatMap(\.positions).map(\.y)
         #expect(abs(Double(ys.max()!) - profile.cm(.height) / 100) < 1e-4)

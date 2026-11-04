@@ -14,7 +14,7 @@ public struct PreviewScene: Codable, Hashable, Sendable {
     /// Empty when the shape could not be drawn and the values list is the fallback (V15-T-BOD-07).
     public let rightOutline: [Silhouette.Point]
     public let isFallback: Bool
-    /// The neutral 3D body (ADR-007) when the budget allows a mesh; nil under `2D_CARD` or if the mesh
+    /// The neutral 3D body (ADR-010 sculpted, else ADR-007 procedural) when the budget allows a mesh; nil under `2D_CARD` or if the mesh
     /// failed validation, and the 2D outline is drawn instead (G0 fallback).
     public let mesh: BodyMesh?
 
@@ -40,7 +40,7 @@ public struct PreviewScene: Codable, Hashable, Sendable {
             points = shape.rightOutline.map { Silhouette.Point(x: $0.x / h, y: $0.y / h) }
         }
         // The 2D outline always travels with the mesh, so the view can fall back without another run.
-        let mesh = maxTier == .flat2D ? nil : try? BodyMesh.make(from: snapshot)
+        let mesh = maxTier == .flat2D ? nil : BodyMesh.best(from: snapshot)
         return PreviewScene(bodyRevision: snapshot.bodyRevision, tier: mesh == nil ? .flat2D : .genericMesh,
                             rightOutline: points, isFallback: false, mesh: mesh)
     }
