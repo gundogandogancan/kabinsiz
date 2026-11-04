@@ -1,0 +1,39 @@
+evidence_schema: 1
+work_package: [TURN-WP01, DRESS-WP01]
+title: "The figure turns only by the user's hand (drag, flick that comes to rest, 'Önden'); nothing moves on its own; dress-up adds and takes off pieces by tap, undo/redo and drag-and-drop"
+status: PASS_SIMULATOR_ONLY   # touch feel and frame rate on a real iPhone REAL_DEVICE_BLOCKED (R-002)
+commit_sha: null   # filled by the commit that adds this file; see git log
+branch: v25/living-world
+spec: "User request 2026-11-04 ('sadece kişi modelini döndürebilmeli, oyun gibi olmalı, ekleyip çıkarabilmeli'); ADR-016; D-042"
+implementation_paths:
+  - Packages/KabinsizCore/Sources/LivingWorld/Turntable.swift
+  - Packages/KabinsizCore/Sources/AvatarDressing/DressedAvatarState.swift     # any slot can come off, EMPTY_SLOT
+  - apps/ios/Kabinsiz/Features/World/WorldStage.swift          # no idle motion, frame-tick tween + spin (no move(to:))
+  - apps/ios/Kabinsiz/Features/World/DressedAvatarView.swift   # 1:1 drag, flick, drop target
+  - apps/ios/Kabinsiz/Features/World/DressUpTray.swift         # Giydir tray
+  - apps/ios/Kabinsiz/Features/World/HomeWorldModel.swift      # toggle, wear(id:), redo
+  - apps/ios/Kabinsiz/Features/World/HomeWorldView.swift       # hanger button, Önden, dressing-room framing
+  - apps/ios/Kabinsiz/Features/Profile/BodyModel3DView.swift   # same turntable, no sway
+  - apps/ios/Kabinsiz/App/KabinsizApp.swift                    # worldPaused: frame tick stops while the profile cover or another tab is up
+unit_tests:
+  - "TurntableTests TURN-T01..T04 (decay to rest, small release ignored, drag mapping, nearest front)"
+  - "DressingTests DRESS-T01 dressUpTakesAnythingOff + emptySlot refusal"
+  - "Package total: 366/366 (swift test, 2026-11-04)"
+ui_tests:
+  - "TurntableDressUpUITests.testFigureMovesOnlyByHand: still for 3 s untouched (<0.2% pixels), drag turns it on screen (>1% pixels), at rest after the flick, 'Önden' turns it back on screen"
+  - "TurntableDressUpUITests.testDressUpAddsAndRemovesLikeAGame: tray opens on the coat, coat off shows on the figure (>1% pixels), undo; top off/undo/redo; drop a piece on the figure; shoes off; done"
+  - "TurntableDressUpUITests.testWorldComesBackAfterProfileCover: profile cover open/close keeps the turned angle; the scene changes <2% on screen"
+measured_on_simulator:
+  - "Bug found: on iOS 26 Entity.move(to:) left the pivot's transform owned by the animation; later transform/orientation writes read back as identity in the same frame. The value said 167°, the drawn figure never turned. macOS ran the same code fine. Fixed by easing turns in the scene's own frame tick."
+  - "Hidden world: WorldStage.setPaused stops the frame tick while the profile cover or another tab is up (no flick, no rate report). Turning the scene's entities off, or remaking the RealityView, left new RealityViews undrawn on the simulator: rejected."
+screenshots:
+  - docs/screenshots/app-2026-11-04/01-bugun/ADR16-front.jpg
+  - docs/screenshots/app-2026-11-04/01-bugun/ADR16-turned-by-hand.jpg
+  - docs/screenshots/app-2026-11-04/01-bugun/ADR16-dress-up-tray.jpg
+  - docs/screenshots/app-2026-11-04/01-bugun/ADR16-coat-off.jpg
+  - docs/screenshots/app-2026-11-04/01-bugun/ADR16-dropped-on-figure.jpg
+not_done:
+  - "OPEN, present before this work (HEAD 9727105 and since a101a1a): on the 3D budget the profile waist slider drag is intermittently swallowed (thumb moves, value stays 82 cm); AcceptanceDemoUITests.testBodyStudioJourney line 188. No pause variant fixed it reliably. Real iPhone: UNKNOWN."
+  - "Touch feel and frame rate on a real iPhone (REAL_DEVICE_BLOCKED)"
+  - "Cloth simulation; garments are T1 representative shapes, not fit evidence"
+  - "Unity not added: RealityKit covers turning, layering, hit-testing and drag-and-drop (ADR-016 §4)"

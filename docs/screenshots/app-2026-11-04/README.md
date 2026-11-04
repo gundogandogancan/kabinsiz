@@ -2,13 +2,15 @@
 
 Hepsi iPhone 17 simülatöründe, UI testleri sırasında çekildi (`SIMULATOR_ONLY`). Gerçek iPhone görüntüsü yok (REAL_DEVICE_BLOCKED).
 Simülatörde kamera olmadığı için Canlı Ayna, çizilmiş bir figürle (fixture) gösteriliyor ve ekranda bu yazıyor. Örnek dolap ve ürünler sentetik.
-Kaynak testler: `apps/ios/KabinsizUITests/` (ScreenGalleryUITests, LiveMirrorUITests, AtelierNavigationUITests, AcceptanceDemoUITests, City3DUITests, ProductPhotoUITests).
+Kaynak testler: `apps/ios/KabinsizUITests/` (ScreenGalleryUITests, TurntableDressUpUITests, LiveMirrorUITests, AtelierNavigationUITests, AcceptanceDemoUITests, City3DUITests, ProductPhotoUITests).
 
 ## Bugün: ana sahne ve kombin
 
-<img src="01-bugun/G01-bugun-ana-sahne.jpg" width="220" alt="G01-bugun-ana-sahne" title="G01-bugun-ana-sahne"> <img src="01-bugun/G15-neden-bu-kombin.jpg" width="220" alt="G15-neden-bu-kombin" title="G15-neden-bu-kombin"> <img src="01-bugun/UI28-05-why-scene.jpg" width="220" alt="UI28-05-why-scene" title="UI28-05-why-scene"> <img src="01-bugun/v28-H01-world-first-launch.jpg" width="220" alt="v28-H01-world-first-launch" title="v28-H01-world-first-launch"> <img src="01-bugun/v28-H02-garment-sheet.jpg" width="220" alt="v28-H02-garment-sheet" title="v28-H02-garment-sheet"> <img src="01-bugun/v28-H03-new-look.jpg" width="220" alt="v28-H03-new-look" title="v28-H03-new-look"> <img src="01-bugun/v28-home-axxxl.jpg" width="220" alt="v28-home-axxxl" title="v28-home-axxxl"> <img src="01-bugun/v32-S07-suggestions.jpg" width="220" alt="v32-S07-suggestions" title="v32-S07-suggestions">
+ADR16-*: figür yalnız elle döner (sürükle/savur, "Önden" ile geri), Giydir tepsisi ile parça giyilir/çıkarılır (palto çıkınca altı görünür).
 
-<sub>G01-bugun-ana-sahne · G15-neden-bu-kombin · UI28-05-why-scene · v28-H01-world-first-launch · v28-H02-garment-sheet · v28-H03-new-look · v28-home-axxxl · v32-S07-suggestions</sub>
+<img src="01-bugun/G01-bugun-ana-sahne.jpg" width="220" alt="G01-bugun-ana-sahne" title="G01-bugun-ana-sahne"> <img src="01-bugun/G15-neden-bu-kombin.jpg" width="220" alt="G15-neden-bu-kombin" title="G15-neden-bu-kombin"> <img src="01-bugun/UI28-05-why-scene.jpg" width="220" alt="UI28-05-why-scene" title="UI28-05-why-scene"> <img src="01-bugun/v28-H01-world-first-launch.jpg" width="220" alt="v28-H01-world-first-launch" title="v28-H01-world-first-launch"> <img src="01-bugun/v28-H02-garment-sheet.jpg" width="220" alt="v28-H02-garment-sheet" title="v28-H02-garment-sheet"> <img src="01-bugun/v28-H03-new-look.jpg" width="220" alt="v28-H03-new-look" title="v28-H03-new-look"> <img src="01-bugun/v28-home-axxxl.jpg" width="220" alt="v28-home-axxxl" title="v28-home-axxxl"> <img src="01-bugun/v32-S07-suggestions.jpg" width="220" alt="v32-S07-suggestions" title="v32-S07-suggestions"> <img src="01-bugun/ADR16-front.jpg" width="220" alt="ADR16-front" title="ADR16-front"> <img src="01-bugun/ADR16-turned-by-hand.jpg" width="220" alt="ADR16-turned-by-hand" title="ADR16-turned-by-hand"> <img src="01-bugun/ADR16-dress-up-tray.jpg" width="220" alt="ADR16-dress-up-tray" title="ADR16-dress-up-tray"> <img src="01-bugun/ADR16-coat-off.jpg" width="220" alt="ADR16-coat-off" title="ADR16-coat-off"> <img src="01-bugun/ADR16-dropped-on-figure.jpg" width="220" alt="ADR16-dropped-on-figure" title="ADR16-dropped-on-figure">
+
+<sub>G01-bugun-ana-sahne · G15-neden-bu-kombin · UI28-05-why-scene · v28-H01-world-first-launch · v28-H02-garment-sheet · v28-H03-new-look · v28-home-axxxl · v32-S07-suggestions · ADR16-front · ADR16-turned-by-hand · ADR16-dress-up-tray · ADR16-coat-off · ADR16-dropped-on-figure</sub>
 
 ## Şehir, cadde ve hava
 

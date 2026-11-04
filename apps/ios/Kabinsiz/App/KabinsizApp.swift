@@ -85,6 +85,7 @@ struct RootView: View {
         }
         .onAppear { if selected == .me { selected = .today } }
         .environment(\.openProfile) { showProfile = true }
+        .environment(\.worldPaused, showProfile || selected != .today)
         .environment(world)
         .environment(router)
         .environment(\.openScan) {
@@ -117,4 +118,7 @@ extension EnvironmentValues {
     @Entry var openProfile: @MainActor () -> Void = {}
     /// Opens Dene's code entry from any screen ("Ürünü Tara" buttons on older screens).
     @Entry var openScan: @MainActor () -> Void = {}
+    /// True while the home world is out of sight (the profile cover is up, or another tab is
+    /// chosen). Its stage then stops its frame work (`WorldStage.setPaused`).
+    @Entry var worldPaused = false
 }

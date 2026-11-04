@@ -1,4 +1,5 @@
 import BodyGeometry
+import LivingWorld
 import QuartzCore
 import RealityKit
 import SwiftUI
@@ -8,14 +9,11 @@ import SwiftUI
 /// front / side / back jump to fixed angles. With Reduce Motion on, jumps and momentum are instant
 /// (v2.0 §05.2, design-motion-principles: mobile = subtle, frequent = no decoration).
 ///
-/// `alive`: while nobody touches it, the figure breathes and sways a few degrees, so it reads as a
-/// living stand-in rather than a diagram. Any touch stops that at once and hands the figure to the
-/// finger; it resumes, from where the finger left it, after a few quiet seconds. Callers pass `alive`
-/// false under Reduce Motion or a constrained device budget (UI20-T-005, UI20-T-014).
+/// It never moves on its own: no sway, no breathing (user decision 2026-11-04, ADR-016). Only the
+/// user's hand turns it.
 struct BodyModel3DView: View {
     let mesh: BodyMesh
     let summary: String
-    var alive = false
     var showsAngleButtons = true
     var identifier = "body3D"
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -53,10 +51,9 @@ struct BodyModel3DView: View {
                 stage.build(in: &content)
                 stage.show(mesh, dark: colorScheme == .dark)
                 stage.place(yaw: yaw, zoom: zoom, animated: false)
-                stage.idleEnabled = alive && !reduceMotion
+                stage.onSpinSettled = { yaw = $0 }
             } update: { _ in
                 stage.show(mesh, dark: colorScheme == .dark)
-                stage.idleEnabled = alive && !reduceMotion
             }
             // The RealityView's UIView swallows touches, and a SwiftUI DragGesture holds the enclosing
             // scroll view still. So the view takes no touches, and a clear layer carries UIKit
@@ -95,7 +92,8 @@ struct BodyModel3DView: View {
     // MARK: Gestures
 
     private func dragChanged(_ dx: CGFloat) {
-        if dragStartYaw == nil { yaw += stage.takeIdleOffset() }
+        // The finger takes the figure: any momentum stops where it is.
+        if dragStartYaw == nil { yaw = stage.currentYaw }
         let start = dragStartYaw ?? yaw
         dragStartYaw = start
         // Half a turn per screen-width of finger travel, applied directly.
@@ -106,15 +104,13 @@ struct BodyModel3DView: View {
     private func dragEnded(_ velocity: CGFloat) {
         dragStartYaw = nil
         guard !reduceMotion else { return }
-        // A flick carries on a little and settles (about a quarter second of the release speed);
-        // a slow release stops where the finger left it.
-        let carry = Float(velocity / 4) / 240 * .pi / 2
-        guard abs(carry) > 0.05 else { return }
-        turn(to: yaw + max(-.pi / 2, min(.pi / 2, carry)), animated: true, duration: 0.55)
+        // A flick keeps turning and slows to rest like a turntable (the same motion as the home
+        // figure); a slow release stops where the finger left it. 480 pt of travel = half a turn.
+        stage.fling(velocity: TurntableSpin.velocity(forFingerSpeed: Double(velocity), width: 480))
     }
 
     private func pinchChanged(_ scale: CGFloat) {
-        if pinchStartZoom == nil { yaw += stage.takeIdleOffset() }
+        if stage.isSpinning { yaw = stage.currentYaw }
         let start = pinchStartZoom ?? zoom
         pinchStartZoom = start
         zoom = max(0.8, min(1.8, start * Float(scale)))
@@ -122,7 +118,7 @@ struct BodyModel3DView: View {
     }
 
     private func turn(to target: Float, animated: Bool, duration: TimeInterval = 0.45) {
-        _ = stage.takeIdleOffset()
+        if stage.isSpinning { yaw = stage.currentYaw }
         yaw = target
         stage.place(yaw: yaw, zoom: zoom, animated: animated && !reduceMotion, duration: duration)
     }
@@ -154,21 +150,13 @@ final class Stage {
     private var shownDark: Bool?
     private var heightM: Float = 1.7
     private var yaw: Float = 0
+    private var spin = TurntableSpin()
+    private var tween: (from: Float, to: Float, duration: Float, elapsed: Float)?
     private var updates: EventSubscription?
-
-    /// Idle breathing and sway (see `BodyModel3DView.alive`).
-    var idleEnabled = false {
-        didSet { if !idleEnabled, oldValue { resetIdlePose() } }
-    }
-    private var idleClock: Double = 0
-    private var idleResumesAt: Double = 0
-    private var idleOffset: Float = 0
-    /// Quiet time after a touch before the figure starts breathing again.
-    private static let idleResumeDelay: Double = 4
-    /// Sway amplitude (radians, ≈ 11°) and periods (seconds): slow enough to read as calm, not as a spin.
-    private static let swayAmplitude: Float = 0.19
-    private static let swayPeriod: Double = 11
-    private static let breathPeriod: Double = 4.6
+    /// Called once when a flick has come to rest, with the final angle.
+    var onSpinSettled: ((Float) -> Void)?
+    var currentYaw: Float { yaw }
+    var isSpinning: Bool { spin.isSpinning }
 
     func build(in content: inout RealityViewCameraContent) {
         camera.camera.fieldOfViewInDegrees = 28
@@ -189,37 +177,35 @@ final class Stage {
 
         pivot.addChild(body)
         content.add(pivot)
+        // Turns are eased by this frame tick, never by a RealityKit transform animation: a
+        // `move(to:)` left the pivot's transform owned by the animation on iOS 26 and later
+        // writes were ignored (seen on the home figure, ADR-016).
         updates = content.subscribe(to: SceneEvents.Update.self) { [weak self] event in
             MainActor.assumeIsolated { self?.tick(event.deltaTime) }
         }
     }
 
-    /// Per frame: only while idle is on and nobody touched the figure recently.
+    func fling(velocity: Float) {
+        tween = nil
+        spin.fling(velocity)
+    }
+
     private func tick(_ dt: TimeInterval) {
-        guard idleEnabled, CACurrentMediaTime() >= idleResumesAt else { return }
-        idleClock += dt
-        idleOffset = Self.swayAmplitude * Float(sin(idleClock * 2 * .pi / Self.swayPeriod))
-        let breath = Float(sin(idleClock * 2 * .pi / Self.breathPeriod))
-        pivot.transform = Transform(
-            scale: SIMD3(1 + 0.004 * breath, 1 + 0.0015 * breath, 1 + 0.006 * breath),
-            rotation: simd_quatf(angle: yaw + idleOffset, axis: SIMD3(0, 1, 0)),
-            translation: .zero
-        )
+        if var t = tween {
+            t.elapsed += Float(min(dt, 0.1))
+            let k = min(t.elapsed / t.duration, 1)
+            tween = k >= 1 ? nil : t
+            apply(t.from + (t.to - t.from) * (1 - pow(1 - k, 3)))
+            return
+        }
+        guard spin.isSpinning else { return }
+        apply(yaw + spin.step(dt))
+        if !spin.isSpinning { onSpinSettled?(yaw) }
     }
 
-    /// A touch takes over: returns the sway the figure had, so the caller's yaw continues from the
-    /// pose on screen (no jump), and holds the idle motion off for a few seconds.
-    func takeIdleOffset() -> Float {
-        let offset = idleOffset
-        resetIdlePose()
-        idleResumesAt = CACurrentMediaTime() + Self.idleResumeDelay
-        return offset
-    }
-
-    private func resetIdlePose() {
-        idleOffset = 0
-        idleClock = 0
-        pivot.transform.scale = .one
+    private func apply(_ yaw: Float) {
+        self.yaw = yaw
+        pivot.transform = Transform(scale: .one, rotation: simd_quatf(angle: yaw, axis: SIMD3(0, 1, 0)), translation: .zero)
     }
 
     func show(_ mesh: BodyMesh, dark: Bool) {
@@ -250,13 +236,12 @@ final class Stage {
     }
 
     func place(yaw: Float, zoom: Float, animated: Bool, duration: TimeInterval = 0.45) {
-        self.yaw = yaw
-        let target = Transform(scale: .one, rotation: simd_quatf(angle: yaw, axis: SIMD3(0, 1, 0)), translation: .zero)
-        if animated {
-            pivot.move(to: target, relativeTo: nil, duration: duration, timingFunction: .easeOut)
+        spin.stop()
+        if animated, duration > 0, yaw != self.yaw {
+            tween = (self.yaw, yaw, Float(duration), 0)
         } else {
-            pivot.stopAllAnimations()
-            pivot.transform = target
+            tween = nil
+            apply(yaw)
         }
         frame(zoom: zoom)
     }

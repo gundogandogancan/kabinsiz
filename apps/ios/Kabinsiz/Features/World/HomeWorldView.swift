@@ -7,7 +7,7 @@ import SwiftUI
 import TodayOutfit
 import TravelEngine
 
-/// "Bugün" (v2.8 H01–H05, ADR-011): the person's own figure, dressed in today's prepared look,
+/// "Bugün" (v2.8 H01–H05, ADR-011, ADR-016): the person's own figure, dressed in today's prepared look,
 /// standing in their city. The scene leads; the chrome is only the wordmark, one city/weather chip
 /// and, at the bottom edge, "Yeni kombin" and "Dene". Garments are changed by touching them on the
 /// figure (or through VoiceOver actions), which opens one short sheet; the camera lifts the figure so
@@ -30,20 +30,35 @@ struct HomeWorldView: View {
     @State private var showCity = false
     @State private var sheetFor: GarmentSlotID?
     @State private var turnedOnce = false
+    @State private var dressUp = false
 
     var body: some View {
         GeometryReader { geo in
             ZStack {
                 world3D
                     // Reframe while the garment sheet is up: the figure lifts into the top two thirds.
-                    .offset(y: sheetFor == nil ? 0 : -geo.size.height * 0.09)
+                    // In dress-up it lifts less: the header steps aside, so the head stays clear.
+                    .offset(y: sheetFor != nil ? -geo.size.height * 0.09 : dressUp ? -geo.size.height * 0.06 : 0)
                     .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: sheetFor)
+                    .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: dressUp)
                 scrims
                 VStack(spacing: 0) {
                     header
+                        // Dress-up is a dressing room: city and weather step aside for the figure.
+                        .opacity(dressUp ? 0 : 1)
+                        .allowsHitTesting(!dressUp)
+                        .accessibilityHidden(dressUp)
                     Spacer(minLength: 0)
-                    footer
+                    if dressUp {
+                        DressUpTray(onDone: { dressUp = false })
+                            .padding(.horizontal, 10)
+                            .padding(.bottom, 6)
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                    } else {
+                        footer
+                    }
                 }
+                .animation(reduceMotion ? nil : .spring(duration: 0.35), value: dressUp)
                 .dynamicTypeSize(...DynamicTypeSize.accessibility2)
                 .opacity(sheetFor == nil ? 1 : 0)
                 .allowsHitTesting(sheetFor == nil)
@@ -89,6 +104,8 @@ struct HomeWorldView: View {
 
     private func open(_ slot: GarmentSlotID?) {
         turnedOnce = true
+        // In dress-up a tap on the figure picks that slot in the tray instead of opening a sheet.
+        if dressUp { world.selectedSlot = slot; return }
         world.selectedSlot = slot
         sheetFor = slot
     }
@@ -164,7 +181,6 @@ struct HomeWorldView: View {
                 body3D: mesh, snapshot: snapshot, outfit: world.outfit, prewarm: world.looks?.looks.map(\.outfit) ?? [],
                 light: world.streetScene != nil ? .day : light,
                 rainIntensity: world.streetScene != nil ? 0 : world.sceneWeather.rainIntensity * quality.rainScale,
-                alive: model.allowsLivelyMotion && !reduceMotion,
                 selectedSlot: Binding(get: { world.selectedSlot }, set: { world.selectedSlot = $0 }),
                 zoom: $zoom, yaw: $yaw,
                 onTapSlot: { slot in
@@ -172,10 +188,10 @@ struct HomeWorldView: View {
                     open(slot)
                 },
                 onSlotAction: { open($0) },
+                onDropItem: { id in world.wear(id: id, wardrobe: model.wardrobe) },
                 city: world.manifest?.model3D,
                 wetCity: world.sceneWeather.wetGround,
                 showCity: quality.tier != .frame2D && world.streetScene == nil,
-                cameraDrift: quality.cameraDrift && model.allowsLivelyMotion,
                 spotlight: true,
                 onFrameRate: { world.reportFrameRate($0) },
                 onCityReady: { world.cityDidLoad($0) }
@@ -265,6 +281,28 @@ struct HomeWorldView: View {
 
     private var footer: some View {
         VStack(spacing: 10) {
+            // After a turn, one tap brings the figure back to face the user (shown on its own row,
+            // so it never competes with the notice or the stand-in pill).
+            if turnedOnce, abs(yaw - TurntableSpin.front(near: yaw)) > 0.2 {
+                HStack {
+                    Spacer()
+                    Button {
+                        yaw = TurntableSpin.front(near: yaw)
+                    } label: {
+                        Label("Önden", systemImage: "person.fill.turn.down")
+                            .font(AtelierType.caption.weight(.semibold))
+                            .foregroundStyle(Atelier.ink)
+                            .padding(.horizontal, 14)
+                            .frame(minHeight: Atelier.minTap)
+                            .paperSurface(Capsule())
+                    }
+                    .buttonStyle(AtelierPressStyle())
+                    .accessibilityLabel("Modeli önden göster")
+                    .accessibilityValue(angleText)
+                    .accessibilityIdentifier("worldFaceFront")
+                }
+                .transition(.opacity)
+            }
             if let notice = world.notice {
                 Button { world.undo() } label: {
                     HStack(spacing: 8) {
@@ -315,6 +353,16 @@ struct HomeWorldView: View {
                     .buttonStyle(CopperCapsuleStyle())
                     .accessibilityIdentifier("primary.newLook")
                 }
+                // Dress-up: add and take off pieces on the figure, like a game.
+                Button { dressUp = true; world.selectedSlot = nil } label: {
+                    Image(systemName: "hanger")
+                        .font(.headline).foregroundStyle(Atelier.ink)
+                        .frame(width: 54, height: 54)
+                        .paperSurface(Circle())
+                }
+                .buttonStyle(AtelierPressStyle())
+                .accessibilityLabel("Giydir: parça ekle ya da çıkar")
+                .accessibilityIdentifier("worldDressUp")
                 // The look's reason is one tap away instead of a sentence on the scene.
                 if let look = world.currentLook {
                     Button { showWhy = true } label: {
@@ -338,6 +386,12 @@ struct HomeWorldView: View {
         .padding(.horizontal, Atelier.Space.l)
         .padding(.bottom, 8)
         .animation(reduceMotion ? nil : .easeOut(duration: 0.25), value: world.notice)
+    }
+
+    /// The figure's angle in whole degrees, 0…359, for VoiceOver and tests.
+    private var angleText: String {
+        let deg = Int((Double(yaw) * 180 / .pi).rounded())
+        return "\(((deg % 360) + 360) % 360)°"
     }
 
     private func reasonLine(_ look: TodayLook) -> String {

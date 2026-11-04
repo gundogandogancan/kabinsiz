@@ -71,10 +71,25 @@ struct DressingTests {
         #expect(throws: DressingRefusal.staleRevision) { try state.apply(slow) }
         #expect(state.outfit[.top]?.id == "new")
         #expect(throws: DressingRefusal.duplicateCommand) { try state.apply(fast) }
-        #expect(throws: DressingRefusal.requiredSlot) { try state.apply(.init(action: .remove(.top), basedOnRevision: 1)) }
         try state.apply(.init(action: .replace(item("belt", .belt, .belt)), basedOnRevision: 1))
         try state.apply(.init(action: .remove(.belt), basedOnRevision: 2))
         #expect(state.outfit[.belt] == nil && state.revision == 3)
+        #expect(throws: DressingRefusal.emptySlot) { try state.apply(.init(action: .remove(.belt), basedOnRevision: 3)) }
+        #expect(state.revision == 3, "an empty slot taken off changes nothing")
+    }
+
+    @Test("DRESS-T01: dress-up takes any piece off, top and shoes too; undo puts each back in order")
+    func dressUpTakesAnythingOff() throws {
+        var state = DressedAvatarState(outfit: DressedOutfit([item("t", .top, .tee), item("b", .bottom, .jeans), item("s", .footwear, .sneakers)]))
+        try state.apply(.init(action: .remove(.top), basedOnRevision: 0))
+        try state.apply(.init(action: .remove(.footwear), basedOnRevision: 1))
+        #expect(state.outfit[.top] == nil && state.outfit[.footwear] == nil && state.outfit[.bottom]?.id == "b")
+        try state.apply(.init(action: .undo, basedOnRevision: 2))
+        #expect(state.outfit[.footwear]?.id == "s" && state.outfit[.top] == nil)
+        try state.apply(.init(action: .undo, basedOnRevision: 3))
+        #expect(state.outfit[.top]?.id == "t")
+        try state.apply(.init(action: .redo, basedOnRevision: 4))
+        #expect(state.outfit[.top] == nil)
     }
 
     @Test("History is bounded on the device")

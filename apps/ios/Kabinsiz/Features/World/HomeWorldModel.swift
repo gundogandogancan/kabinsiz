@@ -305,11 +305,30 @@ final class HomeWorldModel {
     }
 
     func wear(_ item: DressItem) { apply(.replace(item)) }
-    /// Take an accessory slot off; top, bottom and shoes are refused by the dressing state.
+    /// Take a slot off (any slot, dress-up); undo puts it back.
     func remove(_ slot: GarmentSlotID) { apply(.remove(slot)) }
     func undo() {
         apply(.undo)
         notice = nil
+    }
+    func redo() { apply(.redo) }
+
+    /// Dress-up tray: tap a piece to put it on; tap the worn piece to take it off.
+    func toggle(_ item: DressItem) {
+        if outfit[item.slot]?.id == item.id { remove(item.slot) } else { wear(item) }
+    }
+
+    /// A piece dropped on the figure, by id, from the same pool the tray shows.
+    @discardableResult
+    func wear(id: String, wardrobe: Wardrobe) -> Bool {
+        guard let item = GarmentSlotID.allCases.lazy.flatMap({ self.choices(for: $0, wardrobe: wardrobe) }).first(where: { $0.id == id }) else { return false }
+        wear(item)
+        return true
+    }
+
+    /// Slots the tray offers: those with pieces in the pool or on the figure, in slot order.
+    func dressUpSlots(wardrobe: Wardrobe) -> [GarmentSlotID] {
+        GarmentSlotID.allCases.filter { outfit[$0] != nil || !choices(for: $0, wardrobe: wardrobe).isEmpty }
     }
 
     private func apply(_ action: OutfitChangeRequest.Action) {

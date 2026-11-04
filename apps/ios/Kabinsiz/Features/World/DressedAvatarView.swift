@@ -4,10 +4,11 @@ import LivingWorld
 import RealityKit
 import SwiftUI
 
-/// The dressed figure in the world (v2.5 §2.3): a sideways drag turns it through 360° (a vertical
-/// drag is left alone), two fingers zoom, a tap on a garment selects its slot by a RealityKit ray
-/// cast. Rotation and selection never fight: the pan only begins on sideways motion, a tap only
-/// fires when the finger did not move.
+/// The dressed figure in the world (v2.5 §2.3, user decision 2026-11-04): it stands still until the
+/// user turns it. A sideways drag turns it 1:1 under the finger (a vertical drag is left alone); a
+/// flick keeps it turning on a turntable that slows to rest; two fingers zoom; a tap on a garment
+/// selects its slot by a RealityKit ray cast; a garment dragged from the dress-up tray and dropped on
+/// the figure goes on. Nothing moves by itself: no sway, no breathing, no camera drift.
 struct DressedAvatarView: View {
     let body3D: BodyMesh
     let snapshot: AvatarSnapshot
@@ -15,18 +16,18 @@ struct DressedAvatarView: View {
     let prewarm: [DressedOutfit]
     let light: WorldLight
     let rainIntensity: Float
-    let alive: Bool
     @Binding var selectedSlot: GarmentSlotID?
     @Binding var zoom: Float
     @Binding var yaw: Float
     var onTapSlot: (GarmentSlotID?) -> Void = { _ in }
     /// VoiceOver's way to a garment: one action per worn slot (v2.8 §06.3).
     var onSlotAction: (GarmentSlotID) -> Void = { _ in }
+    /// A garment id dropped on the figure from the dress-up tray; returns whether it went on.
+    var onDropItem: (String) -> Bool = { _ in false }
     /// The 3D street to stand in, its surface state, and whether it may be shown and drift.
     var city: CityModel3D?
     var wetCity = false
     var showCity = false
-    var cameraDrift = false
     /// Today's spotlight from above (lamp out of frame).
     var spotlight = false
     /// Scene update rate, reported every two seconds.
@@ -35,21 +36,27 @@ struct DressedAvatarView: View {
     var onCityReady: (Bool) -> Void = { _ in }
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Out of sight: the stage stops its frame work (`WorldStage.setPaused`).
+    @Environment(\.worldPaused) private var paused
     @State private var stage = WorldStage()
     @State private var dragStartYaw: Float?
     @State private var pinchStartZoom: Float?
     @State private var shownRain: Float = -1
+    @State private var width: CGFloat = 390
+    @State private var dropTargeted = false
 
     var body: some View {
         GeometryReader { geo in
             RealityView { content in
                 stage.build(in: &content)
+                stage.setPaused(paused)
                 sync()
                 stage.place(yaw: yaw, animated: false)
             } update: { _ in
                 sync()
             }
             .allowsHitTesting(false)
+            .onChange(of: paused) { _, now in stage.setPaused(now) }
             .task(id: CityRequest(resource: showCity ? city?.resource : nil, wet: wetCity)) {
                 do {
                     try await stage.showCity(showCity ? city : nil, wet: wetCity)
@@ -71,7 +78,23 @@ struct DressedAvatarView: View {
                         let slot = stage.slot(at: point, in: geo.size)
                         onTapSlot(slot)
                     }
+                    .dropDestination(for: String.self) { ids, _ in
+                        guard let id = ids.first else { return false }
+                        return onDropItem(id)
+                    } isTargeted: { dropTargeted = $0 }
             }
+            .overlay {
+                // While a garment is carried over the figure, a soft ring under the feet says "drop here".
+                if dropTargeted {
+                    Ellipse().strokeBorder(Atelier.copper.opacity(0.9), lineWidth: 3)
+                        .frame(width: geo.size.width * 0.5, height: 44)
+                        .position(x: geo.size.width / 2, y: geo.size.height * 0.80)
+                        .allowsHitTesting(false)
+                        .transition(.opacity)
+                }
+            }
+            .onAppear { width = geo.size.width }
+            .onChange(of: geo.size.width) { width = $1 }
         }
         .accessibilityElement()
         .accessibilityLabel("3B modelin, bugünün kombiniyle")
@@ -95,15 +118,16 @@ struct DressedAvatarView: View {
         stage.prewarm(prewarm, snapshot: snapshot)
         stage.dress(outfit, snapshot: snapshot)
         if stage.selectedSlot != selectedSlot { stage.highlight(selectedSlot) }
-        stage.idleEnabled = alive && !reduceMotion
-        stage.driftEnabled = cameraDrift && !reduceMotion
+        if stage.onSpinSettled == nil { stage.onSpinSettled = { final in Task { @MainActor in yaw = final } } }
         if stage.onFrameRate == nil { stage.onFrameRate = { rate in Task { @MainActor in onFrameRate(rate) } } }
         stage.setZoom(zoom)
         if shownRain != rainIntensity {
             stage.rain(reduceMotion ? 0 : rainIntensity)
             DispatchQueue.main.async { shownRain = rainIntensity }
         }
-        if abs(stage.yaw - yaw) > 0.0001, dragStartYaw == nil { stage.place(yaw: yaw, animated: !reduceMotion) }
+        if abs(stage.yaw - yaw) > 0.0001, dragStartYaw == nil, !stage.spin.isSpinning {
+            stage.place(yaw: yaw, animated: !reduceMotion)
+        }
     }
 
     private var accessibilitySummary: String {
@@ -111,22 +135,21 @@ struct DressedAvatarView: View {
         return pieces.isEmpty ? "Kıyafet yok" : pieces.joined(separator: ", ") + ". Temsili görünüm."
     }
 
+    /// 1:1 under the finger: one screen width is half a turn. A turn in progress is caught by the finger.
     private func dragChanged(_ dx: CGFloat) {
-        if dragStartYaw == nil { yaw += stage.takeIdleOffset() }
-        let start = dragStartYaw ?? yaw
-        dragStartYaw = start
-        yaw = start + Float(dx) / 240 * .pi / 2
+        if dragStartYaw == nil {
+            yaw = stage.yaw          // catch a coasting figure where it is
+            dragStartYaw = yaw
+        }
+        yaw = (dragStartYaw ?? yaw) + TurntableSpin.angle(forDrag: Double(dx), width: Double(width))
         stage.place(yaw: yaw, animated: false)
-        if !reduceMotion { stage.nudgeCamera(Float(dx) / 320) }
     }
 
+    /// Let go: a flick coasts and slows to rest (with Reduce Motion it stops where the finger left it).
     private func dragEnded(_ velocity: CGFloat) {
         dragStartYaw = nil
-        stage.nudgeCamera(0)
         guard !reduceMotion else { return }
-        let carry = Float(velocity / 4) / 240 * .pi / 2
-        guard abs(carry) > 0.05 else { return }
-        turn(to: yaw + max(-.pi / 2, min(.pi / 2, carry)), animated: true)
+        stage.fling(velocity: TurntableSpin.velocity(forFingerSpeed: Double(velocity), width: Double(width)))
     }
 
     private func pinchChanged(_ scale: CGFloat) {
@@ -136,7 +159,6 @@ struct DressedAvatarView: View {
     }
 
     private func turn(to target: Float, animated: Bool) {
-        _ = stage.takeIdleOffset()
         yaw = target
         stage.place(yaw: yaw, animated: animated && !reduceMotion, duration: 0.55)
     }
