@@ -145,7 +145,7 @@ public struct GarmentMesh: Codable, Hashable, Sendable {
             let p = rig.outline[i]
             let y = h - p.y
             if i <= crotch {
-                rings.append(GRing(center: SIMD3(0, y, 0), a: p.x + e, b: rig.depths[i] + e))
+                rings.append(GRing(center: SIMD3(0, y, rig.zShift[i]), a: p.x + e, b: rig.depths[i] + e))
             } else {
                 // Below the crotch: one ellipse around both legs, flaring towards the hem.
                 let t = Double(i - crotch) / Double(max(last - crotch, 1))
@@ -182,14 +182,14 @@ public struct GarmentMesh: Codable, Hashable, Sendable {
         if placket {
             // Front opening: a narrow strip on the centre front, with buttons for a jacket or coat.
             var strip: [SIMD3<Double>] = []
-            for r in rings { strip.append(SIMD3(0, r.center.y, r.b + 0.12)) }
+            for r in rings { strip.append(SIMD3(0, r.center.y, r.center.z + r.b + 0.12)) }
             pieces.append(ribbon(strip, halfWidth: 0.0075 * h, normal: SIMD3(0, 0, 1), role: .trim))
             let count = form == .coat ? 4 : 3
             for k in 0..<count {
                 let f = 0.30 + Double(k) * (form == .coat ? 0.085 : 0.075)
                 let i = rig.outlineIndex(atFraction: f)
                 guard let r = rings.first(where: { $0.center.y <= h - rig.outline[i].y }) else { continue }
-                pieces.append(disc(center: SIMD3(0, r.center.y, r.b + 0.25), radius: 0.006 * h, role: .hardware))
+                pieces.append(disc(center: SIMD3(0, r.center.y, r.center.z + r.b + 0.25), radius: 0.006 * h, role: .hardware))
             }
         }
         return pieces
@@ -320,7 +320,7 @@ public struct GarmentMesh: Codable, Hashable, Sendable {
                     GRing(center: SIMD3(0, h - rig.outline[low].y, 0), a: rig.outline[low].x + outer, b: rig.depths[low] + outer)]
         var pieces = [tube(wrap, segments: segments, role: .shell, topCap: nil)]
         let chest = rig.outlineIndex(atFraction: 0.27)
-        let z = rig.depths[chest] + outer + 0.5
+        let z = rig.zShift[chest] + rig.depths[chest] + outer + 0.5
         for (x, f) in [(-0.028 * h, 0.36), (0.022 * h, 0.40)] {
             let end = rig.outlineIndex(atFraction: f)
             let path = [SIMD3(x, h - rig.outline[low].y, z - 1.0), SIMD3(x, h - rig.outline[end].y, z)]

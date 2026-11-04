@@ -23,6 +23,7 @@ let package = Package(
         .library(name: "LivingWorld", targets: ["LivingWorld"]),
         .library(name: "MorningReady", targets: ["MorningReady"]),
         .library(name: "ProductCapture", targets: ["ProductCapture"]),
+        .library(name: "WardrobeInsights", targets: ["WardrobeInsights"]),
     ],
     targets: [
         .target(name: "DomainContracts"),
@@ -55,6 +56,9 @@ let package = Package(
         ),
         // On-device label reading (Vision): barcode + printed code → catalogue match. No network.
         .target(name: "ProductCapture", dependencies: ["ShoppingCopilot"]),
+        // V36 (rival recon, ADR-017): wear log, cost per wear, closet gaps, day needs from weather and calendar. Local only.
+        .target(name: "WardrobeInsights", dependencies: ["DomainContracts", "WardrobeDomain", "TravelEngine", "LivingWorld"]),
+        .testTarget(name: "WardrobeInsightsTests", dependencies: ["WardrobeInsights", "DomainContracts", "WardrobeDomain", "TravelEngine", "LivingWorld"]),
         .testTarget(name: "ProductCaptureTests", dependencies: ["ProductCapture", "ShoppingCopilot"]),
         .testTarget(
             name: "KabinsizCoreTests",

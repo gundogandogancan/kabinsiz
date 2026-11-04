@@ -36,10 +36,59 @@ public struct Silhouette: Codable, Hashable, Sendable {
 
     /// Height in cm and the half-width (centre to edge) at each station, in cm.
     public let heightCm: Double
+    /// The drawn body form (user's choice). Stored geometry from before body forms reads as `.neutral`.
+    public let form: BodyForm
     public let halfWidthsCm: [Station: Double]
     /// Right half of the outline, top to bottom, in cm (x ≥ 0 from the centre line, y down from the crown).
     /// The left half is its mirror, so the drawn shape is symmetric by construction.
     public let rightOutline: [Point]
+
+    public init(heightCm: Double, halfWidthsCm: [Station: Double], rightOutline: [Point], form: BodyForm = .neutral) {
+        self.heightCm = heightCm
+        self.halfWidthsCm = halfWidthsCm
+        self.rightOutline = rightOutline
+        self.form = form
+    }
+
+    private enum CodingKeys: String, CodingKey { case heightCm, halfWidthsCm, rightOutline, form }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        heightCm = try c.decode(Double.self, forKey: .heightCm)
+        halfWidthsCm = try c.decode([Station: Double].self, forKey: .halfWidthsCm)
+        rightOutline = try c.decode([Point].self, forKey: .rightOutline)
+        form = try c.decodeIfPresent(BodyForm.self, forKey: .form) ?? .neutral
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(heightCm, forKey: .heightCm)
+        try c.encode(halfWidthsCm, forKey: .halfWidthsCm)
+        try c.encode(rightOutline, forKey: .rightOutline)
+        if form != .neutral { try c.encode(form, forKey: .form) }
+    }
+
+    /// Front-view proportions that differ by body form. Drawing hypotheses, not anthropometric norms:
+    /// they shape the picture; only typed measurements are ever read as sizes.
+    struct FormProportions {
+        /// Neck and head half-widths as fractions of height.
+        let neck: Double, head: Double
+        /// Circumference → front half-width divisor at the chest (neutral C / 5.2, as `halfWidth`). Part of a bust girth is depth, not
+        /// width, so the feminine chest reads narrower from the front for the same girth.
+        let chestDivisor: Double
+        /// Thigh half-width (both legs) as a fraction of the hip half-width.
+        let thigh: Double
+        /// Smallest chest half-width relative to the shoulder half-width.
+        let chestToShoulder: Double
+
+        static func of(_ form: BodyForm) -> FormProportions {
+            switch form {
+            case .neutral: FormProportions(neck: 0.034, head: 0.046, chestDivisor: 5.2, thigh: 0.82, chestToShoulder: 0.78)
+            case .feminine: FormProportions(neck: 0.031, head: 0.045, chestDivisor: 5.5, thigh: 0.86, chestToShoulder: 0.76)
+            case .masculine: FormProportions(neck: 0.037, head: 0.047, chestDivisor: 5.1, thigh: 0.80, chestToShoulder: 0.82)
+            }
+        }
+    }
 
     /// Front-view half-width of a roughly elliptical cross-section with circumference `c`. A torso is
     /// wider than deep (≈1.45:1), which makes the visible width ≈ c / 2.6. Drawing approximation only.
@@ -49,27 +98,28 @@ public struct Silhouette: Codable, Hashable, Sendable {
     /// stays one smooth shape instead of a step (correlated morph, §108.2).
     public static func make(for profile: BodyProfile) throws(BodyEditError) -> Silhouette {
         let h = profile[.height].length.centimeters
+        let k = FormProportions.of(profile.form)
         let shoulderHalf = profile[.shoulderWidth].length.centimeters / 2
-        let chestHalf = max(halfWidth(circumference: profile[.chest].length.centimeters), shoulderHalf * 0.78)
+        let chestHalf = max(profile[.chest].length.centimeters / k.chestDivisor, shoulderHalf * k.chestToShoulder)
         let waistHalf = halfWidth(circumference: profile[.waist].length.centimeters)
         let hipHalf = halfWidth(circumference: profile[.hip].length.centimeters)
         let widths: [Station: Double] = [
             .crown: 0.012 * h,
-            .headWidest: 0.046 * h,
-            .neck: 0.034 * h,
+            .headWidest: k.head * h,
+            .neck: k.neck * h,
             .shoulder: shoulderHalf,
             .chest: chestHalf,
             .waist: waistHalf,
             .hip: hipHalf,
             // Both legs together, standing with the feet a little apart (neutral proportions, not measurements).
-            .thigh: hipHalf * 0.82,
+            .thigh: hipHalf * k.thigh,
             .knee: max(hipHalf * 0.58, 0.058 * h),
             .ankle: 0.055 * h,
         ]
         let anchors = Station.allCases.map { Point(x: widths[$0]!, y: $0.heightFraction * h) }
         let outline = roundedHead(smooth(anchors, samplesPerSegment: 8), crown: widths[.crown]!, widest: widths[.headWidest]!,
                                   widestY: Station.headWidest.heightFraction * h)
-        let shape = Silhouette(heightCm: h, halfWidthsCm: widths, rightOutline: outline)
+        let shape = Silhouette(heightCm: h, halfWidthsCm: widths, rightOutline: outline, form: profile.form)
         try shape.validate()
         return shape
     }

@@ -1,0 +1,43 @@
+evidence_schema: 1
+work_package: V35-WP01/03 + V36 package layer
+title: "Body form (Kadın/Erkek/Nötr), city identity A/B/C tiers, sun light, six weather states, wardrobe insights (wear log, cost per wear, gaps, day needs); rival recon"
+status: PARTIAL   # package CODED + macOS unit tests PASS; app screens for form picker and city/weather scene NOT_RUN (wait for ADR-016 merge); device REAL_DEVICE_BLOCKED (R-002)
+commit_sha: null   # filled by the commit that adds this file; see git log
+branch: v35/world-avatar
+spec: "ADR-017; v3.5 WP35-01, WP35-03; v3.6 rakip benchmark; user decisions 2026-11-04 (beden formu, rakiplerin en iyisi, replica-skill)"
+implementation_paths:
+  - Packages/KabinsizCore/Sources/BodyGeometry/BodyProfile.swift
+  - Packages/KabinsizCore/Sources/BodyGeometry/Silhouette.swift
+  - Packages/KabinsizCore/Sources/BodyGeometry/BodyMesh.swift
+  - Packages/KabinsizCore/Sources/BodyGeometry/BodyRig.swift
+  - Packages/KabinsizCore/Sources/BodyGeometry/GarmentMesh.swift
+  - Packages/KabinsizCore/Sources/LivingWorld/CityWorld.swift
+  - Packages/KabinsizCore/Sources/LivingWorld/LivingWorld.swift
+  - Packages/KabinsizCore/Sources/MorningReady/MorningReady.swift
+  - Packages/KabinsizCore/Sources/WardrobeInsights/WardrobeInsights.swift
+unit_test_command: "cd Packages/KabinsizCore && swift test"
+unit_test_exit_code: 0
+unit_test_count: 390   # whole package, 32 suites, 2026-11-04
+new_tests:
+  - "BFORM-T01..T06 (OctopusTests/BodyFormTests): coding compatibility, form change keeps measurements, bust projects forward and back unchanged, proportions differ, 3 forms x 243 extremes valid or refused, tops outside a feminine bust"
+  - "CITY-T01..T07, SUN-T01..T04, WX-T01..T04 (LivingWorldTests/CityWorldTests)"
+  - "INS-T01..T08 (WardrobeInsightsTests)"
+ui_tests: []   # NOT_RUN: form picker and scene UI follow after v25/living-world (ADR-016) is committed and merged
+hardware: "Apple M5 Mac, macOS 26.4 (swift test). No simulator or device run for this package layer"
+benchmarks: []
+honesty:
+  - "Body form is user-chosen only; never inferred from photo, name or voice"
+  - "No fit claim: no licensed size chart (R-004)"
+  - "Sun position is NOAA general formula (about 1 degree); asserted against known elevations"
+  - "Weather is drawn only from a fresh observation or a labelled preview; WeatherKit is BLOCKED_EXTERNAL (R-003)"
+  - "Tier B (OSM2World) is not bundled; resolver returns C for every non-curated city"
+  - "Cost per wear only from user-typed price and logged wears"
+rival_recon:
+  method: ".claude/skills/kabinsiz-rival-recon (replica-skill method, MIT, not installed)"
+  outputs: [docs/research/rivals/recon.md, docs/research/rivals/features.csv, docs/research/rivals/reviews.csv, docs/research/rivals/feedback.md, docs/research/rivals/parity.md, docs/audit/V36_FEATURE_QUEUE.md]
+  reviews: "420 reviews from Apple's public customer-review RSS (Alta 149, Cladwell 103, Whering 50, Acloset 50, Doji 47, Daily Dress Me 21); paraphrased excerpts <= 20 words, no reviewer names"
+  forbidden_and_not_done: "no login, no account, no decompile, no traffic capture, no private API, no model extraction, no scraping of sites that forbid it"
+blocked:
+  - "FASHN VTON 1.5 weights (~2 GB) download: awaits user permission"
+  - "R-002 iPhone not connected"
+  - "R-003 WeatherKit PLA"

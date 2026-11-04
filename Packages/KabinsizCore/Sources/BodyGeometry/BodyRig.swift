@@ -18,6 +18,9 @@ struct BodyRig {
     let h: Double
     let outline: [Silhouette.Point]
     let depths: [Double]
+    /// Forward shift of the torso ring centre at each outline sample (cm): the bust or chest projection.
+    /// `depths` already include it, so the front surface is at `zShift + depth` and the back at `zShift - depth`.
+    let zShift: [Double]
     let crotchIndex: Int
     /// Crown to crotch, then a short tuck that narrows inside the legs, so the seat has no ledge.
     let torsoRings: [BodyMesh.Ring]
@@ -35,16 +38,27 @@ struct BodyRig {
         self.h = h
         let outline = shape.rightOutline
         self.outline = outline
-        let depths = BodyMesh.depthProfile(shape)
+        var depths = BodyMesh.depthProfile(shape)
         guard depths.count == outline.count else { throw .unsafeGeometry("depth") }
+        // Girths for the projection come back from the widths the silhouette drew them with.
+        let k = Silhouette.FormProportions.of(shape.form)
+        let chestCm = (shape.halfWidthsCm[.chest] ?? 0) * k.chestDivisor
+        let waistCm = (shape.halfWidthsCm[.waist] ?? 0) * 5.2
+        var shift = [Double](repeating: 0, count: outline.count)
+        for i in outline.indices {
+            let d = BodyMesh.frontProjection(form: shape.form, fraction: outline[i].y / h, chestCm: chestCm, waistCm: waistCm, heightCm: h)
+            shift[i] = d
+            depths[i] += d
+        }
         self.depths = depths
+        self.zShift = shift
         let crotchIndex = outline.firstIndex { $0.y >= BodyMesh.crotchFraction * h } ?? outline.count / 2
         self.crotchIndex = crotchIndex
 
         var torso: [BodyMesh.Ring] = []
         for i in 0...crotchIndex {
             let p = outline[i]
-            torso.append(.init(center: SIMD3(0, h - p.y, 0), a: p.x, b: depths[i], u: SIMD3(1, 0, 0)))
+            torso.append(.init(center: SIMD3(0, h - p.y, shift[i]), a: p.x, b: depths[i], u: SIMD3(1, 0, 0)))
         }
         for k in 1...BodyMesh.tuckRings where crotchIndex + k < outline.count {
             let p = outline[crotchIndex + k]

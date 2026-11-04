@@ -1,0 +1,29 @@
+feature,alta,doji,anywear,google_tryon,cladwell,daily_dress_me,kabinsiz_priority,kabinsiz_approach
+avatar_from_photos,V,V,-,V,-,-,should,On-device parametric 3D body; optional photo only for face/hair later (private-avatar-face-hair); never uploaded
+avatar_from_height_weight,V,U,-,-,-,-,must,DONE: height + shoulder + chest/bust + waist + hip (beyond rivals)
+body_form_female_male,U,U,-,-,-,-,must,DONE: BodyForm Kadın/Erkek/Nötr; user-chosen; never inferred
+bust_waist_hip_inputs,U,U,-,-,-,-,must,DONE: differentiator - no rival states it
+redo_avatar,-,C,-,V,-,-,should,Reset to start values + re-measure; form switch keeps measured values
+live_video_tryon,-,-,V,-,-,-,must,F1 local mirror (Vision 14 joints + GarmentRig); no cloud
+no_photo_needed_tryon,-,-,V,-,-,-,must,Live mirror + 3D model need no photo
+photo_realistic_single_frame,C,V,-,V,-,-,could,L1 FASHN 1.5 offline PoC (Apache); parser BLOCKED; awaits weights permission
+browser_extension_or_link_import,-,V,V,V,-,-,should,iOS share-sheet / Safari link import; page read on device; no personal data out
+background_removal_cutout,V,-,-,-,V,-,must,Apple Vision foreground instance mask on device (not SAM 3: CUDA/848M)
+auto_tags_category_colour_season,V,-,-,-,V,-,must,On-device classifier + colour from pixels; user confirms
+batch_add_from_library,-,-,-,-,V,-,should,PhotosPicker multi-select + same cutout/tag pipeline
+receipt_import,V,-,-,-,-,-,could,Share receipt into app; VNRecognizeText on device
+daily_outfit_weather,V,-,-,-,V,V,must,TodayOutfit + DayNeeds (evidence-only weather; WeatherKit R-003)
+daily_outfit_calendar,V,-,-,-,-,-,should,DayNeeds from EventKit titles read on device (OccasionReader); titles never stored
+style_calendar_wear_log,V,-,-,-,V,-,must,DONE (package): WearLedger; UI pending
+repeat_avoidance,V,-,-,-,V,-,should,DONE (package): recentlyWorn(before:days:)
+most_least_worn,V,-,-,-,V,-,should,DONE (package): ClosetReport
+cost_per_wear,V,-,-,-,V,-,should,DONE (package): only from user-typed price + logged wears
+closet_gap_analysis,V,-,-,-,C,-,should,DONE (package): ClosetGapFinder rules; never a push to buy
+packing_list,V,-,-,-,V,V,must,DONE: TravelEngine PackingList + CapsuleOptimizer
+multi_city_trip,V,-,-,-,-,-,could,TripPlanner extension (multi-destination legs)
+wishlist_price_alert,V,-,-,-,-,-,could,Needs a price source: licensed feeds only (V32-WEB-02); BLOCKED_EXTERNAL
+plain_language_outfit_ask,V,-,-,-,C,-,could,On-device Foundation Models where available; rule fallback
+photo_privacy_controls,-,-,C,V,-,V,must,Stronger: photos never leave device; delete-all in Vault; no training
+free_tier,V,V,V,V,-,V,must,Core free; paid only after human approval (pricing)
+b2b_brand_widget,V,-,V,-,-,-,could,Out of scope (needs server); ShoppingCopilot licensed catalogue later
+3d_city_weather_scene,-,-,-,-,-,-,must,Kabinsiz-only: city tiers A/B/C + sun + 6 weather states

@@ -1,0 +1,19 @@
+﻿id,area,priority,current_status,evidence,acceptance_gate,owner
+R01,Git branch / UI screenshot mismatch,P0,Unknown,Main 30ed2ef; user 23:37 screenshots,git status + branch diff + screenshot provenance,Claude lead
+R02,Live camera barcode,P0,Missing,ScanView manual code,Real iPhone EAN/UPC/Code128 captures,iOS vision
+R03,Partner product catalog,P0,Missing,SyntheticCatalog only,20-50 licensed verified variants,Catalog engineer
+R04,Product GTIN/SKU schema,P1,Coded,ProductIdentityV1,Verified resolver and real variant test,Catalog engineer
+R05,Photo wardrobe discovery,P0,Missing,Wardrobe manual/synthetic,PhotosPicker detection/review/dedup,Vision engineer
+R06,Body 360,P1,Simulator tested,BodyModel3DView,Garment mesh on body and device fps,3D engineer
+R07,Face/hair likeness,P0,Missing,Neutral mannequin,User verified likeness + privacy,Avatar engineer
+R08,G2 real garment asset,P0,Missing,No garment asset validation,Licensed pattern/CAD + UV/PBR,Pattern maker
+R09,Daily Outfit,P1,Missing,TodayView explicitly lacks,Weather-aware daily cached outfit,Style engineer
+R10,City/weather VFX,P1,Partial demo/screenshots,WeatherKit travel adapter,Any-city fallback + VFX proof,3D engineer
+R11,Local live camera mirror,P0,Contracts only,MirrorSession no camera binding,AVFoundation live video and occlusion,Video engineer
+R12,Cloud VTON legal gate,P0,Blocked external,Flag production false,DPA legal permission trial token,Legal/Privacy
+R13,App startup logo transition,P1,Missing,Static UILaunchScreen,First-frame + warm mesh + perf,iOS perf
+R14,Consistent brand design,P1,Partial coded,Atelier tokens,All cards + headers parity and contrast,Design lead
+R15,External Figma frames,P2,Blocked external,Only spec/mockups,Editable frame/token/prototype review,Design lead
+R16,Device benchmark,P0,Blocked / unverified,Evidence simulator only,Real device .xcresult/FPS/thermal,QA lead
+R17,Partner onboarding portal,P1,Missing,Contracts only,Signed data feed + alias + revocation,B2B engineer
+R18,Security egress,P0,Coded; new flows untested,CitadelGate/Vault,Camera/partner/cloud negative tests,Security

@@ -130,12 +130,14 @@ public struct BodyMesh: Codable, Hashable, Sendable {
     static func depthProfile(_ shape: Silhouette) -> [Double] {
         let w = shape.halfWidthsCm
         let r = girthDepthRatio
-        let chestDepth = (w[.chest] ?? 0) * r
+        // A masculine chest is a little deeper with a fuller upper back; a feminine bust is added as a
+        // forward projection in the rig (`frontProjection`), so its back stays flat.
+        let chestDepth = (w[.chest] ?? 0) * r * (shape.form == .masculine ? 1.04 : 1.0)
         let depth: [Silhouette.Station: Double] = [
             .crown: (w[.crown] ?? 0) * 1.1,
             .headWidest: (w[.headWidest] ?? 0) * 1.18,
             .neck: (w[.neck] ?? 0) * 1.0,
-            .shoulder: chestDepth * 0.82,
+            .shoulder: chestDepth * (shape.form == .masculine ? 0.88 : 0.82),
             .chest: chestDepth,
             .waist: (w[.waist] ?? 0) * r,
             .hip: (w[.hip] ?? 0) * r,
@@ -147,6 +149,26 @@ public struct BodyMesh: Codable, Hashable, Sendable {
         // The head is rounded front to back exactly as it is side to side (no pointed crown in profile).
         return Silhouette.roundedHead(Silhouette.smooth(anchors, samplesPerSegment: 8), crown: depth[.crown]!, widest: depth[.headWidest]!,
                                       widestY: Silhouette.Station.headWidest.heightFraction * shape.heightCm).map(\.x)
+    }
+
+    /// How far the front of the torso projects forward at outline height fraction `f` (cm): the bust
+    /// for a feminine form, a slight chest for a masculine one, nothing for neutral. A smooth window
+    /// centred on the chest station, so rings stay smooth and the mesh closed. The ring grows by `d` in
+    /// depth and moves forward by `d`: the front comes out 2d, the back does not move.
+    static func frontProjection(form: BodyForm, fraction f: Double, chestCm: Double, waistCm: Double, heightCm h: Double) -> Double {
+        let (centre, half, size): (Double, Double, Double)
+        switch form {
+        case .neutral: return 0
+        case .feminine:
+            // Grows with the bust-to-waist difference; bounded so any reachable body stays drawable.
+            (centre, half, size) = (0.268, 0.075, min(max((chestCm - waistCm) * 0.075, 0.8), 4.0))
+        case .masculine:
+            (centre, half, size) = (0.255, 0.07, 0.0035 * h)
+        }
+        let x = (f - centre) / half
+        guard abs(x) < 1 else { return 0 }
+        let c = cos(x * .pi / 2)
+        return size * c * c
     }
 
     /// Legs are slightly deeper than wide at the thigh and calf, rounder at the knee and ankle.

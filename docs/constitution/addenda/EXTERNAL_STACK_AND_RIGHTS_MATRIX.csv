@@ -1,0 +1,21 @@
+﻿Name,Official Source,Purpose,License or data-right risk,Cost status,Decision
+OSM2World,https://github.com/tordanik/OSM2World,3D şehir geometry conversion,source MIT (check pinned tag); OSM input ODbL,free source; compute cost,use offline asset pipeline
+OpenStreetMap,https://www.openstreetmap.org/copyright,road/building/POI geodata,ODbL + attribution and derived database obligations,"free data, hosting cost",yes with legal review
+Blender OSM importer,https://github.com/p-schulz/osm_importer,OSM into Blender editable shapes,license/dependency audit required,may be free; audit,PoC only
+Blender MCP,https://github.com/ahujasid/blender-mcp,Claude 3D authoring,"can execute arbitrary Python, safe mode","open-source, install audit",sandbox only
+Figma MCP,https://developers.figma.com/docs/figma-mcp-server/,editable design frames,Figma plan/login and seat/usage,beta currently free; future usage pricing,connect when user approves
+MobileBuildMCP,https://github.com/getsentry/MobileBuildMCP,Xcode build simulator device proof,pin version & tool permissions,open-source/tooling,recommended
+FASHN VTON 1.5,https://github.com/fashn-AI/fashn-vton-1.5,still image VTON baseline,Apache-2.0 main; human-parser NVIDIA review,free weights; GPU expensive,isolated PoC
+FASHN Human Parser,https://github.com/fashn-AI/fashn-human-parser,semantic body clothing segmentation,NVIDIA Source Code License inherited,free download; license limits,legal gate
+Mobile-VTON,https://github.com/tmllab/2026_CVPR_Mobile-VTON,ondevice academic VTON research,CC BY-NC-SA 4.0,research only,commercial blocked
+CatVTON,https://github.com/Zheng-Chong/CatVTON,academic try-on,CC BY-NC-SA 4.0,research only,commercial blocked
+Shopify Storefront,https://shopify.dev/docs/api/storefront/latest,partner products/variants,merchant rights; tokens/scopes,"some tokenless, infrastructure/partner terms",partner connector
+WooCommerce REST,https://woocommerce.com/document/woocommerce-rest-api/,partner products/variants,merchant read-only API key,API platform included; ops cost,partner connector
+GS1 Verified by GS1,https://support.gs1.org/support/solutions/articles/43000734112-who-is-using-verified-by-gs1-is-verified-by-gs1-used-by-marketplaces-,GTIN/company validation,limited public queries; API membership,"30 free web lookups/day, scaled API terms",identity verifier only
+Apple WeatherKit,https://developer.apple.com/weatherkit/,weather scenes,"Apple Developer membership, explicit user context",500000 calls/month included,native runtime
+Apple VisionKit,https://developer.apple.com/documentation/visionkit/scanning-data-with-the-camera,camera OCR barcode,device support + NSCameraUsageDescription,platform SDK,native runtime
+ARKit,https://developer.apple.com/documentation/arkit/arfacetrackingconfiguration/,face geometry / tracking,device capability and consent,platform SDK,native runtime
+Higgsfield,https://higgsfield.ai/creator-hub/help-center/integrations/what-is-the-higgsfield-api,creative imagery or demo assets,"paid media API, media usage rights",prepaid per generation,not realtime mirror
+Decart Swift,https://github.com/DecartAI/decart-ios,cloud Lucy VTON optional adapter,commercial/DPA/training consent and price,per-second cloud billing,off by default
+Google 3D Tiles,https://developers.google.com/maps/documentation/tile/policies,photoreal geospatial tiles,"attribution+terms, redistribution",paid/usage-based,not Blender source default
+Hunyuan3D 2.1,https://github.com/Tencent-Hunyuan/Hunyuan3D-2.1,image-to-3D experiment,region restrictions (EU/UK/KR excluded) + AUP,license conditions,do not integrate before clearance

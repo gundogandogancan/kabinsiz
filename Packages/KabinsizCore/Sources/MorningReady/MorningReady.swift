@@ -101,7 +101,7 @@ public struct WeatherChipText: Hashable, Sendable {
     public static func make(city: SceneCity, freshness: WeatherFreshness, preview: SceneCondition? = nil, placeName: String? = nil) -> WeatherChipText {
         let name = placeName ?? city.displayName
         if let preview {
-            let word = preview == .rain ? "Yağmur" : "Açık"
+            let word = preview.displayName
             return WeatherChipText(title: "\(name) · \(word) önizlemesi", provenance: "Önizleme · gerçek hava değil", state: .preview)
         }
         switch freshness {
@@ -119,7 +119,7 @@ public struct WeatherChipText: Hashable, Sendable {
     private static func reading(_ s: CityWeatherReading) -> [String] {
         var parts: [String] = []
         if let t = s.temperatureC { parts.append("\(Int(t.rounded()))°") }
-        parts.append(s.condition == .rain ? "Yağmur" : "Açık")
+        parts.append(s.condition.displayName)
         return parts
     }
 

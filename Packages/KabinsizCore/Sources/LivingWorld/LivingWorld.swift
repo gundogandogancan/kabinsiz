@@ -181,32 +181,84 @@ public enum SceneWeatherEvidence: Codable, Hashable, Sendable {
 }
 
 public enum SceneCondition: String, Codable, CaseIterable, Sendable {
-    case clear = "CLEAR", rain = "RAIN"
+    case clear = "CLEAR", cloudy = "CLOUDY", rain = "RAIN", snow = "SNOW", wind = "WIND", fog = "FOG"
+
+    public var displayName: String {
+        switch self {
+        case .clear: "Açık"
+        case .cloudy: "Bulutlu"
+        case .rain: "Yağmur"
+        case .snow: "Kar"
+        case .wind: "Rüzgârlı"
+        case .fog: "Sisli"
+        }
+    }
+
+    public var symbolName: String {
+        switch self {
+        case .clear: "sun.max"
+        case .cloudy: "cloud"
+        case .rain: "cloud.rain"
+        case .snow: "cloud.snow"
+        case .wind: "wind"
+        case .fog: "cloud.fog"
+        }
+    }
 }
 
-/// What the scene draws, decided from evidence only.
+/// What the scene draws, decided from evidence only. Wind moves the environment (leaves, particles,
+/// rain slant) and never the garments or the figure (ADR-016: nothing on the model moves by itself).
 public struct SceneWeatherState: Codable, Hashable, Sendable {
     public let rainIntensity: Float
     public let wetGround: Bool
     /// One line for the top bar. Never a temperature that was not measured.
     public let label: String
     public let isPreview: Bool
+    public let snowIntensity: Float
+    /// 0 clear sky … 1 overcast: dims the key light and greys the sky.
+    public let cloudCover: Float
+    /// Environment only: particle drift and rain slant. 0 … 1.
+    public let windStrength: Float
+    public let fogDensity: Float
+    /// The condition drawn, or nil when nothing is drawn (no data, stale, probability only).
+    public let drawn: SceneCondition?
+
+    public init(rainIntensity: Float, wetGround: Bool, label: String, isPreview: Bool, snowIntensity: Float = 0,
+                cloudCover: Float = 0, windStrength: Float = 0, fogDensity: Float = 0, drawn: SceneCondition? = nil) {
+        self.rainIntensity = rainIntensity
+        self.wetGround = wetGround
+        self.label = label
+        self.isPreview = isPreview
+        self.snowIntensity = snowIntensity
+        self.cloudCover = cloudCover
+        self.windStrength = windStrength
+        self.fogDensity = fogDensity
+        self.drawn = drawn
+    }
+
+    /// The drawing for one condition; `label` and `isPreview` say why it is drawn.
+    static func drawing(_ c: SceneCondition, label: String, isPreview: Bool) -> SceneWeatherState {
+        switch c {
+        case .clear: SceneWeatherState(rainIntensity: 0, wetGround: false, label: label, isPreview: isPreview, drawn: c)
+        case .cloudy: SceneWeatherState(rainIntensity: 0, wetGround: false, label: label, isPreview: isPreview, cloudCover: 0.8, drawn: c)
+        case .rain: SceneWeatherState(rainIntensity: 1, wetGround: true, label: label, isPreview: isPreview, cloudCover: 1, windStrength: 0.15, drawn: c)
+        case .snow: SceneWeatherState(rainIntensity: 0, wetGround: false, label: label, isPreview: isPreview, snowIntensity: 1, cloudCover: 0.9, windStrength: 0.1, drawn: c)
+        case .wind: SceneWeatherState(rainIntensity: 0, wetGround: false, label: label, isPreview: isPreview, cloudCover: 0.4, windStrength: 1, drawn: c)
+        case .fog: SceneWeatherState(rainIntensity: 0, wetGround: false, label: label, isPreview: isPreview, cloudCover: 0.6, fogDensity: 1, drawn: c)
+        }
+    }
 
     public static func from(_ evidence: SceneWeatherEvidence, now: Date = Date(), staleAfter: TimeInterval = 3 * 3600) -> SceneWeatherState {
         switch evidence {
         case .none:
             return SceneWeatherState(rainIntensity: 0, wetGround: false, label: "Hava verisi yok", isPreview: false)
         case let .userPreview(condition):
-            return condition == .rain
-                ? SceneWeatherState(rainIntensity: 1, wetGround: true, label: "Yağmur önizlemesi · gerçek hava değil", isPreview: true)
-                : SceneWeatherState(rainIntensity: 0, wetGround: false, label: "Açık hava önizlemesi · gerçek hava değil", isPreview: true)
+            return drawing(condition, label: "\(condition.displayName) önizlemesi · gerçek hava değil", isPreview: true)
         case let .observed(condition, source, at):
             guard now.timeIntervalSince(at) <= staleAfter else {
                 return SceneWeatherState(rainIntensity: 0, wetGround: false, label: "Hava verisi eski (\(source))", isPreview: false)
             }
-            return condition == .rain
-                ? SceneWeatherState(rainIntensity: 1, wetGround: true, label: "Yağmurlu · \(source)", isPreview: false)
-                : SceneWeatherState(rainIntensity: 0, wetGround: false, label: "Açık · \(source)", isPreview: false)
+            return drawing(condition, label: "\(condition == .rain ? "Yağmurlu" : condition.displayName) · \(source)", isPreview: false)
         case let .probability(percent, source, _):
             return SceneWeatherState(rainIntensity: 0, wetGround: false, label: "Yağmur ihtimali %\(percent) · \(source)", isPreview: false)
         }

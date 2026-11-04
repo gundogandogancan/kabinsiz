@@ -44,6 +44,49 @@ public enum BodyParameter: String, Codable, CaseIterable, Sendable {
     public static let sliderStepCm = 0.5
 }
 
+/// The body form the figure is drawn in (user decision 2026-11-04: "kadın erkeğe göre model değişmeli").
+/// Chosen by the user, never inferred from a photo, a name or a face (v3.5 §D.6: no hidden profiling).
+/// It changes the drawn proportions (neck, bust or chest, waist-to-hip curve, thighs) and the starting
+/// shape; the user's own measurements always win over it.
+public enum BodyForm: String, Codable, CaseIterable, Sendable, Identifiable {
+    case feminine = "FEMININE"
+    case masculine = "MASCULINE"
+    case neutral = "NEUTRAL"
+
+    public var id: String { rawValue }
+
+    public var displayName: String {
+        switch self {
+        case .feminine: "Kadın"
+        case .masculine: "Erkek"
+        case .neutral: "Nötr"
+        }
+    }
+
+    /// Where a new body of this form starts: a drawing starting point, not a measurement, a norm or a
+    /// target (always labelled "Başlangıç (ölçü değil)").
+    public func startCm(_ parameter: BodyParameter) -> Double {
+        switch (self, parameter) {
+        case (.neutral, _): parameter.neutralStartCm
+        case (.feminine, .height): 165
+        case (.feminine, .shoulderWidth): 38
+        case (.feminine, .chest): 90
+        case (.feminine, .waist): 72
+        case (.feminine, .hip): 98
+        case (.masculine, .height): 177
+        case (.masculine, .shoulderWidth): 45
+        case (.masculine, .chest): 100
+        case (.masculine, .waist): 86
+        case (.masculine, .hip): 100
+        }
+    }
+
+    /// What the chest girth is called for this form ("göğüs çevresi" is measured over the bust).
+    public func label(_ parameter: BodyParameter) -> String {
+        self == .feminine && parameter == .chest ? "Göğüs (büst) çevresi" : parameter.displayName
+    }
+}
+
 public enum LengthUnit: String, Codable, CaseIterable, Sendable {
     case centimeters = "CM"
     case inches = "IN"
@@ -142,22 +185,61 @@ public struct BodyProfile: Codable, Hashable, Sendable {
     public private(set) var revision: Int
     public private(set) var values: [BodyParameter: BodyValue]
     public var preferredUnit: LengthUnit
+    /// The drawn body form. Records saved before body forms existed read as `.neutral`.
+    public private(set) var form: BodyForm
 
-    /// A new neutral body at revision 1. Every value is marked as a starting point, not a measurement.
-    public static func neutral(unit: LengthUnit = .centimeters) -> BodyProfile {
+    /// A new body at revision 1 in `form`. Every value is marked as a starting point, not a measurement.
+    public static func neutral(unit: LengthUnit = .centimeters, form: BodyForm = .neutral) -> BodyProfile {
         var values: [BodyParameter: BodyValue] = [:]
-        for p in BodyParameter.allCases { values[p] = BodyValue(BodyLength(p.neutralStartCm, .centimeters), source: .neutralStart) }
-        return BodyProfile(revision: 1, values: values, preferredUnit: unit)
+        for p in BodyParameter.allCases { values[p] = BodyValue(BodyLength(form.startCm(p), .centimeters), source: .neutralStart) }
+        return BodyProfile(revision: 1, values: values, preferredUnit: unit, form: form)
     }
 
-    public init(revision: Int, values: [BodyParameter: BodyValue], preferredUnit: LengthUnit) {
+    public init(revision: Int, values: [BodyParameter: BodyValue], preferredUnit: LengthUnit, form: BodyForm = .neutral) {
         self.revision = revision
         self.values = values
         self.preferredUnit = preferredUnit
+        self.form = form
+    }
+
+    private enum CodingKeys: String, CodingKey { case revision, values, preferredUnit, form }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        revision = try c.decode(Int.self, forKey: .revision)
+        values = try c.decode([BodyParameter: BodyValue].self, forKey: .values)
+        preferredUnit = try c.decode(LengthUnit.self, forKey: .preferredUnit)
+        form = try c.decodeIfPresent(BodyForm.self, forKey: .form) ?? .neutral
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(revision, forKey: .revision)
+        try c.encode(values, forKey: .values)
+        try c.encode(preferredUnit, forKey: .preferredUnit)
+        // Neutral is not written, so a neutral record stays byte-identical to the pre-form format.
+        if form != .neutral { try c.encode(form, forKey: .form) }
     }
 
     public subscript(_ p: BodyParameter) -> BodyValue {
-        values[p] ?? BodyValue(BodyLength(p.neutralStartCm, .centimeters), source: .neutralStart)
+        values[p] ?? BodyValue(BodyLength(form.startCm(p), .centimeters), source: .neutralStart)
+    }
+
+    /// The same body in another form, at the next revision. Values the user typed or shaped are kept;
+    /// only starting values move to the new form's start. If a new start would make an unsafe shape with
+    /// the user's own values, that one value keeps its previous start.
+    public func withForm(_ newForm: BodyForm) throws(BodyEditError) -> BodyProfile {
+        guard newForm != form else { return self }
+        var next = self
+        next.form = newForm
+        next.revision = revision + 1
+        for p in BodyParameter.allCases where self[p].source == .neutralStart {
+            var candidate = next
+            candidate.values[p] = BodyValue(BodyLength(newForm.startCm(p), .centimeters), source: .neutralStart)
+            if (try? candidate.validate()) != nil { next = candidate }
+        }
+        try next.validate()
+        return next
     }
 
     /// Widest shoulder allowed per cm of height. Without it a 120 cm body with 60 cm shoulders folds the
@@ -208,7 +290,7 @@ public struct BodyProfile: Codable, Hashable, Sendable {
     /// Same values as `other`, at the next revision. Used by undo/redo: revisions only ever go up, so
     /// stale-write guards keep working (V15-T-ORC-08), while the parameters match exactly (V15-T-BOD-03).
     public func restoring(_ other: BodyProfile) -> BodyProfile {
-        BodyProfile(revision: revision + 1, values: other.values, preferredUnit: preferredUnit)
+        BodyProfile(revision: revision + 1, values: other.values, preferredUnit: preferredUnit, form: other.form)
     }
 
     /// Only typed measurements, for size advice. Slider shapes and starting values never appear here.
@@ -218,7 +300,7 @@ public struct BodyProfile: Codable, Hashable, Sendable {
         }
     }
 
-    public func sameShape(as other: BodyProfile) -> Bool { values == other.values }
+    public func sameShape(as other: BodyProfile) -> Bool { values == other.values && form == other.form }
 }
 
 /// Undo/redo for one editing session. Keeps profiles, not diffs, so a restore is exact.
