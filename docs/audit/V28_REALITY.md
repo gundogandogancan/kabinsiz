@@ -62,6 +62,7 @@
 | MIR-WP02 | Canlı Ayna: giysi kişinin üstünde (v3.2 S13) | PASS_SIMULATOR_ONLY. Vision 14 eklem → `GarmentRig`, Blender çizimleri (13 kalıp), iki kişide/eksik eklemde çizim yok, ürün aynada değişir, fotoğraf yalnız deklanşörle. Simülatörde poz önceden okunmuş (Vision kurulamıyor), ekranda yazar. Cihazda canlı kamera: REAL_DEVICE_BLOCKED | ADR-015, `docs/evidence/V32-MIR-SCAN-UI.yaml` |
 | SCAN-WP02 | Ürün detayı ve bilgi kaynağı | PASS_SIMULATOR_ONLY. Beden/kumaş yalnız katalogdan; GS1 notu; marka sitesi okunmaz; kullanıcının Safari araması (yalnız kod) | D-039 |
 | UI32 | 3 sekme, profil sağ üstte, spot ışığı, öneri kartları, çizimli dolap, model çubuğu | PASS_SIMULATOR_ONLY | D-040 |
+| TURN-DRESS | Model yalnız elle döner (sürükle/savur/"Önden"), salınım ve kamera kayması yok; Giydir tepsisi ile ekle/çıkar, sürükle-bırak, geri/ileri al | PASS_SIMULATOR_ONLY. Ekranda dönüş piksel farkıyla doğrulandı (önce yalnız değer dönüyordu: iOS 26 `move(to:)` hatası, düzeltildi). Görünmeyen dünya kendi başına iş yapmaz (profil kapağı/başka sekme). AÇIK: 3B bütçede profil bel kaydırıcısı aralıklı takılıyor (a101a1a'dan beri, HEAD'de de; ADR-016 "Bilinen açık"). Gerçek iPhone dokunma hissi REAL_DEVICE_BLOCKED | ADR-016, `docs/evidence/V32-TURN-DRESS.yaml` |
 
 ## 4. Engeller (v2.8 hedefine karşı)
 

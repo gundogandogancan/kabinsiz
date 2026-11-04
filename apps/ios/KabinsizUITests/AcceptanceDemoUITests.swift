@@ -127,7 +127,7 @@ final class AcceptanceDemoUITests: XCTestCase {
         let toggle = app.switches["weatherConsentToggle"]
         for _ in 0..<6 where !toggle.isHittable { app.swipeUp() }
         XCTAssertEqual(toggle.value as? String, "1")
-        toggle.switches.firstMatch.tap()
+        flip(toggle, to: "0")
         XCTAssertEqual(toggle.value as? String, "0")
         sleep(1) // let the queued vault writes finish before the process is killed
         app.terminate()
@@ -227,11 +227,16 @@ final class AcceptanceDemoUITests: XCTestCase {
         let delete = app.buttons["deleteBody"]
         for _ in 0..<10 where !delete.isHittable { app.swipeUp() }
         delete.tap()
-        app.buttons["Vücut profilini ve çizimini sil"].firstMatch.tap()
+        let confirm = app.buttons["Vücut profilini ve çizimini sil"].firstMatch
+        XCTAssertTrue(confirm.waitForExistence(timeout: 5), "the delete confirmation is up")
+        confirm.tap()
         let create = app.buttons["createNeutralBody"]
         for _ in 0..<10 where !create.exists { app.swipeDown() }
         XCTAssertTrue(create.waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["bodyDeletionReceipt"].exists)
+        // The receipt is the row under the create button; a List loads rows lazily, so bring it in.
+        let receipt = app.staticTexts["bodyDeletionReceipt"]
+        bringIntoView(receipt, in: app)
+        XCTAssertTrue(receipt.waitForExistence(timeout: 5), "deletion leaves a receipt")
         attach(app, "11-body-deleted")
         sleep(1)
         app.terminate()
@@ -319,6 +324,25 @@ final class AcceptanceDemoUITests: XCTestCase {
 
     /// Small drags until `element` sits comfortably on screen. A row that is not loaded yet has no frame,
     /// so the caller says which way to look (`above` for rows higher up the list).
+    /// Tap a Toggle's switch the way a person does. On iOS 26 the Toggle element spans the whole row
+    /// (title and footnote), so a tap at its centre lands on the text and does nothing; tap the
+    /// switch's own frame when it is smaller than the row, else the trailing edge on the first line.
+    private func flip(_ toggle: XCUIElement, to value: String) {
+        let changed = NSPredicate(format: "value == %@", value)
+        let inner = toggle.switches.firstMatch
+        for attempt in 0..<3 where !changed.evaluate(with: toggle) {
+            if attempt == 0, inner.exists, inner.frame.width < toggle.frame.width * 0.5 {
+                inner.tap()
+            } else {
+                let knob = CGPoint(x: toggle.frame.maxX - 36, y: toggle.frame.minY + 22)
+                toggle.coordinate(withNormalizedOffset: .zero)
+                    .withOffset(CGVector(dx: knob.x - toggle.frame.minX, dy: knob.y - toggle.frame.minY)).tap()
+            }
+            let deadline = Date().addingTimeInterval(2)
+            while Date() < deadline, !changed.evaluate(with: toggle) { Thread.sleep(forTimeInterval: 0.2) }
+        }
+    }
+
     private func bringIntoView(_ element: XCUIElement, in app: XCUIApplication, above: Bool = false) {
         let screen = app.frame
         for _ in 0..<15 {

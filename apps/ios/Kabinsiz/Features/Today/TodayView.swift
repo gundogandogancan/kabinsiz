@@ -127,7 +127,7 @@ struct ModelHero: View {
             ZStack(alignment: .topLeading) {
                 LinearGradient(colors: [Atelier.surfaceSecondary, Atelier.sand], startPoint: .top, endPoint: .bottom)
                 if let mesh = model.heroMesh {
-                    BodyModel3DView(mesh: mesh, summary: summary, alive: model.allowsLivelyMotion && !reduceMotion,
+                    BodyModel3DView(mesh: mesh, summary: summary,
                                     showsAngleButtons: false, identifier: "heroBody3D")
                 } else {
                     // 2D budget (heat, Low Power): a calm outline instead of the 3D stage.

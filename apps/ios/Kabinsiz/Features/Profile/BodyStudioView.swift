@@ -55,7 +55,7 @@ struct BodyStudioSection: View {
             // The figure is on screen before anything is saved: the unsaved neutral stand-in.
             if let mesh = model.heroMesh {
                 BodyModel3DView(mesh: mesh, summary: "Nötr başlangıç şekli; ölçü girilmedi.",
-                                alive: model.allowsLivelyMotion && !reduceMotion, showsAngleButtons: false, identifier: "standIn3D")
+                                showsAngleButtons: false, identifier: "standIn3D")
                     .frame(height: 380)
                     .frame(maxWidth: .infinity)
                     .background(LinearGradient(colors: [Atelier.surfaceSecondary, Atelier.sand], startPoint: .top, endPoint: .bottom),
@@ -82,7 +82,7 @@ struct BodyStudioSection: View {
     private func editor(_ profile: BodyProfile) -> some View {
         VStack(spacing: Token.Space.tight) {
             if let scene = model.bodyScene, !scene.isFallback, let mesh = scene.mesh {
-                BodyModel3DView(mesh: mesh, summary: summary(profile), alive: model.allowsLivelyMotion && !reduceMotion)
+                BodyModel3DView(mesh: mesh, summary: summary(profile))
                     .frame(height: 460)
                     .frame(maxWidth: .infinity)
                     .background(LinearGradient(colors: [Atelier.surfaceSecondary, Atelier.sand], startPoint: .top, endPoint: .bottom),

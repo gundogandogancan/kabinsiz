@@ -5,7 +5,8 @@ public struct OutfitChangeRequest: Codable, Hashable, Sendable {
     public enum Action: Codable, Hashable, Sendable {
         /// Put this piece on its slot; the other slots stay as they are.
         case replace(DressItem)
-        /// Take a slot off (accessories only; a figure is never left without top and bottom by a tap).
+        /// Take a slot off. Any slot may come off (dress-up, user decision 2026-11-04); undo puts it
+        /// back. The figure underneath is the neutral mannequin body, never a person's skin.
         case remove(GarmentSlotID)
         /// Show a whole look (new outfit, reroll).
         case wear(DressedOutfit)
@@ -30,7 +31,10 @@ public enum DressingRefusal: String, Error, Codable, Sendable, Equatable {
     case staleRevision = "STALE_REVISION"
     case nothingToUndo = "NOTHING_TO_UNDO"
     case nothingToRedo = "NOTHING_TO_REDO"
+    /// Kept for decoding old records; no slot is required since 2026-11-04.
     case requiredSlot = "REQUIRED_SLOT"
+    /// Taking off a slot that is already empty changes nothing and is not put in the history.
+    case emptySlot = "EMPTY_SLOT"
     case duplicateCommand = "DUPLICATE_COMMAND"
 }
 
@@ -62,7 +66,7 @@ public struct DressedAvatarState: Codable, Hashable, Sendable {
         case let .replace(item):
             next = outfit.replacing(item)
         case let .remove(slot):
-            guard ![.top, .bottom, .footwear].contains(slot) else { throw .requiredSlot }
+            guard outfit[slot] != nil else { throw .emptySlot }
             next = outfit.removing(slot)
         case let .wear(look):
             next = look

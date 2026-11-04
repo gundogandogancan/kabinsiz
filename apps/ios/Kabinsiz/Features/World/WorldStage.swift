@@ -16,8 +16,8 @@ import UIKit
 ///
 /// The camera matches the city build and the 2D renders: horizontal, 0.45 m above the ground, 3.40 m
 /// in front of the figure, 60° vertical field of view. Pinch zoom narrows the field of view only, so
-/// the 2D frame can follow with a plain scale; the 3D street also shows depth through a slow camera
-/// drift and a small sideways shift while the figure is turned by hand.
+/// the 2D frame can follow with a plain scale. The camera never moves on its own and the street never
+/// shifts: only the figure turns, and only by the user's hand (user decision 2026-11-04).
 @MainActor
 final class WorldStage {
     static let cameraHeight: Float = 0.45
@@ -32,11 +32,6 @@ final class WorldStage {
     private var cityWet: Bool?
     private var cityGroups: [String: [ModelEntity]] = [:]
     private var cityLoads = 0
-    /// Sideways camera motion: slow drift (when allowed) plus a small shift that follows a hand turn.
-    var driftEnabled = false
-    private var driftClock: TimeInterval = 0
-    private var nudgeTarget: Float = 0
-    private var nudge: Float = 0
     /// Frames counted between update-rate reports (RealityKit scene updates, about one per frame).
     private var frameCount = 0
     private var frameClock: TimeInterval = 0
@@ -49,19 +44,15 @@ final class WorldStage {
     private let rain = Entity()
     /// Today's spotlight: a light from above whose lamp is never in frame (user decision 2026-11-04).
     private let spot = Entity()
+    private let shadow = WorldStage.contactShadow()
     private var updates: EventSubscription?
 
     private(set) var yaw: Float = 0
-    private var idleOffset: Float = 0
-    private var idleClock: TimeInterval = 0
-    private var idleResumesAt: CFTimeInterval = 0
-    var idleEnabled = false {
-        didSet { if !idleEnabled { idleOffset = 0; pivot.transform.scale = .one } }
-    }
-    static let swayAmplitude: Float = 0.19
-    static let swayPeriod: TimeInterval = 11
-    static let breathPeriod: TimeInterval = 4.6
-    static let idleResumeDelay: CFTimeInterval = 4
+    /// Hand-turn momentum (rad/s): a flick keeps the figure turning and it slows to rest, like a
+    /// turntable. Nothing else ever turns or moves the figure.
+    private(set) var spin = TurntableSpin()
+    /// Called once when a flick has come to rest, with the final angle.
+    var onSpinSettled: ((Float) -> Void)?
 
     /// Garment meshes by (form, body revision): built once, so a look swap only swaps entities.
     private var meshCache: [String: [(GarmentMesh.Role, MeshResource, [ShapeResource])]] = [:]
@@ -83,7 +74,7 @@ final class WorldStage {
         pivot.addChild(body)
         pivot.addChild(garments)
         root.addChild(pivot)
-        root.addChild(Self.contactShadow())
+        root.addChild(shadow)
         root.addChild(spot)
         root.addChild(rain)
         content.add(root)
@@ -224,15 +215,34 @@ final class WorldStage {
 
     // MARK: Turning, zoom and hits
 
+    /// Turn the figure to `yaw`. Animated turns are eased by this stage's own frame tick (no
+    /// RealityKit transform animation, which would own the pivot's transform afterwards).
     func place(yaw: Float, animated: Bool, duration: TimeInterval = 0.45) {
-        self.yaw = yaw
-        let target = Transform(scale: .one, rotation: simd_quatf(angle: yaw, axis: SIMD3(0, 1, 0)), translation: .zero)
-        if animated {
-            pivot.move(to: target, relativeTo: nil, duration: duration, timingFunction: .easeOut)
+        spin.stop()
+        if animated, duration > 0 {
+            tween = Tween(from: self.yaw, to: yaw, duration: Float(duration))
         } else {
-            pivot.stopAllAnimations()
-            pivot.transform = target
+            tween = nil
         }
+        if tween == nil { apply(yaw) }
+    }
+
+    /// An ease-out turn in progress.
+    private struct Tween {
+        let from: Float, to: Float, duration: Float
+        var elapsed: Float = 0
+        var value: Float {
+            let t = min(max(elapsed / duration, 0), 1)
+            let e = 1 - pow(1 - t, 3)
+            return from + (to - from) * e
+        }
+        var done: Bool { elapsed >= duration }
+    }
+    private var tween: Tween?
+
+    private func apply(_ yaw: Float) {
+        self.yaw = yaw
+        pivot.transform = Transform(scale: .one, rotation: simd_quatf(angle: yaw, axis: SIMD3(0, 1, 0)), translation: .zero)
     }
 
     /// Zoom by field of view only (the camera does not move), so the backdrop scales with it exactly.
@@ -257,46 +267,24 @@ final class WorldStage {
         return GarmentSlotID(rawValue: name)
     }
 
-    func takeIdleOffset() -> Float {
-        let offset = idleOffset
-        idleOffset = 0
-        idleClock = 0
-        pivot.transform.scale = .one
-        idleResumesAt = CACurrentMediaTime() + Self.idleResumeDelay
-        return offset
+    /// Let go after a hand turn: keep turning at `velocity` (rad/s) and slow to rest.
+    func fling(velocity: Float) {
+        tween = nil
+        spin.fling(velocity)
     }
 
     private func tick(_ dt: TimeInterval) {
+        guard !paused else { return }
         countFrame(dt)
-        moveCamera(dt)
-        guard idleEnabled, CACurrentMediaTime() >= idleResumesAt else { return }
-        idleClock += dt
-        idleOffset = Self.swayAmplitude * Float(sin(idleClock * 2 * .pi / Self.swayPeriod))
-        let breath = Float(sin(idleClock * 2 * .pi / Self.breathPeriod))
-        pivot.transform = Transform(
-            scale: SIMD3(1 + 0.004 * breath, 1 + 0.0015 * breath, 1 + 0.006 * breath),
-            rotation: simd_quatf(angle: yaw + idleOffset, axis: SIMD3(0, 1, 0)),
-            translation: .zero
-        )
-    }
-
-    // MARK: Camera depth cues
-
-    /// A small sideways camera shift while the figure is turned by hand (`amount` in -1...1).
-    func nudgeCamera(_ amount: Float) {
-        nudgeTarget = max(-1, min(1, amount))
-    }
-
-    private func moveCamera(_ dt: TimeInterval) {
-        if driftEnabled { driftClock += dt }
-        nudge += (nudgeTarget - nudge) * Float(min(1, dt * 6))
-        let drift = driftEnabled ? Float(sin(driftClock * 2 * .pi / 17)) : 0
-        let lift = driftEnabled ? Float(sin(driftClock * 2 * .pi / 23)) : 0
-        let x = 0.16 * drift + 0.22 * nudge
-        let y = Self.cameraHeight + 0.04 * lift
-        guard abs(x - camera.position.x) > 0.0001 || abs(y - camera.position.y) > 0.0001 else { return }
-        // An orbit about the figure: the person stays put while the street behind shifts with depth.
-        camera.look(at: SIMD3(0, Self.cameraHeight, 0), from: SIMD3(x, y, Self.cameraDistance), relativeTo: nil)
+        if var t = tween {
+            t.elapsed += Float(min(dt, 0.1))
+            tween = t.done ? nil : t
+            apply(t.value)
+            return
+        }
+        guard spin.isSpinning else { return }
+        apply(yaw + spin.step(dt))
+        if !spin.isSpinning { onSpinSettled?(yaw) }
     }
 
     private func countFrame(_ dt: TimeInterval) {
@@ -361,6 +349,18 @@ final class WorldStage {
     }
 
     func setCityVisible(_ visible: Bool) { city.isEnabled = visible }
+
+    /// Out of sight (the profile cover is up, or another tab is chosen): the frame tick does
+    /// nothing, so a flick stops, no turn is eased and no update rate is reported. A rate measured
+    /// while hidden must not step the scene quality down. The scene itself is left as it is:
+    /// turning its entities off left RealityViews made meanwhile (the profile's 3D body) undrawn on
+    /// the simulator (2026-11-04).
+    private(set) var paused = false
+    func setPaused(_ paused: Bool) {
+        guard paused != self.paused else { return }
+        self.paused = paused
+        if paused { spin.stop(); tween = nil }
+    }
 
     enum CityError: Error {
         case missingGroups([String])
