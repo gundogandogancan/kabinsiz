@@ -16,8 +16,8 @@ Durum değerleri:
 | Fotoğrafsız deneme | Anywear | **DONE** | 3B model ve canlı ayna |
 | Fotogerçekçi tek kare | Google / Doji | **MISSING**: L1 FASHN PoC izin bekliyor | ADR-017 |
 | Bağlantı ya da paylaşımla ürün ekleme | Doji / Google | **MISSING** → V36-06 | — |
-| Fotoğraftan kesip çıkarma | Alta (SAM) | **MISSING** → V36-03 | — |
-| Otomatik etiket (kategori, renk, mevsim) | Alta / Cladwell | **MISSING** → V36-03 | — |
+| Fotoğraftan kesip çıkarma | Alta (SAM) | **PARTIAL**: paket DONE (Vision maskesi, cihazda); UI V36-03'te | PHOTO-T01..T05, T07 |
+| Otomatik etiket (kategori, renk, mevsim) | Alta / Cladwell | **PARTIAL**: renk + tür önerisi paket DONE (12/13); mevsim yok; UI V36-03'te | PHOTO-T02, T06..T08 |
 | Toplu ekleme | Cladwell | **MISSING** → V36-03 | — |
 | Fişten ekleme | Alta | **PARTIAL**: VNRecognizeText etiket okuyucuda var; fiş akışı V36-07'de | ProductLabelReader |
 | Barkod ve fotoğrafla ürün | — | **DONE** (Kabinsiz'e özgü) | ADR-014, SCAN-WP02 |
@@ -38,8 +38,8 @@ Durum değerleri:
 **Özet:** 25 satır var. Dağılım:
 
 - DONE: 6 satır.
-- PARTIAL: 11 satır. Paket mantığı hazır, ekran ya da cihaz eksik.
-- MISSING: 7 satır.
+- PARTIAL: 13 satır. Paket mantığı hazır, ekran ya da cihaz eksik.
+- MISSING: 5 satır.
 - BLOCKED_EXTERNAL: 1 satır.
 
 Her MISSING satır ve ekranı eksik her PARTIAL satır için bir iş paketi var: `docs/audit/V36_FEATURE_QUEUE.md`.
