@@ -11,7 +11,7 @@ Tarih: 2026-11-04. Hukuki görüş değildir. Ticari yayından önce `support-le
 
 | Bileşen | Lisans / koşul | Kullanım amacı | Durum | Not |
 |---|---|---|---|---|
-| FASHN VTON 1.5 kodu ve ağırlıkları | Apache-2.0 | L1 çevrim dışı tek kare üretici (ADR-017) | RESEARCH_ONLY → SHIP_OK adayı | Ağırlık indirmesi kullanıcı izni bekliyor. Model kartı ve Apache NOTICE gerekir. Eğitim verisinin hakları belirsiz, ticari yayından önce incelenmeli |
+| FASHN VTON 1.5 kodu ve ağırlıkları | Apache-2.0 | L1 çevrim dışı tek kare üretici (ADR-017) | RESEARCH_ONLY | 2026-11-04 kullanıcı izniyle indirildi, SHA-256 doğrulandı, repoda değil (`~/research`). PoC: `docs/research/fashn-poc/`. Model kartı ve Apache NOTICE gerekir. Eğitim verisinin hakları belirsiz, ticari yayından önce incelenmeli |
 | FASHN insan ayrıştırıcısı | NVIDIA Source Code License, ticari değil | — | **BLOCKED** | Yerine Apple Vision kişi maskesi kullanılır. FASHN `segmentation_free` modu ve düz serili ürün fotoğrafı ayrıştırıcı gerektirmez |
 | DWPose / YOLOX (FASHN poz girişi) | Apache-2.0 | L1 poz | RESEARCH_ONLY | Cihazda Apple Vision eklemleri kullanılır |
 | Mobile-VTON, CatVTON | CC BY-NC-SA / ticari değil | Kıyas | RESEARCH_ONLY | Ağırlık ya da çıktı gönderilmez |

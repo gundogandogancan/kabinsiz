@@ -38,6 +38,12 @@ rival_recon:
   reviews: "420 reviews from Apple's public customer-review RSS (Alta 149, Cladwell 103, Whering 50, Acloset 50, Doji 47, Daily Dress Me 21); paraphrased excerpts <= 20 words, no reviewer names"
   forbidden_and_not_done: "no login, no account, no decompile, no traffic capture, no private API, no model extraction, no scraping of sites that forbid it"
 blocked:
-  - "FASHN VTON 1.5 weights (~2 GB) download: awaits user permission"
   - "R-002 iPhone not connected"
   - "R-003 WeatherKit PLA"
+fashn_l1_poc:
+  status: RUN   # research only, Mac M5 MPS bf16; see docs/research/fashn-poc/README.md
+  weights_sha256_verified: true
+  parser: "not downloaded, not loaded (stub refuses); segmentation_free + flat-lay"
+  timings_s: {reference_30_steps: 289.7, avatar_30_steps: 199.9, avatar_10_steps: 63.9}
+  peak_mps_gb: 6.09
+  finding: "photoreal on a real person photo; does not make the Kabinsiz 3D mannequin photoreal; garment detail lost; not live"

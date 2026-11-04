@@ -25,8 +25,8 @@ FASHN VTON 1.5'i inceledik (Apache-2.0 kod ve ağırlık). Teknik özellikleri:
 | Katman | Ne | Durum |
 |---|---|---|
 | L0 canlı | F1 yerel ayna: Vision 14 eklem → `GarmentRig` → OWNED_ORIGINAL giysi çizimi (ADR-015) | CODED + SIMULATOR_TESTED; cihaz R-002 |
-| L1 tek kare | "Bu kareyi gerçekçi yap": FASHN 1.5, `segmentation_free`, düz serili ürün fotoğrafıyla, **Mac'te çevrim dışı** PoC | NOT_RUN: ağırlık indirmesi (~2 GB) kullanıcı izni bekliyor |
-| L2 cihazda | FASHN'ın Core ML anlık görüntü dönüşümü (fp16/int8, 30→4–8 adım) | Araştırma; L1 kalite ölçütü olmadan başlamaz |
+| L1 tek kare | "Bu kareyi gerçekçi yap": FASHN 1.5, `segmentation_free`, düz serili ürün fotoğrafıyla, **Mac'te çevrim dışı** PoC | RUN 2026-11-04 (`docs/research/fashn-poc/`): gerçek insan fotoğrafında çalışıyor; bizim 3B mankenimizi fotogerçekçi yapmıyor; M5 MPS'te 64–290 s/kare → canlı değil, avatar yolu olarak yürümez |
+| L2 cihazda | FASHN'ın Core ML anlık görüntü dönüşümü (fp16/int8, 30→4–8 adım) | ERTELENDİ: Mac'te 10 adım 64 s; iPhone'da makul hedef yok, önce L3 |
 | L3 damıtma | Kendi küçük öğrenci modelimiz; L1 çıktısıyla, yalnız rızalı ya da sentetik veriyle | Araştırma; veri hakkı kapısı (R-004) |
 
 **Kesin yasaklar:**
@@ -89,13 +89,20 @@ FASHN VTON 1.5'i inceledik (Apache-2.0 kod ve ağırlık). Teknik özellikleri:
 - Çıktılar `docs/research/rivals/`: `recon.md`, `features.csv`, `reviews.csv`, `feedback.md`, `parity.md`.
 - Kopya yok: rakip metni, görseli, renk ya da ticari görünümü alınmaz. Yalnız "işi yapan" özellikler kendi tasarımımızla ve cihazda yapılır. Apple 4.1 (kopya uygulama) riski böylece düşük tutulur.
 
+## L1 PoC sonucu (2026-11-04)
+
+Ayrıntı `docs/research/fashn-poc/README.md`.
+
+- Ayrıştırıcısız çalıştı: stub + `segmentation_free` + düz serili giysi.
+- Gerçek fotoğrafta fotogerçekçi sonuç veriyor. Bizim 3B mankenimizde fotogerçekçilik yok, giysi ayrıntısı kayboluyor ve silüet alttaki giysiden geliyor.
+- **Sonuç:** canlı ayna L0 olarak kalır. Cihazda gerçekçilik için öncelik V36-12 (kabuk malzeme ve ışık) ve V36-03 (fotoğraftan doku). FASHN yalnız rızalı stüdyo görselleri ya da L3 öğretmeni olarak sunucu/Mac tarafında kalır.
+
 ## Sonuçlar
 
 - Yeni testler:
   - BFORM-T01..T06 (OctopusTests);
   - CITY-T01..T07, SUN-T01..T04, WX-T01..T04 (LivingWorldTests).
 - İnsan onayı bekleyenler:
-  - FASHN ağırlık indirmesi (~2 GB, Hugging Face `fashn-ai/fashn-vton-1.5`);
   - iPhone bağlantısı (R-002);
   - WeatherKit PLA (R-003);
   - "Daily Clothes" adının netleşmesi (Daily Dress Me mi, Cladwell mi).

@@ -20,7 +20,7 @@
 | V36-07 | Fişten ekleme | Alta | Fiş fotoğrafı ya da PDF paylaşılır → `VNRecognizeText` → satır adayları → kullanıcı seçer | Fiş cihazda; fiyat yalnız kullanıcı onayıyla `UserPrice` olur | OCR fixture testleri | NOT_RUN |
 | V36-08 | Çok şehirli seyahat | Alta | `TripPlanner` bacakları (her bacak: şehir, tarih aralığı, hava) → tek valiz | Hava yalnız hedef şehir için, cihaz konumu için değil | TravelEngine testleri | NOT_RUN |
 | V36-09 | Doğal dille kombin isteme | Alta, Cladwell | Cihaz desteklerse Apple Foundation Models (cihaz içi), değilse anahtar kelime kuralları → `DayNeeds` | Metin cihazdan çıkmaz | Kural testleri; model yoksa geri dönüş testi | NOT_RUN |
-| V36-10 | Fotogerçekçi tek kare (L1) | Google, Doji | FASHN VTON 1.5, Mac'te çevrim dışı PoC, `segmentation_free`, ayrıştırıcı yok | Kullanıcı fotoğrafı kullanılmaz (yalnız sentetik ya da rızalı); bulut yok | Kalite ölçütü, lisans kapısı | BLOCKED: ağırlık indirmesi için kullanıcı izni |
+| V36-10 | Fotogerçekçi tek kare (L1) | Google, Doji | FASHN VTON 1.5, Mac'te çevrim dışı PoC, `segmentation_free`, ayrıştırıcı yok | Kullanıcı fotoğrafı kullanılmaz (yalnız sentetik ya da rızalı); bulut yok | Kalite ölçütü, lisans kapısı | RUN 2026-11-04: Mac'te çalıştı (64–290 s/kare); bizim avatarımızı fotogerçekçi yapmıyor → avatar yolu olarak kapandı, yalnız stüdyo/öğretmen (`docs/research/fashn-poc/`) |
 | V36-11 | Rakip yorum düzeltmeleri | `feedback.md` "Top 8" | Her düzeltme yukarıdaki paketlerden birine bağlanır ya da yeni satır olur | — | — | `feedback.md` tamamlanınca bağlanır |
 
 ## Rakip yorum düzeltmeleri → paket eşlemesi

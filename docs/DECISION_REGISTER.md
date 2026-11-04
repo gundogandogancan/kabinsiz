@@ -58,6 +58,7 @@
 | D-046 | Işık güneşten (NOAA, ağsız): gündüz/altın saat/alacakaranlık/gece. Hava 6 durum (açık, bulutlu, yağmur, kar, rüzgâr, sis), yalnız kanıtla; rüzgâr yalnız çevreyi oynatır. v3.5 "rüzgârda giysi hareketi" ADR-016 ile SUPERSEDED | ADR-016 + ADR-017 | 2026-11-04 |
 | D-047 | replica-skill (MIT) incelendi: USE_METHOD_ONLY; paket kurulmadı, yöntemi `kabinsiz-rival-recon` skill'i olarak yazıldı (atıflı). Rakip keşfi yalnız herkese açık kaynaklar + Apple resmi yorum RSS'i (420 yorum); giriş/decompile/trafik kaydı/özel API/model çıkarma yok. Çıktı `docs/research/rivals/`, kuyruk `docs/audit/V36_FEATURE_QUEUE.md` | KULLANICI KARARI + ADR-017 | 2026-11-04 |
 | D-048 | `WardrobeInsights` modülü: giyim günlüğü, en çok/az giyilen, giyim başı maliyet (yalnız kullanıcının girdiği fiyatla), kural tabanlı boşluk analizi (satın alma önerisi değil), hava kanıtı + takvim başlığından gün ihtiyacı (başlık cihazda okunur, saklanmaz; önizleme tavsiyeyi değiştirmez) | ADR-017 | 2026-11-04 |
+| D-049 | FASHN VTON 1.5 L1 PoC çalıştırıldı (kullanıcı izniyle indirme, SHA-256 doğrulandı, ayrıştırıcı indirilmedi/yüklenmedi): gerçek fotoğrafta fotogerçekçi, Kabinsiz 3B mankenini fotogerçekçi yapmıyor; M5 MPS'te 64–290 s/kare. Avatar gerçekçiliği yolu olarak kapandı; canlı ayna L0 kalır; öncelik V36-12/V36-03. Ağırlıklar repoda değil (`~/research`) | KULLANICI ONAYI + ADR-017 | 2026-11-04 |
 
 ## Açık riskler
 
