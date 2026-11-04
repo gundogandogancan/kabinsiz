@@ -1,7 +1,7 @@
 evidence_schema: 1
 work_package: V36-01
 title: "Body form picker (Kadın / Erkek / Nötr) in the body studio; form-aware chest wording; undoable form change that keeps the user's values"
-status: SIMULATOR_TESTED   # device REAL_DEVICE_BLOCKED (R-002); RealityView rendering in the profile is the OPEN ADR-016 issue
+status: SIMULATOR_TESTED   # device REAL_DEVICE_BLOCKED (R-002); the profile RealityView issue was resolved on the simulator later the same day (docs/evidence/ADR016-RV-01.yaml)
 commit_sha: null   # filled by the commit that adds this file; see git log
 branch: v35/world-avatar
 spec: "ADR-017 Karar 2; D-043, D-051; user decision 2026-11-04 ('kadın erkeğe göre model değişmeli; bel, göğüs, omuz bu ölçüler önemli')"
@@ -26,6 +26,7 @@ honesty:
   - "The form is the user's choice only; nothing is inferred from a photo, name or voice. Default is Nötr and nothing is preselected"
   - "Changing the form never changes a typed or shaped value; it is an undoable revision stored in the encrypted vault"
   - "The drawing is a neutral parametric mannequin, labelled 'Görünüm, beden uyumunun kanıtı değildir'. No fit claim (R-004)"
+  - "UPDATE 2026-11-04 (later): root cause found and fixed on the simulator (presentsWithTransaction on the profile layer; D-052, docs/evidence/ADR016-RV-01.yaml). The expected-failure handling and the tap retry below were removed; the test is strict again. The notes below are kept as history"
   - "Known issue widened, NOT fixed (ADR-016 'Bilinen açık', OPEN): in the profile cover, RealityViews made later sometimes draw nothing for 15+ s (the Kadın stand-in, the body right after creation) and row touches are dropped (slider, undo, weather toggle). Without the home world the test passed 2/2; taking the home RealityView out of the hierarchy helped once (3/3) and then did not, and the home stage came back white, so it was reverted. Root cause UNKNOWN; real iPhone UNKNOWN (R-002). The test reports an undrawn frame as an expected failure (XCTExpectFailure, non-strict) and skips the pixel comparison for that run; all other checks still run"
   - "Start screen: with the home world out of the hierarchy, the stand-in's pixels stayed byte-identical after the form changed, so the RealityView update closure did not redraw it. Fix: a fresh stand-in view per form (.id(standInForm)), only on a picker tap; when drawn, the Kadın stand-in differs from the neutral one (screenshot BFORM-UI-01). Why update is skipped there is UNKNOWN"
   - "The test types a waist measurement instead of dragging the slider (stronger claim: typed values never change with the form) and retries a tap once if nothing changed in 10 s"

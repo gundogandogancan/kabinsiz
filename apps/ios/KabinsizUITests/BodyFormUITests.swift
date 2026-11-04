@@ -43,7 +43,6 @@ final class BodyFormUITests: XCTestCase {
         attach(app, "BFORM-UI-02-feminine")
 
         // Type a waist measurement (the strongest promise: a typed value never changes with the form).
-        // The slider drag is not used here: it is the separate OPEN stall in ADR-016.
         let field = app.textFields["measurementValue"]
         bringIntoView(field, in: app)
         for _ in 0..<3 where (field.value as? String) != "71" {
@@ -71,7 +70,7 @@ final class BodyFormUITests: XCTestCase {
         XCTAssertTrue(picker.buttons["Kadın"].isSelected)
         let erkek = picker.buttons["Erkek"]
         erkek.tap()
-        if !wait(erkek, NSPredicate(format: "isSelected == true"), timeout: 10) { erkek.tap() }
+        XCTAssertTrue(wait(erkek, NSPredicate(format: "isSelected == true"), timeout: 10), "one tap is enough")
         bringIntoView(fidelity, in: app, above: true)
         XCTAssertTrue(wait(fidelity, NSPredicate(format: "label BEGINSWITH '3B model, erkek formu'"), timeout: 10))
         if requireFigure(model, "the masculine body"), feminineDrawn {
@@ -90,13 +89,13 @@ final class BodyFormUITests: XCTestCase {
         bringIntoView(undo, in: app, above: true)
         waitUntilStill(undo)
         XCTAssertTrue(wait(undo, NSPredicate(format: "isEnabled == true"), timeout: 10))
-        var savedForm = "erkek"
-        if tapOrKnown(undo, until: fidelity, NSPredicate(format: "label BEGINSWITH '3B model, kadın formu'")) {
-            savedForm = "kadın"
-            let redo = app.buttons["bodyRedo"]
-            XCTAssertTrue(wait(redo, NSPredicate(format: "isEnabled == true"), timeout: 10))
-            if tapOrKnown(redo, until: fidelity, NSPredicate(format: "label BEGINSWITH '3B model, erkek formu'")) { savedForm = "erkek" }
-        }
+        undo.tap()
+        XCTAssertTrue(wait(fidelity, NSPredicate(format: "label BEGINSWITH '3B model, kadın formu'"), timeout: 10), "one tap on undo is enough")
+        let redo = app.buttons["bodyRedo"]
+        XCTAssertTrue(wait(redo, NSPredicate(format: "isEnabled == true"), timeout: 10))
+        redo.tap()
+        XCTAssertTrue(wait(fidelity, NSPredicate(format: "label BEGINSWITH '3B model, erkek formu'"), timeout: 10), "one tap on redo is enough")
+        let savedForm = "erkek"
         sleep(1)
         app.terminate()
 
@@ -111,6 +110,14 @@ final class BodyFormUITests: XCTestCase {
         XCTAssertEqual(relaunchedWaist.label, shapedWaist)
         attach(app, "BFORM-UI-04-relaunched")
 
+        // A slider drag reaches the slider (it used to be lost in the frozen profile, ADR-016).
+        let shoulder = app.sliders["slider-SHOULDER_WIDTH"]
+        let shoulderValue = app.staticTexts["value-SHOULDER_WIDTH"]
+        bringIntoView(shoulder, in: app, above: true)
+        let before = shoulderValue.label
+        shoulder.dragThumb(to: 0.85)
+        XCTAssertTrue(wait(shoulderValue, NSPredicate(format: "label != %@", before), timeout: 5), "one drag moves the slider")
+
         // Home dresses the user's body, so it is drawn in the chosen form too.
         app.buttons["profileClose"].tap()
         XCTAssertTrue(app.descendants(matching: .any)["worldAvatar"].waitForExistence(timeout: 10))
@@ -118,39 +125,13 @@ final class BodyFormUITests: XCTestCase {
         attach(app, "BFORM-UI-05-home-follows-form")
     }
 
-    /// `tap(_:until:_:)`, and when both taps were dropped, records the known issue as an expected
-    /// failure and returns false so the caller carries on from the state the app is really in.
-    private func tapOrKnown(_ button: XCUIElement, until element: XCUIElement, _ predicate: NSPredicate) -> Bool {
-        if tap(button, until: element, predicate) { return true }
-        continueAfterFailure = true
-        XCTExpectFailure("ADR-016 known issue: touches on profile rows dropped on the simulator", options: .nonStrict()) {
-            XCTFail("two taps on \(button.identifier) changed nothing in 20 s")
-        }
-        continueAfterFailure = false
-        return false
-    }
-
-    /// Taps, and taps once more only if nothing changed in 10 s: in the profile cover under the 3D
-    /// budget a touch is sometimes dropped (the OPEN issue in ADR-016; the same family as the slider).
-    private func tap(_ button: XCUIElement, until element: XCUIElement, _ predicate: NSPredicate) -> Bool {
-        button.tap()
-        if wait(element, predicate, timeout: 10) { return true }
-        button.tap()
-        return wait(element, predicate, timeout: 10)
-    }
-
-    /// Waits for a drawn figure. On this simulator a RealityView sometimes draws nothing at all (ADR-016
-    /// known issue, reopened 2026-11-04); that is reported as an expected failure, not hidden, and the
-    /// pixel comparisons that need a drawn figure are skipped for that run.
+    /// Asserts that the figure is drawn, and says whether it was, so a pixel comparison runs only on a
+    /// drawn figure. This used to be an expected failure (ADR-016 "Bilinen açık", fixed 2026-11-04).
+    @discardableResult
     private func requireFigure(_ element: XCUIElement, _ what: String) -> Bool {
-        if waitForFigure(element) { return true }
-        // Recorded, then the rest of the run goes on: form, typed value, undo and relaunch still count.
-        continueAfterFailure = true
-        XCTExpectFailure("ADR-016 known issue: RealityView undrawn on the simulator", options: .nonStrict()) {
-            XCTFail("\(what) was not drawn within 15 s")
-        }
-        continueAfterFailure = false
-        return false
+        let drawn = waitForFigure(element)
+        XCTAssertTrue(drawn, "\(what) is drawn")
+        return drawn
     }
 
     /// True once the element's centre column holds figure pixels, not only the backdrop gradient.
@@ -196,11 +177,20 @@ final class BodyFormUITests: XCTestCase {
     private func bringIntoView(_ element: XCUIElement, in app: XCUIApplication, above: Bool = false) {
         let screen = app.frame
         for _ in 0..<15 {
-            if element.exists, element.isHittable, element.frame.minY > screen.minY + 160, element.frame.maxY < screen.maxY - 160 { return }
+            // Below the profile's fixed 3D figure (where there is one) and clear of the bottom edge.
+            if element.exists, element.isHittable, element.frame.minY > app.profileFigureBottom + 8,
+               element.frame.maxY < screen.maxY - 40 { return }
             let below = element.exists ? element.frame.midY > screen.midY : !above
-            let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: below ? 0.65 : 0.35))
-            let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: below ? 0.45 : 0.55))
-            start.press(forDuration: 0.05, thenDragTo: end)
+            // Both ends inside the list: the profile's 3D figure sits fixed above it and a drag there
+            // turns the figure instead of scrolling.
+            // A short step (about a row), so a row cannot jump over the band below the figure.
+            // On the list's right margin, outside the row cards: in the middle a drag can land on a
+            // slider's thumb and grab it instead of scrolling (seen 2026-11-04 after undo jumped to the top).
+            let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.97, dy: below ? 0.78 : 0.64))
+            let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.97, dy: below ? 0.64 : 0.78))
+            // Hold before letting go: no fling, so the list is still when the next tap or drag lands
+            // (a tap on a moving list only stops it).
+            start.press(forDuration: 0.05, thenDragTo: end, withVelocity: .default, thenHoldForDuration: 0.3)
         }
     }
 

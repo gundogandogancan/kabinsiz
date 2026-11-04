@@ -68,8 +68,13 @@ struct MyModelView: View {
             }
         }
         .scrollContentBackground(.hidden)
+        // The 3D figure stays fixed above the rows (see `BodyFigureHeader`); as a safe-area inset the
+        // list still scrolls its full length and keeps the keyboard avoidance it had.
+        .safeAreaInset(edge: .top, spacing: 0) { BodyFigureHeader() }
         .background(Token.surfaceBase)
         .navigationTitle("Benim Modelim")
+        // Inline: the fixed 3D figure takes the space a large title would leave empty.
+        .navigationBarTitleDisplayMode(.inline)
         .confirmationDialog("Tüm veriler silinsin mi?", isPresented: $confirmDeleteAll, titleVisibility: .visible) {
             Button("Dolap, vücut profili, seyahatler ve Fit Passport silinsin", role: .destructive) { model.deleteAllData() }
         } message: {
@@ -95,7 +100,7 @@ struct ModelPartsBar: View {
         }
         var note: String {
             switch self {
-            case .body: "3B gövden aşağıda; formunu seç, kaydırıcılarla şekillendir."
+            case .body: "3B gövden yukarıda; formunu seç, kaydırıcılarla şekillendir."
             case .measures: "Mezura ölçünü aşağıdaki alana yazarsın; fotoğraftan ölçü çıkarmayız."
             case .face: "Yüz kişiselleştirme bu sürümde yok. Yüz fotoğrafın alınmaz, hiçbir yere gönderilmez."
             case .hair: "Saç seçimi bu sürümde yok; model nötr başla kalır."

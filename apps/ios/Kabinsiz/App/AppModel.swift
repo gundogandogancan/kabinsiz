@@ -288,8 +288,7 @@ final class AppModel {
         bodyStudio = studio
         await studio.load()
         await migrateLegacyMeasurements(into: studio, vault: vault)
-        await syncBody(from: studio)
-        await redrawCommitted(studio)
+        await syncBody(from: studio, redraw: true)
     }
 
     /// Draws the committed body through the coordinator, so the device budget picks the detail (BOD-08).
@@ -319,11 +318,30 @@ final class AppModel {
         if dropped { bodyMessage = "Eski ölçülerinden biri güvenli aralığın dışındaydı ve taşınmadı." }
     }
 
-    private func syncBody(from studio: BodyStudio) async {
-        body = await studio.profile
-        bodyStatus = await studio.status
-        canUndoBody = await studio.canUndo
-        canRedoBody = await studio.canRedo
+    /// Reads the studio first and publishes everything in one step, with `alongside` (the new drawing)
+    /// in the same step. With an await between them, the screens saw a ready body without a drawing
+    /// for a moment (`heroMesh` nil): the home world fell back to 2D and rebuilt its RealityKit view,
+    /// and the old view, out of the window, stalled every 3D view on the simulator (ADR-016).
+    private func syncBody(from studio: BodyStudio, redraw: Bool = false, alongside: () -> Void = {}) async {
+        let profile = await studio.profile
+        let status = await studio.status
+        let canUndo = await studio.canUndo
+        let canRedo = await studio.canRedo
+        var committed: DecisionEnvelope<PreviewScene>??
+        if redraw { committed = .some(await studio.currentScene()) }
+        body = profile
+        bodyStatus = status
+        canUndoBody = canUndo
+        canRedoBody = canRedo
+        if let committed {
+            if let envelope = committed {
+                bodyScene = envelope.value
+                bodyLimitations = envelope.limitations
+            } else {
+                bodyScene = nil
+            }
+        }
+        alongside()
         if bodyStatus == .unreadable {
             bodyMessage = "Kayıtlı vücut profili okunamadı. Silinmedi ve üzerine yazılmayacak; istersen silebilirsin."
         }
@@ -331,13 +349,14 @@ final class AppModel {
 
     private func apply(_ envelope: DecisionEnvelope<PreviewScene>?, from studio: BodyStudio) async {
         bodyGeneration += 1
-        await syncBody(from: studio)
-        guard let envelope else { return }
-        if let scene = envelope.value {
+        await syncBody(from: studio) {
+            guard let envelope, let scene = envelope.value else { return }
             bodyScene = scene
             bodyLimitations = envelope.limitations
             bodyMessage = nil
-        } else if let fault = envelope.fault {
+        }
+        guard let envelope else { return }
+        if envelope.value == nil, let fault = envelope.fault {
             bodyMessage = fault == .storageCorrupted
                 ? "Vücut profili şu an değiştirilemiyor. Hiçbir şey kaydedilmedi."
                 : "Bu değer kaydedilmedi: \(fault.userMessage)"
@@ -434,16 +453,18 @@ final class AppModel {
         guard let studio = bodyStudio else { return }
         await untilVaultReachable()
         bodyGeneration += 1
-        switch await studio.deleteProfile() {
-        case .success(let receipt):
-            lastBodyDeletionReceipt = receipt
-            bodyScene = nil
-            bodyLimitations = []
-            bodyMessage = nil
-        case .failure(let fault):
-            bodyMessage = "Vücut profili silinemedi: \(fault.userMessage)"
+        let result = await studio.deleteProfile()
+        await syncBody(from: studio) {
+            switch result {
+            case .success(let receipt):
+                lastBodyDeletionReceipt = receipt
+                bodyScene = nil
+                bodyLimitations = []
+                bodyMessage = nil
+            case .failure(let fault):
+                bodyMessage = "Vücut profili silinemedi: \(fault.userMessage)"
+            }
         }
-        await syncBody(from: studio)
     }
 
     // MARK: Travel

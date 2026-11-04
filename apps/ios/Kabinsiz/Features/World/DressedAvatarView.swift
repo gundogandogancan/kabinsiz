@@ -118,8 +118,17 @@ struct DressedAvatarView: View {
         stage.prewarm(prewarm, snapshot: snapshot)
         stage.dress(outfit, snapshot: snapshot)
         if stage.selectedSlot != selectedSlot { stage.highlight(selectedSlot) }
-        if stage.onSpinSettled == nil { stage.onSpinSettled = { final in Task { @MainActor in yaw = final } } }
-        if stage.onFrameRate == nil { stage.onFrameRate = { rate in Task { @MainActor in onFrameRate(rate) } } }
+        // The callbacks capture a binding and a closure, never `self`: through `self` they would hold
+        // this view's state, which holds the stage, and the stage and its RealityKit view would
+        // never be freed (ADR-016 "Bilinen açık", 2026-11-04).
+        if stage.onSpinSettled == nil {
+            let settledYaw = $yaw
+            stage.onSpinSettled = { final in Task { @MainActor in settledYaw.wrappedValue = final } }
+        }
+        if stage.onFrameRate == nil {
+            let report = onFrameRate
+            stage.onFrameRate = { rate in Task { @MainActor in report(rate) } }
+        }
         stage.setZoom(zoom)
         if shownRain != rainIntensity {
             stage.rain(reduceMotion ? 0 : rainIntensity)

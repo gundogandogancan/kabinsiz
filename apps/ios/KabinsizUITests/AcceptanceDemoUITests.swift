@@ -125,7 +125,7 @@ final class AcceptanceDemoUITests: XCTestCase {
         XCTAssertTrue(garment.waitForExistence(timeout: 5))
         app.openProfile()
         let toggle = app.switches["weatherConsentToggle"]
-        for _ in 0..<6 where !toggle.isHittable { app.swipeUp() }
+        for _ in 0..<6 where !toggle.isHittable { app.scrollProfile(up: true) }
         XCTAssertEqual(toggle.value as? String, "1")
         flip(toggle, to: "0")
         XCTAssertEqual(toggle.value as? String, "0")
@@ -136,14 +136,14 @@ final class AcceptanceDemoUITests: XCTestCase {
         app.tab("Dolabım")
         XCTAssertTrue(garment.waitForExistence(timeout: 5), "wardrobe must be read back from the encrypted vault")
         app.openProfile()
-        for _ in 0..<6 where !toggle.isHittable { app.swipeUp() }
+        for _ in 0..<6 where !toggle.isHittable { app.scrollProfile(up: true) }
         XCTAssertEqual(toggle.value as? String, "0", "consent revocation must persist")
         let delete = app.buttons["deleteAllData"]
-        for _ in 0..<6 where !delete.isHittable { app.swipeUp() }
+        for _ in 0..<6 where !delete.isHittable { app.scrollProfile(up: true) }
         delete.tap()
         app.buttons["Dolap, vücut profili, seyahatler ve Fit Passport silinsin"].firstMatch.tap()
         let receipt = app.descendants(matching: .any)["deletionReceipt"].firstMatch
-        for _ in 0..<6 where !receipt.exists { app.swipeUp() }
+        for _ in 0..<6 where !receipt.exists { app.scrollProfile(up: true) }
         XCTAssertTrue(receipt.waitForExistence(timeout: 5))
         attach(app, "08-deletion-receipt")
         sleep(1)
@@ -175,23 +175,15 @@ final class AcceptanceDemoUITests: XCTestCase {
         XCTAssertTrue((waist.value as? String)?.hasSuffix("santimetre") == true, "spoken value must name the unit")
 
         bringIntoView(waist, in: app)
-        sleep(1) // let the list's scroll momentum settle, or the slider drag lands on a moving row
-        waist.adjust(toNormalizedSliderPosition: 0.2)
+        waist.dragThumb(to: 0.2)
         let shaped = app.staticTexts["value-WAIST"]
-        let changed = NSPredicate(format: "label != '82 cm'")
-        if !wait(shaped, changed) {
-            // Seen in full-suite runs only (2026-11-04): the first drag can be swallowed by a settling scroll.
-            bringIntoView(waist, in: app)
-            sleep(1)
-            waist.adjust(toNormalizedSliderPosition: 0.25)
-        }
-        XCTAssertTrue(wait(shaped, changed))
+        XCTAssertTrue(wait(shaped, NSPredicate(format: "label != '82 cm'")), "one drag moves the slider")
         sleep(1) // commit debounce
         let draggedLabel = shaped.label
         attach(app, "09-body-studio-slider")
 
         let field = app.textFields["measurementValue"]
-        for _ in 0..<6 where !field.isHittable { app.swipeUp() }
+        for _ in 0..<6 where !field.isHittable { app.scrollProfile(up: true) }
         // Under load the simulator keyboard can swallow keys typed before it is ready: wait for it,
         // type, and check the field really holds the value before saving.
         for _ in 0..<3 where (field.value as? String) != "90" {
@@ -221,17 +213,17 @@ final class AcceptanceDemoUITests: XCTestCase {
         XCTAssertTrue(shaped.waitForExistence(timeout: 5))
         XCTAssertEqual(shaped.label, draggedLabel, "the saved body must come back from the encrypted vault")
         let redo = app.buttons["bodyRedo"]
-        for _ in 0..<8 where !redo.isHittable { app.swipeDown() }
+        for _ in 0..<8 where !redo.isHittable { app.scrollProfile(up: false) }
         XCTAssertFalse(redo.isEnabled, "undo history is per session, never persisted")
 
         let delete = app.buttons["deleteBody"]
-        for _ in 0..<10 where !delete.isHittable { app.swipeUp() }
+        for _ in 0..<10 where !delete.isHittable { app.scrollProfile(up: true) }
         delete.tap()
         let confirm = app.buttons["Vücut profilini ve çizimini sil"].firstMatch
         XCTAssertTrue(confirm.waitForExistence(timeout: 5), "the delete confirmation is up")
         confirm.tap()
         let create = app.buttons["createNeutralBody"]
-        for _ in 0..<10 where !create.exists { app.swipeDown() }
+        for _ in 0..<10 where !create.exists { app.scrollProfile(up: false) }
         XCTAssertTrue(create.waitForExistence(timeout: 5))
         // The receipt is the row under the create button; a List loads rows lazily, so bring it in.
         let receipt = app.staticTexts["bodyDeletionReceipt"]
@@ -271,7 +263,7 @@ final class AcceptanceDemoUITests: XCTestCase {
         let waist = app.sliders["slider-WAIST"]
         bringIntoView(waist, in: app)
         XCTAssertTrue(waist.waitForExistence(timeout: 5))
-        waist.adjust(toNormalizedSliderPosition: 0.8)
+        waist.dragThumb(to: 0.8)
         let shaped = app.staticTexts["value-WAIST"]
         XCTAssertTrue(wait(shaped, NSPredicate(format: "label != '82 cm'")))
         sleep(1) // commit debounce
@@ -346,11 +338,20 @@ final class AcceptanceDemoUITests: XCTestCase {
     private func bringIntoView(_ element: XCUIElement, in app: XCUIApplication, above: Bool = false) {
         let screen = app.frame
         for _ in 0..<15 {
-            if element.exists, element.isHittable, element.frame.minY > screen.minY + 160, element.frame.maxY < screen.maxY - 160 { return }
+            // Below the profile's fixed 3D figure (where there is one) and clear of the bottom edge.
+            if element.exists, element.isHittable, element.frame.minY > app.profileFigureBottom + 8,
+               element.frame.maxY < screen.maxY - 40 { return }
             let below = element.exists ? element.frame.midY > screen.midY : !above
-            let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: below ? 0.65 : 0.35))
-            let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: below ? 0.45 : 0.55))
-            start.press(forDuration: 0.05, thenDragTo: end)
+            // Both ends inside the list: the profile's 3D figure sits fixed above it and a drag there
+            // turns the figure instead of scrolling.
+            // A short step (about a row), so a row cannot jump over the band below the figure.
+            // On the list's right margin, outside the row cards: in the middle a drag can land on a
+            // slider's thumb and grab it instead of scrolling (seen 2026-11-04 after undo jumped to the top).
+            let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.97, dy: below ? 0.78 : 0.64))
+            let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.97, dy: below ? 0.64 : 0.78))
+            // Hold before letting go: no fling, so the list is still when the next tap or drag lands
+            // (a tap on a moving list only stops it).
+            start.press(forDuration: 0.05, thenDragTo: end, withVelocity: .default, thenHoldForDuration: 0.3)
         }
     }
 
@@ -372,5 +373,47 @@ private extension XCUIElement {
             typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: value.count))
         }
         typeText(text)
+    }
+}
+
+extension XCUIApplication {
+    /// Bottom edge of the profile's fixed 3D figure strip (angle buttons included), or the top of the
+    /// screen plus a margin when the profile shows no 3D figure.
+    var profileFigureBottom: CGFloat {
+        let figure = descendants(matching: .any).matching(NSPredicate(format: "identifier IN {'body3D', 'standIn3D'}")).firstMatch
+        guard figure.exists else { return frame.minY + 160 }
+        let angle = buttons["bodyAngle-front"]
+        return max(figure.frame.maxY, angle.exists ? angle.frame.maxY : 0)
+    }
+
+    /// Scrolls the profile's list by a drag in the lower part of the screen. Not `swipeUp()`: the
+    /// middle of the screen (and of the list, which runs under it) is the profile's fixed 3D figure,
+    /// where a vertical swipe does not scroll.
+    func scrollProfile(up: Bool) {
+        // Right margin, outside the row cards, so the drag never grabs a slider thumb.
+        let low = coordinate(withNormalizedOffset: CGVector(dx: 0.97, dy: 0.88))
+        let high = coordinate(withNormalizedOffset: CGVector(dx: 0.97, dy: 0.62))
+        if up {
+            low.press(forDuration: 0.05, thenDragTo: high, withVelocity: .default, thenHoldForDuration: 0.3)
+        } else {
+            high.press(forDuration: 0.05, thenDragTo: low, withVelocity: .default, thenHoldForDuration: 0.3)
+        }
+    }
+}
+
+extension XCUIElement {
+    /// Drags a slider the way a person does: finger down on the thumb, a short hold, then a slow drag.
+    /// `adjust(toNormalizedSliderPosition:)` starts moving at once; on a loaded simulator the List's
+    /// scroll gesture then takes the touch and the slider never starts tracking (measured 2026-11-04:
+    /// no editing-began, only a release at the old value). That is a test-input artefact, not a frozen
+    /// app (no frame gap over 330 ms in those runs).
+    func dragThumb(to position: CGFloat) {
+        let inset: CGFloat = 14 // about half the thumb: the thumb's centre never reaches the track ends
+        let width = frame.width, midY = frame.height / 2
+        func point(_ p: CGFloat) -> XCUICoordinate {
+            coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: inset + p * (width - 2 * inset), dy: midY))
+        }
+        point(normalizedSliderPosition).press(forDuration: 0.4, thenDragTo: point(position),
+                                              withVelocity: .slow, thenHoldForDuration: 0.2)
     }
 }

@@ -52,18 +52,7 @@ struct BodyStudioSection: View {
 
     private var start: some View {
         VStack(alignment: .leading, spacing: Token.Space.tight) {
-            // The figure is on screen before anything is saved: the unsaved neutral stand-in.
-            if let mesh = model.heroMesh {
-                BodyModel3DView(mesh: mesh, summary: "\(model.standInForm.displayName) başlangıç şekli; ölçü girilmedi.",
-                                showsAngleButtons: false, identifier: "standIn3D")
-                    // A fresh stage per form: here the RealityView's `update` does not run when only
-                    // the mesh changes, so the old shape stayed (2026-11-04). Changes on a tap only.
-                    .id(model.standInForm)
-                    .frame(height: 380)
-                    .frame(maxWidth: .infinity)
-                    .background(LinearGradient(colors: [Atelier.surfaceSecondary, Atelier.sand], startPoint: .top, endPoint: .bottom),
-                                in: RoundedRectangle(cornerRadius: Atelier.Radius.hero, style: .continuous))
-            }
+            // The unsaved stand-in is already on screen above the list (`BodyFigureHeader`).
             Text("Ölçü zorunlu değil. Bir başlangıç şekliyle başla, sonra kaydırıcılarla kendine benzet.")
                 .font(.subheadline).foregroundStyle(Token.textSecondary)
             Text("Başlangıç değerleri bir norm ya da hedef değildir.")
@@ -85,12 +74,8 @@ struct BodyStudioSection: View {
     @ViewBuilder
     private func editor(_ profile: BodyProfile) -> some View {
         VStack(spacing: Token.Space.tight) {
-            if let scene = model.bodyScene, !scene.isFallback, let mesh = scene.mesh {
-                BodyModel3DView(mesh: mesh, summary: summary(profile))
-                    .frame(height: 460)
-                    .frame(maxWidth: .infinity)
-                    .background(LinearGradient(colors: [Atelier.surfaceSecondary, Atelier.sand], startPoint: .top, endPoint: .bottom),
-                                in: RoundedRectangle(cornerRadius: Atelier.Radius.hero, style: .continuous))
+            if BodyFigureHeader.mesh(model) != nil {
+                // The 3D body is above the list (`BodyFigureHeader`), so it stays in view while editing.
             } else {
                 // G0 fallback (ADR-007 §5): the 2D outline with the same controls, when the budget says
                 // 2D_CARD or the mesh could not be built.
@@ -378,5 +363,50 @@ struct SilhouetteView: View {
             let c2 = clamp(CGPoint(x: p2.x - (p3.x - p1.x) / 6, y: p2.y - (p3.y - p1.y) / 6))
             path.addCurve(to: p2, control1: c1, control2: c2)
         }
+    }
+}
+
+/// The profile's one 3D figure, above the list: the unsaved stand-in before a body exists, then the
+/// user's body. It is a single view for the whole screen, never inside a List row and never swapped
+/// by `.id`: on the simulator a RealityKit view kept alive by a List cell (out of the window, or
+/// scrolled away) blocked the shared RealityKit render thread in `nextDrawable` for a second per
+/// frame, so every 3D view froze and touches were dropped (ADR-016 "Bilinen açık", 2026-11-04).
+/// Fixed above the list, the figure also stays in view while a slider or a typed value changes it.
+struct BodyFigureHeader: View {
+    @Environment(AppModel.self) private var model
+
+    /// The mesh to draw, or nil when the 2D outline (in the list) stands in for it.
+    static func mesh(_ model: AppModel) -> BodyMesh? {
+        if model.bodyStatus == .ready {
+            guard let scene = model.bodyScene, !scene.isFallback else { return nil }
+            return scene.mesh
+        }
+        guard model.bodyStatus == .noProfile || model.bodyStatus == .closed else { return nil }
+        return model.heroMesh
+    }
+
+    var body: some View {
+        if let mesh = Self.mesh(model) {
+            let isBody = model.bodyStatus == .ready
+            BodyModel3DView(mesh: mesh, summary: summary, showsAngleButtons: isBody, identifier: isBody ? "body3D" : "standIn3D")
+                .frame(height: 300)
+                .frame(maxWidth: .infinity)
+                .background(LinearGradient(colors: [Atelier.surfaceSecondary, Atelier.sand], startPoint: .top, endPoint: .bottom),
+                            in: RoundedRectangle(cornerRadius: Atelier.Radius.hero, style: .continuous))
+                .padding(.horizontal, 16)
+                .padding(.top, 4)
+                .padding(.bottom, 6)
+                // Rows scroll under the figure's strip, so the strip is opaque.
+                .background(Token.surfaceBase)
+        }
+    }
+
+    /// What VoiceOver reads: the saved values themselves, not a revision number.
+    private var summary: String {
+        guard model.bodyStatus == .ready, let profile = model.body else {
+            return "\(model.standInForm.displayName) başlangıç şekli; ölçü girilmedi."
+        }
+        return BodyParameter.allCases.map { "\(profile.form.label($0)) \(profile[$0].length.formatted(profile.preferredUnit))" }
+            .joined(separator: ", ")
     }
 }

@@ -1,4 +1,5 @@
 import BodyGeometry
+import Combine
 import LivingWorld
 import QuartzCore
 import RealityKit
@@ -77,21 +78,17 @@ struct BodyModel3DView: View {
         }
     }
 
-    /// The RealityKit stage. It takes no touches: the RealityView's UIView swallows them, and a SwiftUI
-    /// DragGesture holds the enclosing scroll view still. A clear overlay carries UIKit recognisers
-    /// instead: a pan that only begins when the finger moves sideways (a vertical drag never starts it
-    /// and scrolls the page), and a two-finger pinch.
+    /// The RealityKit stage. It takes no touches (a SwiftUI DragGesture would hold the enclosing
+    /// scroll view still). A clear overlay carries UIKit recognisers instead: a pan that only begins
+    /// when the finger moves sideways (a vertical drag never starts it and scrolls the page), and a
+    /// two-finger pinch.
     private var stageView: some View {
-        RealityView { content in
-            content.camera = .virtual
-            stage.build(in: &content)
-            stage.show(mesh, dark: colorScheme == .dark)
-            stage.place(yaw: yaw, zoom: zoom, animated: false)
-            stage.onSpinSettled = { yaw = $0 }
-        } update: { _ in
-            stage.show(mesh, dark: colorScheme == .dark)
-        }
-        .allowsHitTesting(false)
+        // Only the angle's binding is captured, never `self`: through `self` the callback would hold
+        // this view's state, which holds the stage, and the stage would never be freed.
+        let settledYaw = $yaw
+        return StageView(stage: stage, mesh: mesh, dark: colorScheme == .dark, yaw: yaw, zoom: zoom,
+                         onSettled: { settledYaw.wrappedValue = $0 })
+            .allowsHitTesting(false)
     }
 
     // MARK: Gestures
@@ -157,37 +154,51 @@ final class Stage {
     private var yaw: Float = 0
     private var spin = TurntableSpin()
     private var tween: (from: Float, to: Float, duration: Float, elapsed: Float)?
-    private var updates: EventSubscription?
+    private var updates: (any Cancellable)?
     /// Called once when a flick has come to rest, with the final angle.
     var onSpinSettled: ((Float) -> Void)?
     var currentYaw: Float { yaw }
     var isSpinning: Bool { spin.isSpinning }
 
-    func build(in content: inout RealityViewCameraContent) {
+    private let anchor = AnchorEntity(world: .zero)
+
+    func build(in view: ARView) {
         camera.camera.fieldOfViewInDegrees = 28
-        content.add(camera)
+        anchor.addChild(camera)
 
         let key = DirectionalLight()
         key.light.intensity = 2_600
         key.look(at: .zero, from: SIMD3(1.2, 2.4, 2.2), relativeTo: nil)
-        content.add(key)
+        anchor.addChild(key)
         let fill = DirectionalLight()
         fill.light.intensity = 900
         fill.look(at: .zero, from: SIMD3(-2, 1, 1.5), relativeTo: nil)
-        content.add(fill)
+        anchor.addChild(fill)
         let rim = DirectionalLight()
         rim.light.intensity = 1_400
         rim.look(at: .zero, from: SIMD3(0, 1.8, -2.5), relativeTo: nil)
-        content.add(rim)
+        anchor.addChild(rim)
 
         pivot.addChild(body)
-        content.add(pivot)
+        anchor.addChild(pivot)
+        view.scene.addAnchor(anchor)
         // Turns are eased by this frame tick, never by a RealityKit transform animation: a
         // `move(to:)` left the pivot's transform owned by the animation on iOS 26 and later
         // writes were ignored (seen on the home figure, ADR-016).
-        updates = content.subscribe(to: SceneEvents.Update.self) { [weak self] event in
-            MainActor.assumeIsolated { self?.tick(event.deltaTime) }
+        updates = view.scene.subscribe(to: SceneEvents.Update.self) { [weak self, weak view] event in
+            MainActor.assumeIsolated {
+                // Before this frame is drawn: present it directly (see `DirectARView`).
+                (view as? DirectARView)?.keepDirectPresentation()
+                self?.tick(event.deltaTime)
+            }
         }
+    }
+
+    /// The view is gone: stop the frame tick and empty the scene, so nothing keeps it rendering.
+    func tearDown(_ view: ARView) {
+        updates?.cancel()
+        updates = nil
+        view.scene.anchors.removeAll()
     }
 
     func fling(velocity: Float) {
@@ -310,5 +321,69 @@ private struct PinchZoom: UIGestureRecognizerRepresentable {
         case .ended, .cancelled, .failed: ended()
         default: break
         }
+    }
+}
+
+/// RealityKit's view for the profile figure, made here instead of through `RealityView` so its Metal
+/// layer can be kept on direct presentation (ADR-016 "Bilinen açık", root cause found 2026-11-04 on
+/// the simulator). Measured there: in the profile cover RealityKit's layer had `presentsWithTransaction`
+/// on (the home layer had it off) and it stayed on while the screen was still. RealityKit's own
+/// snapshot showed each new body, the screen kept the first frame, and later RealityKit's shared render
+/// thread waited a second in `nextDrawable` for every frame while the main thread waited for it, so
+/// every 3D view froze and touches were lost. Turning it off before each frame removed all of that.
+final class DirectARView: ARView {
+    private weak var metal: CAMetalLayer?
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        keepDirectPresentation()
+    }
+
+    /// Present frames directly. A resize may show one frame before the new layout; nothing waits.
+    func keepDirectPresentation() {
+        if metal == nil { metal = Self.metalLayer(in: layer) }
+        guard let metal, metal.presentsWithTransaction else { return }
+        metal.presentsWithTransaction = false
+    }
+
+    private static func metalLayer(in layer: CALayer, depth: Int = 0) -> CAMetalLayer? {
+        if let metal = layer as? CAMetalLayer { return metal }
+        guard depth < 3 else { return nil }
+        for sub in layer.sublayers ?? [] {
+            if let found = metalLayer(in: sub, depth: depth + 1) { return found }
+        }
+        return nil
+    }
+}
+
+/// Hosts `DirectARView` for the profile figure and feeds it the mesh.
+private struct StageView: UIViewRepresentable {
+    let stage: Stage
+    let mesh: BodyMesh
+    let dark: Bool
+    let yaw: Float
+    let zoom: Float
+    let onSettled: (Float) -> Void
+
+    func makeCoordinator() -> Stage { stage }
+
+    func makeUIView(context: Context) -> DirectARView {
+        let view = DirectARView(frame: .zero, cameraMode: .nonAR, automaticallyConfigureSession: false)
+        view.environment.background = .color(.clear)
+        view.backgroundColor = .clear
+        view.isUserInteractionEnabled = false
+        stage.build(in: view)
+        stage.show(mesh, dark: dark)
+        stage.place(yaw: yaw, zoom: zoom, animated: false)
+        stage.onSpinSettled = onSettled
+        return view
+    }
+
+    func updateUIView(_ view: DirectARView, context: Context) {
+        stage.show(mesh, dark: dark)
+    }
+
+    static func dismantleUIView(_ view: DirectARView, coordinator: Stage) {
+        coordinator.tearDown(view)
     }
 }

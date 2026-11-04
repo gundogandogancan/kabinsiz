@@ -93,7 +93,9 @@ Denenip reddedilenler (simülatör, 2026-11-04):
 
 **Test:** `TurntableDressUpUITests.testWorldComesBackAfterProfileCover` profili açıp kapatır. Açı aynı kalmalı, sahne ekranda %2'den az değişmeli.
 
-## Bilinen açık — 3B bütçede profil kaydırıcısı ve çizilmeyen RealityView (ADR-016'dan önce de var)
+## Bilinen açık — 3B bütçede profil kaydırıcısı ve çizilmeyen RealityView (ADR-016'dan önce de var) — simülatörde ÇÖZÜLDÜ (2026-11-04)
+
+Aşağıdaki maddeler hatanın geçmişidir. Kök neden ve düzeltme bu bölümün sonunda, "Kök neden" başlığında.
 
 - **Hata:** `AcceptanceDemoUITests.testBodyStudioJourney` bel kaydırıcısında (satır 188) aralıklı düşüyor. Kaydırıcının topu ekranda kayıyor, ama değer başlangıçta (82 cm) kalıyor. Binding yalnız dokunuşun başında, 82 ile bir kez çağrılıyor.
 - **Önceden vardı:** aynı hata push edilmiş HEAD'de (9727105) de görüldü. 3B şehrin geldiği a101a1a'dan beri var; ondan önceki son yeşil koşu 2026-11-03 21:17.
@@ -107,7 +109,65 @@ Denenip reddedilenler (simülatör, 2026-11-04):
   - Deney: ana sahne hiç kurulmadan form testi 2/2 geçti.
   - Ana sahnenin RealityView'ı kapak açıkken hiyerarşiden çıkarıldığında form testi bir seferde 3/3 geçti, sonra tekrar düştü. Geri dönüşte ana sahne bembeyaz kaldı; hem eski varlıklar yeniden eklenince hem de yeni stage kurulunca. Bu yüzden geri alındı.
   - Ara sonuç: bu simülatörde uygulamanın ömrünün ilerisinde oluşturulan RealityView'lar bazen hiç çizmiyor. Kök neden `UNKNOWN`.
-- **Durum:** `OPEN`; ayrı iş olarak izlenecek. Gerçek iPhone'da görülüp görülmediği `UNKNOWN` (`REAL_DEVICE_BLOCKED`).
+- **Önceki durum:** `OPEN`, ayrı iş olarak izlendi.
+
+### Kök neden (2026-11-04, ölçümle bulundu)
+
+Geçici bir ölçüm kodu eklendi, sonra kaldırıldı. Ölçtükleri:
+- RealityKit'in kare olaylarının saniyedeki sayısı;
+- ana thread'deki `CADisplayLink` boşlukları;
+- her ARView'ın pencerede olup olmadığı ve görünür alanı;
+- Metal katmanının ayarları;
+- RealityKit'in kendi snapshot'ı ile ekranda birleştirilen görüntünün karşılaştırması.
+
+Ayrıca uygulama süreci `sample` ile örneklendi.
+
+- **Donma:** Profil açıkken dakikalarca saniyede yalnız 1 kare çizildi; her karede yaklaşık 1000 ms takılma ölçüldü.
+  - Ana thread `ARView.commonRenderCallback → RenderThread::waitForIdleInternal` içinde, RealityKit'in render thread'ini bekliyordu.
+  - Render thread `-[CAMetalLayer nextDrawable]` içinde 1 saniyelik zaman aşımında bekliyordu.
+  - Tüm 3B görünümler aynı render thread'i paylaştığı için hepsi dondu. Dokunuşlar da bu bekleme yüzünden kayboldu (kaydırıcı, geri al, anahtar).
+- **Neden:** Profil kapağındaki RealityKit katmanında `presentsWithTransaction` açıktı (`PWT`); ana sahnenin katmanında kapalıydı.
+  - PWT açıkken yeni kare ancak bir Core Animation commit'iyle ekrana çıkar. Hareketsiz profil ekranında commit gelmedi.
+  - RealityKit'in snapshot'ı kadın gövdesini çizdi, ekranda ise ilk (nötr) kare kaldı. "Çizilmeyen RealityView" belirtisi buydu.
+  - Katmanın drawable'ları dolunca `nextDrawable` beklemeye başladı ve donma geldi.
+  - RealityKit görünüm her yeniden boyutlandığında (kapak açılışı, açı düğmelerinin gelişi) PWT'yi tekrar açıyor.
+- **Doğrulama:** PWT'yi kapatan tek değişiklikle donma (1 saniyelik takılmalar) 0'a indi ve figür her değişiklikte ekranda güncellendi. Form testi 3/3 geçti, test süresi 150–260 sn'den yaklaşık 95 sn'ye indi.
+- **Elenen hipotezler:**
+  - Ana sahneyi kapak açıkken çıkarmak (E1) çözmedi.
+  - Kapağı sheet yapmak (E3) çözmedi.
+  - Yalnız pencere dışında kalan ARView açıklamaya yetmedi: tamamen görünür tek profil görünümüyle de donma oldu.
+
+### Düzeltme
+
+1. **`DirectARView`** (`BodyModel3DView.swift`): Profil figürü artık `RealityView` yerine kendi `ARView` alt sınıfımızla kuruluyor.
+   - Metal katmanı her kareden önce ve her yerleşimde doğrudan sunuma (`presentsWithTransaction = false`) alınıyor.
+   - Görünüm kalkınca sahne açıkça sökülüyor (`dismantleUIView` → `tearDown`).
+2. **`BodyFigureHeader`**: Profilde tek, kalıcı 3B figür var ve List'in üstünde sabit duruyor (`safeAreaInset`).
+   - List hücresi içinde değil, `.id` ile değiştirilmiyor. Eski düzende List hücresi değiştirilen eski ARView'ı pencere dışında canlı tutuyordu.
+   - Kaydırıcıyla ya da yazarak değiştirirken figür görünür kalıyor.
+3. **Referans döngüleri kırıldı:** Stage'in geri çağrıları artık `self` yakalamıyor, yalnız bir binding ya da closure yakalıyor.
+   - Önceden şu döngü vardı: Stage → closure → görünümün `@State` deposu → Stage.
+   - Bu yüzden değiştirilen görünümlerin Stage'i ve ARView'ı hiç serbest kalmıyordu. Aynı düzeltme ana sahnenin `DressedAvatarView`'ında da yapıldı.
+4. **Gövde durumu ile çizim tek adımda yayınlanıyor** (`AppModel.syncBody`). Önceden araya bir `await` giriyordu:
+   - `bodyStatus` hazır olduğu halde `bodyScene` boş kalıyordu;
+   - ana sahne bir an 2B'ye düşüp 3B görünümü yeniden kuruyordu (uygulama açılışında ve gövde oluşturulurken).
+
+5. **Test yardımcısındaki hata (uygulama hatası değil):** Düzeltmeden sonra `testBodyStudioJourney` yaklaşık 5 koşuda bir geri al adımında düşüyordu.
+   - Geçici log, geri alın doğru çalıştığını gösterdi: dokunuş geldi ve bel 61,5 cm'ye döndü.
+   - Ekran kaydı nedeni gösterdi: geri al listeyi en üste taşıyordu. Testin kaydırma sürüklemesi ekranın ortasından (x = 0,5) başladığı için "Boy" kaydırıcısının topuna denk geliyordu. Sürükleme listeyi kaydırmak yerine topu tuttu; bel satırı hiç görünür olmadı.
+   - Düzeltme: profil kaydırmaları satır kartlarının dışında, listenin sağ kenarından (x = 0,97) yapılıyor (`bringIntoView`, `scrollProfile`).
+6. **Kaydırıcıya ulaşmayan sürükleme (test girdisi, donma değil):** Tam suite'te bel kaydırıcısı (satır 188) hâlâ ara sıra kıpırdamıyordu. Suite'te ondan hemen önce koşan döndürme testiyle birlikte 5 koşuda bir kez yeniden üretildi ve geçici ölçümle izlendi.
+   - Başarılı sürüklemede kaydırıcı önce "düzenleme başladı" der, sonra değerleri 82 → 61,5 sırayla alır.
+   - Başarısız sürüklemede başlangıç ve ara değerler hiç gelmedi; yalnız bırakma anı eski değerle (82) geldi. Yani kaydırıcı izlemeye hiç başlamadı.
+   - Aynı koşularda en uzun kare boşluğu yaklaşık 330 ms'ydi; 1 saniyelik donma yoktu.
+   - Neden: XCUITest'in `adjust(toNormalizedSliderPosition:)` komutu parmak iner inmez hızla sürüklüyor. Yüklü simülatörde List'in kaydırma jesti bu ilk hareketi alıyor.
+   - Düzeltme (yalnız test): `dragThumb(to:)` topa basıp 0,4 sn bekliyor, sonra yavaş sürüklüyor; insan da böyle sürükler. Eski "bir kez daha dene" geri dönüşü kaldırıldı; tek sürükleme sıkı doğrulanıyor.
+   - Gerçek iPhone'da hızlı bir parmak savuruşunun liste tarafından alınıp alınmadığı `UNKNOWN` (R-002).
+
+- **Durum:** `RESOLVED_SIMULATOR`. Testler bilinen hatayı artık beklenen başarısızlık (expected failure) saymıyor; çizim, tek dokunuş ve tek kaydırıcı sürüklemesi sıkı doğrulanıyor.
+- **Açık kalanlar:**
+  - Gerçek iPhone'da PWT davranışı ve donma: `UNKNOWN` (`REAL_DEVICE_BLOCKED`, R-002).
+  - Ana sahne hâlâ `RealityView`. Ölçümlerde katmanında PWT hiç görülmedi; bu korumayı almadı, izleniyor.
 
 ## Kanıt
 

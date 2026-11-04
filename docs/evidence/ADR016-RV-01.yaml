@@ -1,0 +1,39 @@
+evidence_schema: 1
+work_package: ADR016-RV-01
+title: "Profile 3D figure: RealityKit frames stuck behind presentsWithTransaction froze every 3D view and dropped touches; fixed with a direct-presenting ARView and one fixed figure above the list"
+status: SIMULATOR_TESTED   # device REAL_DEVICE_BLOCKED (R-002)
+commit_sha: null   # filled by the commit that adds this file; see git log
+branch: v35/world-avatar
+spec: "ADR-016 'Bilinen açık' (now RESOLVED_SIMULATOR); D-042, D-052; session task 'Profilde çizilmeyen RealityView ve düşen dokunuşlar' (2026-11-04)"
+implementation_paths:
+  - apps/ios/Kabinsiz/Features/Profile/BodyModel3DView.swift      # DirectARView (presentsWithTransaction off every frame and on layout), StageView, Stage.build/tearDown
+  - apps/ios/Kabinsiz/Features/Profile/BodyStudioView.swift       # BodyFigureHeader: one persistent figure; start screen and editor no longer make their own
+  - apps/ios/Kabinsiz/Features/Profile/MyModelView.swift          # figure fixed above the List (safeAreaInset), inline title
+  - apps/ios/Kabinsiz/Features/World/DressedAvatarView.swift      # stage callbacks no longer capture self (retain cycle)
+  - apps/ios/Kabinsiz/App/AppModel.swift                          # syncBody(from:redraw:alongside:) publishes status and scene in one step
+  - apps/ios/KabinsizUITests/BodyFormUITests.swift                # strict again: no expected failures, single taps
+  - apps/ios/KabinsizUITests/AcceptanceDemoUITests.swift          # profile scrolling below the fixed figure, on the list margin
+root_cause:
+  measured_with: "temporary probe (removed): RealityKit SceneEvents.Update rate, CADisplayLink gaps on the main thread, each ARView's window and visible area, CAMetalLayer settings, RealityKit snapshot vs drawHierarchy; plus `sample` of the app process"
+  freeze: "With the profile cover up, 1 frame per second for minutes, ~1000 ms per frame. Main thread waited in ARView.commonRenderCallback -> re::RenderThread::waitForIdleInternal; the render thread waited in -[CAMetalLayer nextDrawable] (1 s timeout). All ARViews share that thread, so every 3D view froze and touches were lost"
+  cause: "The profile ARView's CAMetalLayer had presentsWithTransaction = true (the home layer's was false). With no Core Animation commit on a still screen, frames were never presented (RealityKit's snapshot showed the new body, the screen kept the first frame), drawables ran out and nextDrawable stalled. RealityKit turns it on again on every resize"
+  rejected: "Removing the home RealityView while the cover is up (E1) and presenting the profile as a sheet (E3): neither fixed it"
+unit_test_command: "cd Packages/KabinsizCore && swift test"
+unit_test_exit_code: 0
+unit_test_count: 405   # whole package, 34 suites, 2026-11-04; no package change in this work
+ui_test_command: "xcodebuild test -project apps/ios/Kabinsiz.xcodeproj -scheme Kabinsiz -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:KabinsizUITests"
+ui_tests:
+  - "Full KabinsizUITests 30/30 PASS in 974 s (2026-11-04 ~19:50, iPhone 17 simulator iOS 26.5), 0 expected failures. That run had a temporary frame-gap probe in the app (logging only, removed afterwards): longest main-thread frame gap 311 ms, no 1 s stall. Before the fix the same suite took 1270 s and the profile ran at 1 frame per second"
+  - "Final build (probe removed): BodyFormUITests 3/3 iterations PASS (80-85 s each; 150-260 s before the fix)"
+  - "AcceptanceDemoUITests testBody3DRotatesByHand + testBodyStudioJourney, in suite order: 6/6 + 6/6 PASS with the hold-then-drag slider input (one run in five failed with XCUITest adjust before); longest frame gap 354 ms"
+  - "testBodyStudioJourney alone: 6/6 PASS after moving the scroll drags to the list margin (4/5 and 5/6 before)"
+  - "Strictness: no XCTExpectFailure, no tap or drag retries in BodyFormUITests or the journey; drawn-figure checks are hard asserts"
+hardware: "Apple M5 Mac, macOS 26.4; iPhone 17 simulator iOS 26.5. No real device (R-002)"
+honesty:
+  - "Simulator only. Whether a real iPhone shows the same presentsWithTransaction behaviour and stall is UNKNOWN (REAL_DEVICE_BLOCKED, R-002)"
+  - "The home scene is still a RealityView and does not get the DirectARView guard. Its layer never showed presentsWithTransaction in the measurements; it is watched, not protected"
+  - "The fix relies on RealityKit's internal layer being a CAMetalLayer reachable in the view's subviews (found by a depth-limited search, no private API). If a future RealityKit changes that, the guard silently does nothing; the strict UI tests would catch a return of the freeze"
+  - "The slider drag in the full suite was a second test-input artefact: XCUITest adjust moves at once and the List's scroll gesture took the touch (logged: no editing-began, only a release at the old value; no frame gap over ~330 ms). Tests now hold on the thumb for 0.4 s and drag slowly, like a person. Whether a fast flick on a real iPhone is taken by the list is UNKNOWN (R-002)"
+  - "A remaining intermittent journey failure after the fix was a test helper bug, not an app bug: the scroll drag started in the screen's middle and grabbed the Boy slider's thumb after undo moved the list to the top (screen recording). Undo itself was logged as correct (waist back to 61,5 cm). Drags now run on the list's right margin"
+blocked:
+  - "R-002: real iPhone not connected; no device run"
