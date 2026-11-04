@@ -28,6 +28,7 @@ ui_tests:
   - "AcceptanceDemoUITests testBody3DRotatesByHand + testBodyStudioJourney, in suite order: 6/6 + 6/6 PASS with the hold-then-drag slider input (one run in five failed with XCUITest adjust before); longest frame gap 354 ms"
   - "testBodyStudioJourney alone: 6/6 PASS after moving the scroll drags to the list margin (4/5 and 5/6 before)"
   - "Strictness: no XCTExpectFailure, no tap or drag retries in BodyFormUITests or the journey; drawn-figure checks are hard asserts"
+screenshots: "docs/screenshots/app-2026-11-04/07-benim-modelim/ (08-16, G12-G14 from the 30/30 full run; BFORM-UI-* from the final-build form test): the figure is drawn and fixed above the list on every profile screen"
 hardware: "Apple M5 Mac, macOS 26.4; iPhone 17 simulator iOS 26.5. No real device (R-002)"
 honesty:
   - "Simulator only. Whether a real iPhone shows the same presentsWithTransaction behaviour and stall is UNKNOWN (REAL_DEVICE_BLOCKED, R-002)"
