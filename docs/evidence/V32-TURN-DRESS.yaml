@@ -15,6 +15,7 @@ implementation_paths:
   - apps/ios/Kabinsiz/Features/World/HomeWorldView.swift       # hanger button, Önden, dressing-room framing
   - apps/ios/Kabinsiz/Features/Profile/BodyModel3DView.swift   # same turntable, no sway
   - apps/ios/Kabinsiz/App/KabinsizApp.swift                    # worldPaused: frame tick stops while the profile cover or another tab is up
+  - apps/ios/Kabinsiz/Features/World/DirectPresentation.swift  # RealityKit layers kept on direct presentation (no render-thread stall)
 unit_tests:
   - "TurntableTests TURN-T01..T04 (decay to rest, small release ignored, drag mapping, nearest front)"
   - "DressingTests DRESS-T01 dressUpTakesAnythingOff + emptySlot refusal"
@@ -22,10 +23,14 @@ unit_tests:
 ui_tests:
   - "TurntableDressUpUITests.testFigureMovesOnlyByHand: still for 3 s untouched (<0.2% pixels), drag turns it on screen (>1% pixels), at rest after the flick, 'Önden' turns it back on screen"
   - "TurntableDressUpUITests.testDressUpAddsAndRemovesLikeAGame: tray opens on the coat, coat off shows on the figure (>1% pixels), undo; top off/undo/redo; drop a piece on the figure; shoes off; done"
+  - "AcceptanceDemoUITests.testBodyStudioJourney: one hold-then-slow drag moves the waist slider (no retry); list scrolls on the right margin"
   - "TurntableDressUpUITests.testWorldComesBackAfterProfileCover: profile cover open/close keeps the turned angle; the scene changes <2% on screen"
 measured_on_simulator:
   - "Bug found: on iOS 26 Entity.move(to:) left the pivot's transform owned by the animation; later transform/orientation writes read back as identity in the same frame. The value said 167°, the drawn figure never turned. macOS ran the same code fine. Fixed by easing turns in the scene's own frame tick."
   - "Hidden world: WorldStage.setPaused stops the frame tick while the profile cover or another tab is up (no flick, no rate report). Turning the scene's entities off, or remaking the RealityView, left new RealityViews undrawn on the simulator: rejected."
+  - "Profile slider stall (present since a101a1a), fixed: the slider got its touch-down and no further event (a UISlider too). sample: main thread ~85% in RealityKit waitForIdleInternal, render thread in CAMetalLayer nextDrawable. Live Metal layers at touch-down: profile ARViews presentsWithTransaction=false, the home RealityView behind the cover presentsWithTransaction=true. The paused, still home stage got no Core Animation commit, never presented, ran out of drawables and held the shared render thread. DirectPresentation keeps RealityKit layers direct from every stage tick (paused too); the profile body uses DirectARView (ported from v35 4e6939b)."
+  - "Full KabinsizUITests after the fix: 29/29 (959 s); package 366/366."
+  - "testBodyStudioJourney after the fix: 4/4 (about 65 s each, was 100-270 s); the old test input passed too. Before the fix, the new input alone: 1/4 and 0/4."
 screenshots:
   - docs/screenshots/app-2026-11-04/01-bugun/ADR16-front.jpg
   - docs/screenshots/app-2026-11-04/01-bugun/ADR16-turned-by-hand.jpg
@@ -33,7 +38,6 @@ screenshots:
   - docs/screenshots/app-2026-11-04/01-bugun/ADR16-coat-off.jpg
   - docs/screenshots/app-2026-11-04/01-bugun/ADR16-dropped-on-figure.jpg
 not_done:
-  - "OPEN, present before this work (HEAD 9727105 and since a101a1a): on the 3D budget the profile waist slider drag is intermittently swallowed (thumb moves, value stays 82 cm); AcceptanceDemoUITests.testBodyStudioJourney line 188. No pause variant fixed it reliably. Real iPhone: UNKNOWN."
   - "Touch feel and frame rate on a real iPhone (REAL_DEVICE_BLOCKED)"
   - "Cloth simulation; garments are T1 representative shapes, not fit evidence"
   - "Unity not added: RealityKit covers turning, layering, hit-testing and drag-and-drop (ADR-016 §4)"

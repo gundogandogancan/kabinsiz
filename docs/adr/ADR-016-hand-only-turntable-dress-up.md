@@ -93,16 +93,25 @@ Denenip reddedilenler (simülatör, 2026-11-04):
 
 **Test:** `TurntableDressUpUITests.testWorldComesBackAfterProfileCover` profili açıp kapatır. Açı aynı kalmalı, sahne ekranda %2'den az değişmeli.
 
-## Bilinen açık — 3B bütçede profil kaydırıcısı (ADR-016'dan önce de var)
+## Çözülen açık — 3B bütçede profil kaydırıcısı takılıyordu (2026-11-04)
 
-- **Hata:** `AcceptanceDemoUITests.testBodyStudioJourney` bel kaydırıcısında (satır 188) aralıklı düşüyor. Kaydırıcının topu ekranda kayıyor, ama değer başlangıçta (82 cm) kalıyor. Binding yalnız dokunuşun başında, 82 ile bir kez çağrılıyor.
-- **Önceden vardı:** aynı hata push edilmiş HEAD'de (9727105) de görüldü. 3B şehrin geldiği a101a1a'dan beri var; ondan önceki son yeşil koşu 2026-11-03 21:17.
-- **2B bütçede çalışıyor:** termal testte (3B yokken) aynı sürükleme her seferinde çalışıyor.
-- **Ayırma deneyleri (gürültülü, makine yüklüydü):**
-  - Profil açıkken ana sahne tamamen çıkarılınca bir koşuda düzeldi.
-  - 3B gövde görünümünü ya da jest tanıyıcılarını kaldırmak düzeltmedi.
-  - Yukarıdaki duraklatma varyantlarının hiçbiri güvenilir biçimde düzeltmedi.
-- **Durum:** `OPEN`; ayrı iş olarak izlenecek. Gerçek iPhone'da görülüp görülmediği `UNKNOWN` (`REAL_DEVICE_BLOCKED`).
+- **Belirti:** `AcceptanceDemoUITests.testBodyStudioJourney` bel kaydırıcısında aralıklı düşüyordu. Topu ekranda kayıyor, bırakınca 82 cm'ye geri sıçrıyordu. a101a1a'dan (3B şehir) beri vardı, push edilmiş 9727105'te de görüldü.
+- **Ölçüm (simülatör):**
+  - Kaydırıcı dokunuşta yalnız bir olay aldı ("başladı", değer 82), sonra hiçbir olay gelmedi. UIKit `UISlider` ile de aynısı oldu; yani sorun kaydırıcı kontrolünde değildi.
+  - Ana iş parçacığı örneklemesi (`sample`): ana iş parçacığı zamanının yaklaşık %85'ini RealityKit'in render iş parçacığını beklerken (`waitForIdleInternal`) geçirdi. Render iş parçacığı da `CAMetalLayer nextDrawable`'da bekliyordu.
+  - Dokunuş anında penceredeki Metal katmanları: profilin iki `ARView`'i `presentsWithTransaction=false`, kapağın arkasındaki ana sahnenin `RealityView` katmanı `presentsWithTransaction=true`.
+- **Kök neden:** Ana sahne profil kapağının arkasında pencerede kalıyor. Karar 5 gereği duraklatılmış ve durağan olduğu için Core Animation commit'i gelmiyor. Bu yüzden kareleri hiç sunulmuyor, çizilebilir yüzeyleri tükeniyor. Render iş parçacığı bütün 3B görünümler için ortak olduğundan önce o, sonra ana iş parçacığı bekliyor, dokunuşlar da kayboluyor. Ana oturum aynı mekanizmayı v35'te profilin kendi katmanında buldu (4e6939b, D-052).
+- **Düzeltme:**
+  - `DirectPresentation`: penceredeki RealityKit Metal katmanlarını en çok saniyede iki kez bulur, her kare tikinde doğrudan sunuma (`presentsWithTransaction=false`) alır. Ana sahne duraklatılmışken de çağrılır. RealityKit dışındaki katmanlara dokunmaz.
+  - Profil gövdesi `RealityView` yerine `DirectARView` ile kurulur (v35'ten taşındı): katmanı her kare doğrudan sunumda tutulur, görünüm kalkınca sahnesi boşaltılır.
+  - Profil ve ana figürdeki geri çağrılar artık `self`'i tutmuyor; böylece sahne ve RealityKit görünümü serbest kalabiliyor.
+- **Test girdisi de düzeltildi:**
+  - Kaydırıcı topa basılıp kısa beklenerek ve yavaş sürüklenir (`dragThumb`).
+  - Liste kaydırmaları ekranın sağ kenarından yapılır (`scrollProfile`); ortadan başlayan kaydırma boy kaydırıcısının topunu yakalayabiliyordu.
+  - Deneme-tekrar döngüsü kaldırıldı: tek sürükleme değeri değiştirmeli.
+- **Sonuç:** düzeltmeyle test 4/4 geçti, koşu süresi yaklaşık 65 sn (önce 100–270 sn). Eski test girdisiyle de geçti. Düzeltmeden önce, yalnız yeni test girdisiyle 1/4 ve 0/4 geçmişti.
+- **Denenip bırakılan:** kaydırıcıyı UIKit `UISlider` (`TrackSlider`) ile değiştirmek. Ne kök neden düzeltilmeden ne de girdi değişikliğiyle birlikte işe yaradı (1/4).
+- **Gerçek iPhone:** `UNKNOWN` (`REAL_DEVICE_BLOCKED`, R-002).
 
 ## Kanıt
 
