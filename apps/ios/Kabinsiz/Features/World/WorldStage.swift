@@ -274,6 +274,8 @@ final class WorldStage {
     }
 
     private func tick(_ dt: TimeInterval) {
+        // Even paused: a still, hidden stage must not hold the shared render thread (DirectPresentation).
+        DirectPresentation.keep()
         guard !paused else { return }
         countFrame(dt)
         if var t = tween {

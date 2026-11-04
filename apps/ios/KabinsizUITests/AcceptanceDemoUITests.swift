@@ -406,7 +406,8 @@ extension XCUIElement {
     /// `adjust(toNormalizedSliderPosition:)` starts moving at once; on a loaded simulator the List's
     /// scroll gesture then takes the touch and the slider never starts tracking (measured 2026-11-04:
     /// no editing-began, only a release at the old value). That is a test-input artefact, not a frozen
-    /// app (no frame gap over 330 ms in those runs).
+    /// app (no frame gap over 330 ms in those runs). A UIKit `UISlider` in its place failed just as often
+    /// (3 of 4 runs, measured on v25/living-world), so this is the test's input, not the slider control.
     func dragThumb(to position: CGFloat) {
         let inset: CGFloat = 14 // about half the thumb: the thumb's centre never reaches the track ends
         let width = frame.width, midY = frame.height / 2

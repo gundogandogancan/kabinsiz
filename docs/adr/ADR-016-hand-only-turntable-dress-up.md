@@ -167,7 +167,16 @@ Ayrıca uygulama süreci `sample` ile örneklendi.
 - **Durum:** `RESOLVED_SIMULATOR`. Testler bilinen hatayı artık beklenen başarısızlık (expected failure) saymıyor; çizim, tek dokunuş ve tek kaydırıcı sürüklemesi sıkı doğrulanıyor.
 - **Açık kalanlar:**
   - Gerçek iPhone'da PWT davranışı ve donma: `UNKNOWN` (`REAL_DEVICE_BLOCKED`, R-002).
-  - Ana sahne hâlâ `RealityView`. Ölçümlerde katmanında PWT hiç görülmedi; bu korumayı almadı, izleniyor.
+  - Ana sahne hâlâ `RealityView`; artık `DirectPresentation` ile korunuyor (aşağıda). Bu dalın ölçümlerinde ana sahne katmanında PWT görülmedi, v25 dalınınkinde görüldü.
+
+### v25/living-world bulgusu (f7c6839, v35'e birleşti)
+
+Aynı gün ayrı bir oturum aynı belirtiyi `v25/living-world` dalında ölçtü. O dalda profil düzeni farklıydı: figür List'in üstünde sabit değildi.
+- **Ölçüm:** Dokunuş anında profilin iki `ARView`'ı doğrudan sunumdaydı, kapağın arkasındaki ana sahnenin `RealityView` katmanında ise `presentsWithTransaction` açıktı. Ana thread zamanının yaklaşık %85'i `waitForIdleInternal` içinde geçti.
+- **Neden:** Mekanizma aynı, katman farklı. Kapağın arkasında duraklatılmış, hareketsiz ana sahne commit almadığı için kare sunamıyor. Ortak render thread'i, sonra da ana thread bekliyor.
+- **Düzeltme:** `DirectPresentation` penceredeki tüm RealityKit Metal katmanlarını en çok saniyede iki kez buluyor ve her kare tikinde doğrudan sunuma alıyor. Ana sahne duraklatılmışken de çağrılıyor (`WorldStage.tick`, profil `Stage`). RealityKit dışındaki katmanlara dokunmuyor.
+- **Denenip bırakılan:** Kaydırıcıyı UIKit `UISlider` (`TrackSlider`) ile değiştirmek işe yaramadı (1/4). Bu, kaydırıcı düşüşünün kontrol değil test girdisi olduğunu destekliyor.
+- **Birleşik durum (v35):** İki koruma birlikte. Profil figürü `DirectARView` ile, penceredeki diğer RealityKit katmanları `DirectPresentation` ile doğrudan sunumda tutuluyor.
 
 ## Kanıt
 

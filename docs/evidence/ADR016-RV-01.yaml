@@ -12,6 +12,7 @@ implementation_paths:
   - apps/ios/Kabinsiz/Features/World/DressedAvatarView.swift      # stage callbacks no longer capture self (retain cycle)
   - apps/ios/Kabinsiz/App/AppModel.swift                          # syncBody(from:redraw:alongside:) publishes status and scene in one step
   - apps/ios/KabinsizUITests/BodyFormUITests.swift                # strict again: no expected failures, single taps
+  - apps/ios/Kabinsiz/Features/World/DirectPresentation.swift      # merged from v25/living-world f7c6839: every RealityKit layer in the window kept direct
   - apps/ios/KabinsizUITests/AcceptanceDemoUITests.swift          # profile scrolling below the fixed figure, on the list margin
 root_cause:
   measured_with: "temporary probe (removed): RealityKit SceneEvents.Update rate, CADisplayLink gaps on the main thread, each ARView's window and visible area, CAMetalLayer settings, RealityKit snapshot vs drawHierarchy; plus `sample` of the app process"
@@ -27,12 +28,13 @@ ui_tests:
   - "Final build (probe removed): BodyFormUITests 3/3 iterations PASS (80-85 s each; 150-260 s before the fix)"
   - "AcceptanceDemoUITests testBody3DRotatesByHand + testBodyStudioJourney, in suite order: 6/6 + 6/6 PASS with the hold-then-drag slider input (one run in five failed with XCUITest adjust before); longest frame gap 354 ms"
   - "testBodyStudioJourney alone: 6/6 PASS after moving the scroll drags to the list margin (4/5 and 5/6 before)"
+  - "After merging v25/living-world (DirectPresentation added): full KabinsizUITests 30/30 PASS in 987 s; package 405/405"
   - "Strictness: no XCTExpectFailure, no tap or drag retries in BodyFormUITests or the journey; drawn-figure checks are hard asserts"
 screenshots: "docs/screenshots/app-2026-11-04/07-benim-modelim/ (08-16, G12-G14 from the 30/30 full run; BFORM-UI-* from the final-build form test): the figure is drawn and fixed above the list on every profile screen"
 hardware: "Apple M5 Mac, macOS 26.4; iPhone 17 simulator iOS 26.5. No real device (R-002)"
 honesty:
   - "Simulator only. Whether a real iPhone shows the same presentsWithTransaction behaviour and stall is UNKNOWN (REAL_DEVICE_BLOCKED, R-002)"
-  - "The home scene is still a RealityView and does not get the DirectARView guard. Its layer never showed presentsWithTransaction in the measurements; it is watched, not protected"
+  - "The home scene is still a RealityView. Since the merge of v25/living-world (f7c6839) it is guarded by DirectPresentation, which keeps every RealityKit layer in the window direct from each stage's frame tick, paused too. This branch never measured presentsWithTransaction on the home layer; the v25 session did (behind the cover, ~85% of main-thread samples in waitForIdleInternal)"
   - "The fix relies on RealityKit's internal layer being a CAMetalLayer reachable in the view's subviews (found by a depth-limited search, no private API). If a future RealityKit changes that, the guard silently does nothing; the strict UI tests would catch a return of the freeze"
   - "The slider drag in the full suite was a second test-input artefact: XCUITest adjust moves at once and the List's scroll gesture took the touch (logged: no editing-began, only a release at the old value; no frame gap over ~330 ms). Tests now hold on the thumb for 0.4 s and drag slowly, like a person. Whether a fast flick on a real iPhone is taken by the list is UNKNOWN (R-002)"
   - "A remaining intermittent journey failure after the fix was a test helper bug, not an app bug: the scroll drag started in the screen's middle and grabbed the Boy slider's thumb after undo moved the list to the top (screen recording). Undo itself was logged as correct (waist back to 61,5 cm). Drags now run on the list's right margin"

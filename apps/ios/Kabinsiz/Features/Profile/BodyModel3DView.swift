@@ -189,6 +189,8 @@ final class Stage {
             MainActor.assumeIsolated {
                 // Before this frame is drawn: present it directly (see `DirectARView`).
                 (view as? DirectARView)?.keepDirectPresentation()
+                // And every other RealityKit layer in the window, e.g. the paused home stage behind the cover.
+                DirectPresentation.keep()
                 self?.tick(event.deltaTime)
             }
         }
@@ -327,7 +329,9 @@ private struct PinchZoom: UIGestureRecognizerRepresentable {
 /// RealityKit's view for the profile figure, made here instead of through `RealityView` so its Metal
 /// layer can be kept on direct presentation (ADR-016 "Bilinen açık", root cause found 2026-11-04 on
 /// the simulator). Measured there: in the profile cover RealityKit's layer had `presentsWithTransaction`
-/// on (the home layer had it off) and it stayed on while the screen was still. RealityKit's own
+/// on and it stayed on while the screen was still. The v25/living-world session measured the same on
+/// the paused home layer behind the cover (see `DirectPresentation`, which keeps every RealityKit
+/// layer direct). RealityKit's own
 /// snapshot showed each new body, the screen kept the first frame, and later RealityKit's shared render
 /// thread waited a second in `nextDrawable` for every frame while the main thread waited for it, so
 /// every 3D view froze and touches were lost. Turning it off before each frame removed all of that.
