@@ -1,0 +1,49 @@
+evidence_schema: 1
+work_package: V37-01..10
+title: "Ayna ikiz: fotoğraftan kendi modelim (görünüş, beden tahmini, üzerindekiler, yazılı marka), A4 ile ebat, kalıp, fotoğraftan 3B dikilmiş giysi, ortak katalog API, MCP, repo kapısı, ajan kartları"
+status: PASS_SIMULATOR_ONLY   # macOS unit tests + iPhone 17 simulator; real iPhone REAL_DEVICE_BLOCKED (R-002); real people and real flat-lay photos UNKNOWN
+commit_sha: null   # filled by the commit that adds this file; see git log
+branch: v35/world-avatar
+spec: "ADR-018; user requests 2026-11-05 (yüz/kıyafet/beden tanıma, model, kalıp, ebat, marka logo, API, MCP, repo, skill/ajan, ayna, fotoğraftan 3B kalıp giysi)"
+implementation_paths:
+  - Packages/KabinsizCore/Sources/SelfModel/            # V37-01/02/10 pipeline, readers, PersonalHead, PhotoGarmentIntake
+  - Packages/KabinsizCore/Sources/ProductCapture/VisionSerial.swift
+  - Packages/KabinsizCore/Sources/ProductCapture/FlatGarmentMeasurer.swift   # V37-03
+  - Packages/KabinsizCore/Sources/GarmentPattern/        # V37-04 PatternDrafter, PatternGarmentMesh
+  - Packages/KabinsizCore/Sources/ShoppingCopilot/PartnerFeedConnector.swift  # V37-06
+  - Packages/KabinsizCore/Sources/KabinsizMCP/           # V37-07
+  - tools/repo-gate/                                     # V37-08
+  - .claude/agents/ + docs/architecture/V37_AGENT_ROUTING.md  # V37-09
+  - apps/ios/Kabinsiz/Features/Profile/SelfModelFlowView.swift   # V37-05
+  - apps/ios/Kabinsiz/Features/Wardrobe/PhotoGarmentFlowView.swift  # V37-10
+  - apps/ios/Kabinsiz/Features/World/WorldStage.swift   # sewn photo garment on the home figure
+unit_test_command: "cd Packages/KabinsizCore && swift test"
+unit_test_exit_code: 0
+unit_test_count: 480   # 45 suites, whole package, 2026-11-05
+ui_test_command: "xcodebuild test -scheme Kabinsiz -only-testing:KabinsizUITests (iPhone 17 simulator)"
+ui_test_exit_code: 0   # full suite 32/32 (1112 s); PhotoGarment + TurntableDressUp re-run after the tray and sewing changes: PASS
+ui_tests:
+  - "SelfModelUITests.testSelfModelFromPhotoDressesTheFigure PASS: fixture labelled first on screen; look/face/body/worn review; face needs 'bu bana benziyor'; apply changes the profile and home figure; delete returns to neutral"
+  - "PhotoGarmentUITests.testPhotoGarmentIsSewnAndWorn PASS: A4 fixture -> chest with ± -> pattern drawn -> wardrobe -> worn on home figure -> off/on pixel difference > 1 % -> turned by hand"
+hardware: "Apple M5 Mac, macOS 26.4; iPhone 17 simulator (SIMULATOR_ONLY). The Simulator has no Vision body-pose model: joints for the person fixture were read on macOS beforehand and the screen says so"
+measurements:
+  flat_lay_fixture: "drawn navy tee 50x72 cm beside A4 (synthetic, OWNED_ORIGINAL): length 71.9 ± 1.0 (true 72), chest 50.0 ± 0.8 (50), hem 50.0 ± 0.8 (52)"
+  person_fixtures: "own Blender mannequins a/b/c (synthetic): chest within 12 % on a and c; b (arms near the torso) refused by armsTouchBody, no body estimate"
+spec_cases:
+  - "No identity: no face embedding, no similarity score; face texture only with opt-in + likeness confirmation, stored only in the Vault"
+  - "Body: estimates with ranges labelled 'ölçü değil'; height from the user; body form never inferred from the photo (ADR-017)"
+  - "Brand: written wordmark only, catalog brands only, closest single match; fuzzy tie dropped"
+  - "Photo garment: pattern from A4 sizes or the user's body block (labelled); neither -> not added; bottoms hip derived (labelled); back/sleeves colour only"
+  - "Vision threading: VisionSerial + VisionLane (empty results under concurrency and a TextRecognition pool deadlock were measured)"
+  - "Sewing (MESH-T09): a top's hem below the trouser waistband stands 2.4 cm off the skin (outside any drawn bottom), so the photo print is not cut by the trousers; the sleeve cap wraps the arm from the shoulder joint (before: hem patches through the trousers and a gap at the shoulder, seen in PHOTO-UI-05)"
+  - "Independent review (AG-12, 2026-11-05) fixed: repo-gate denies lsopen/launchd/osascript/security/pasteboard, the whole home folder, the clone's .git and the terminal; partner feed refuses stale (> 7 days), future and replayed feeds, nested unknown keys and impossible days (V37-06-T13/T14); MCP temp root narrowed to <temp>/kabinsiz-mcp/ (owner-only) and stdin lines bounded"
+  - "MCP: tools/mcp/smoke.sh 16 messages, expected answers; /etc/hosts and paths outside the repo refused; unknown tool/method errors"
+not_proven:
+  - "Real iPhone: Vision pose/mask, frame rate, TrueDepth (REAL_DEVICE_BLOCKED, R-002)"
+  - "Real people photos and real flat-lay photos: accuracy UNKNOWN; no real-person images in the repo"
+  - "Picture logos (non-text): UNKNOWN, no licensed training data"
+  - "Partner feed with a real partner: BLOCKED_EXTERNAL (contract, domain, EG-004)"
+  - "kabinsiz-mcp has no Swift unit tests (smoke script only)"
+  - "Open review items not fixed: .mcp.json starts the server with `swift run` (a cold build could write to stdout); PathGuard check-then-read is open to a symlink swap race inside its own folders"
+  - "Sewn garment is a geometric wrap, not cloth simulation: no drape or folds; a thin seam line can show at the shoulder top"
+screenshots: docs/evidence/screenshots/V37/   # PHOTO-UI-01..06, SELF-UI-01..06 (synthetic fixtures, own mannequin; no real person)

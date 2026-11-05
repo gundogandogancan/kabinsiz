@@ -43,3 +43,5 @@ Durum değerleri:
 - BLOCKED_EXTERNAL: 1 satır.
 
 Her MISSING satır ve ekranı eksik her PARTIAL satır için bir iş paketi var: `docs/audit/V36_FEATURE_QUEUE.md`.
+
+**V37 ek (2026-11-05):** Giyio (Decart tabanlı canlı deneme), Doji/Alta avatar kurulumu, Anywear ve sadelik bütçesi (SIMP-T01..T09) → `v37-mirror-twin-and-simplicity.md`.
