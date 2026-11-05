@@ -1,0 +1,53 @@
+;; V37-08 repo gate sandbox profile (macOS sandbox-exec / SBPL).
+;; Parameters (passed with -D by run_gated.sh, all real paths without symlinks):
+;;   CLONE_DIR  the fresh clone; the only place the command may write
+;;   USER_HOME  the real home directory, whose private parts are made unreadable
+;; In SBPL the last matching rule wins, so each "allow" below narrows the "deny" above it.
+
+(version 1)
+(allow default)
+
+;; No network at all: no TCP/UDP to the internet or to localhost, no listening sockets.
+(deny network*)
+
+;; Nothing may start outside the sandbox: LaunchServices (`open URL` would let a browser carry data
+;; out past the network deny), launchd jobs, AppleScript, or the Keychain through securityd.
+(deny lsopen)
+(deny job-creation)
+(deny process-exec
+    (literal "/usr/bin/open")
+    (literal "/bin/launchctl")
+    (literal "/usr/bin/osascript")
+    (literal "/usr/bin/security")
+    (literal "/usr/bin/pbcopy")
+    (literal "/usr/bin/pbpaste"))
+(deny mach-lookup
+    (global-name "com.apple.coreservices.launchservicesd")
+    (global-name "com.apple.SecurityServer")
+    (global-name "com.apple.securityd.xpc")
+    (global-name "com.apple.pasteboard.1"))
+
+;; No writes anywhere except the clone (its own HOME and TMPDIR live inside it) and a few devices.
+;; Not the clone's .git: a planted core.fsmonitor or hook would run in the next unsandboxed git there.
+(deny file-write*)
+(allow file-write*
+    (subpath (param "CLONE_DIR"))
+    (literal "/dev/null")
+    (literal "/dev/zero")
+    (literal "/dev/dtracehelper")
+    (regex #"^/dev/fd/[0-9]+$"))
+(deny file-write* (subpath (string-append (param "CLONE_DIR") "/.git")))
+
+;; No terminal: keystrokes pushed into the user's shell (TIOCSTI) would run unsandboxed afterwards.
+;; run_gated.sh also gives the command /dev/null as stdin and a pipe as stdout/stderr.
+(deny file-read* file-write* file-ioctl
+    (literal "/dev/tty")
+    (regex #"^/dev/ttys[0-9]+$")
+    (regex #"^/dev/pty"))
+
+;; Nothing in the home folder is readable (other repos, shell history, tokens, app data, Keychain),
+;; except the clone itself, even when the workdir sits inside the home folder.
+(deny file-read* (subpath (param "USER_HOME")))
+(allow file-read* (subpath (param "CLONE_DIR")))
+;; A path's parents must be stat-able for the clone to be reachable at all.
+(allow file-read-metadata (subpath (param "USER_HOME")))

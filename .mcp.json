@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "kabinsiz": {
+      "type": "stdio",
+      "command": "swift",
+      "args": ["run", "--quiet", "--package-path", "Packages/KabinsizCore", "kabinsiz-mcp"],
+      "env": {}
+    }
+  }
+}
