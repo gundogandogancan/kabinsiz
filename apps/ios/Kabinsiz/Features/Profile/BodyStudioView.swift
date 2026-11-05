@@ -15,10 +15,21 @@ struct BodyStudioSection: View {
     @FocusState private var entryFocused: Bool
     @State private var entryParameter: BodyParameter = .waist
     @State private var entryText = ""
+    @FocusState private var weightFocused: Bool
+    @State private var weightText = ""
+    // Start form (ADR-011): every choice optional; the figure above follows them before anything is saved.
+    @State private var startTemplate: BodyTemplate = .neutral
+    @State private var startHeightText = ""
+    @State private var startWeightText = ""
+    @State private var startPreview: BodyMesh?
+    @FocusState private var startFocused: Bool
     @State private var confirmDelete = false
 
     var body: some View {
         Section {
+            figure
+                .listRowSeparator(.hidden)
+                .id(Self.topRowID)
             switch model.bodyStatus {
             case .ready:
                 if let profile = model.body { editor(profile) }
@@ -48,32 +59,151 @@ struct BodyStudioSection: View {
         }
     }
 
+    // MARK: Figure
+
+    /// The saved body while there is one, otherwise the start form's preview.
+    private var readyProfile: BodyProfile? {
+        model.bodyStatus == .ready ? model.body : nil
+    }
+
+    /// One 3D view for both the start preview and the saved body, in the same place: creating a body
+    /// only swaps the mesh. Tearing the preview's RealityView down and building another one in the same
+    /// list left the new one blank until the tab was shown again (seen on the simulator, 2026-11-05).
+    @ViewBuilder
+    private var figure: some View {
+        let ready = readyProfile
+        let mesh: BodyMesh? = if ready != nil {
+            model.bodyScene.flatMap { $0.isFallback ? nil : $0.mesh }
+        } else if case .unreadable = model.bodyStatus {
+            nil
+        } else if let standIn = model.heroMesh {
+            startPreview ?? standIn // heroMesh is nil on a 2D-only budget: no 3D preview then either
+        } else {
+            nil
+        }
+        if let mesh {
+            BodyModel3DView(mesh: mesh, summary: ready.map(summary) ?? startSummary(startProfile),
+                            alive: model.allowsLivelyMotion && !reduceMotion,
+                            identifier: ready != nil ? "body3D" : "standIn3D")
+                // Same size before and after creating: a RealityView in a list row that changes size
+                // stays blank until the tab is shown again (simulator, 2026-11-05).
+                .frame(height: 460)
+                .frame(maxWidth: .infinity)
+                .background(LinearGradient(colors: [Atelier.surfaceSecondary, Atelier.sand], startPoint: .top, endPoint: .bottom),
+                            in: RoundedRectangle(cornerRadius: Atelier.Radius.hero, style: .continuous))
+        } else if let ready {
+            // G0 fallback (ADR-007 §5): the 2D outline with the same controls, when the budget says
+            // 2D_CARD or the mesh could not be built.
+            SilhouetteView(scene: model.bodyScene, heightCm: draftValue(.height, ready), summary: summary(ready))
+                .frame(height: 280)
+                .frame(maxWidth: .infinity)
+                .animation(reduceMotion ? nil : .smooth(duration: 0.28), value: model.bodyScene?.bodyRevision)
+        }
+    }
+
     // MARK: Start
 
+    /// The figure's row; the page scrolls back to it when a body is created (the button sits low).
+    static let topRowID = "bodyStudioTop"
+
+    /// The order people expect to read; neutral last, as "not saying".
+    private static let genderOrder: [BodyTemplate] = [.female, .male, .neutral]
+
+    private static func number(_ text: String) -> Double? {
+        Double(text.replacingOccurrences(of: ",", with: ".").trimmingCharacters(in: .whitespaces))
+    }
+
+    /// nil when a typed field does not parse or is out of range; an empty field is simply "not given".
+    private var startProfile: BodyProfile? {
+        let height = Self.number(startHeightText), weight = Self.number(startWeightText)
+        if !startHeightText.isEmpty, height == nil { return nil }
+        if !startWeightText.isEmpty, weight == nil { return nil }
+        return try? BodyProfile.start(unit: unit, template: startTemplate, height: height, weightKg: weight)
+    }
+
+    private struct StartKey: Equatable {
+        let template: BodyTemplate, height: String, weight: String, unit: LengthUnit
+    }
+
     private var start: some View {
-        VStack(alignment: .leading, spacing: Token.Space.tight) {
-            // The figure is on screen before anything is saved: the unsaved neutral stand-in.
-            if let mesh = model.heroMesh {
-                BodyModel3DView(mesh: mesh, summary: "Nötr başlangıç şekli; ölçü girilmedi.",
-                                alive: model.allowsLivelyMotion && !reduceMotion, showsAngleButtons: false, identifier: "standIn3D")
-                    .frame(height: 380)
-                    .frame(maxWidth: .infinity)
-                    .background(LinearGradient(colors: [Atelier.surfaceSecondary, Atelier.sand], startPoint: .top, endPoint: .bottom),
-                                in: RoundedRectangle(cornerRadius: Atelier.Radius.hero, style: .continuous))
-            }
-            Text("Ölçü zorunlu değil. Nötr bir başlangıç şekliyle başla, sonra kaydırıcılarla kendine benzet.")
+        let profile = startProfile
+        let heightRange = BodyParameter.height.safeRange
+        return VStack(alignment: .leading, spacing: Token.Space.tight) {
+            Text("Modelini kendine benzet. Hepsi isteğe bağlı ve yalnız bu telefonda kalır.")
                 .font(.subheadline).foregroundStyle(Token.textSecondary)
-            Text("Başlangıç değerleri bir norm ya da hedef değildir.")
-                .font(.footnote).foregroundStyle(Token.textSecondary)
+
+            Text("Cinsiyet").font(.subheadline)
+            Picker("Cinsiyet", selection: $startTemplate) {
+                ForEach(Self.genderOrder, id: \.self) { Text($0.displayName).tag($0) }
+            }
+            .pickerStyle(.segmented)
+            .accessibilityIdentifier("startGender")
+            Text("Modelin biçimini belirler. Nötr: cinsiyet belirtmeden, ikisinin ortası.")
+                .font(.caption).foregroundStyle(Token.textSecondary)
+
             Picker("Birim", selection: $unit) {
                 ForEach(LengthUnit.allCases, id: \.self) { Text($0.symbol).tag($0) }
             }
             .pickerStyle(.segmented)
-            Button("Nötr başlangıç modeli oluştur") { Task { await model.createNeutralBody(unit: unit) } }
-                .buttonStyle(PrimaryButtonStyle())
-                .accessibilityIdentifier("createNeutralBody")
+            HStack {
+                TextField("Boy (\(unit.symbol), isteğe bağlı)", text: $startHeightText)
+                    .keyboardType(.decimalPad)
+                    .focused($startFocused)
+                    .accessibilityIdentifier("startHeight")
+                TextField("Kilo (kg, isteğe bağlı)", text: $startWeightText)
+                    .keyboardType(.decimalPad)
+                    .focused($startFocused)
+                    .accessibilityIdentifier("startWeight")
+            }
+            .textFieldStyle(.roundedBorder)
+            if profile == nil {
+                Text("Boy \(BodyLength(heightRange.lowerBound, .centimeters).formatted(unit))–\(BodyLength(heightRange.upperBound, .centimeters).formatted(unit)), kilo \(Int(BodyProfile.weightRangeKg.lowerBound))–\(Int(BodyProfile.weightRangeKg.upperBound)) kg arasında olmalı.")
+                    .font(.caption).foregroundStyle(Token.statusCaution)
+                    .accessibilityIdentifier("startInvalid")
+            } else if let profile, let note = estimateNote(profile) {
+                Text(note).font(.caption).foregroundStyle(Token.textSecondary)
+            } else {
+                Text("Kilo girersen omuz, göğüs, bel ve kalça boy ve kilodan tahmin edilir; yalnız çizim içindir, ölçü sayılmaz.")
+                    .font(.caption).foregroundStyle(Token.textSecondary)
+            }
+            Button("Modelimi oluştur") {
+                guard let profile else { return }
+                startFocused = false
+                Task { await model.createBody(profile) }
+            }
+            .buttonStyle(PrimaryButtonStyle())
+            .disabled(profile == nil)
+            .accessibilityIdentifier("createNeutralBody")
         }
         .padding(.vertical, 4)
+        .toolbar {
+            // Number pads have no return key.
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Bitti") { startFocused = false }
+                    .accessibilityIdentifier("keyboardDone")
+            }
+        }
+        .task(id: StartKey(template: startTemplate, height: startHeightText, weight: startWeightText, unit: unit)) {
+            // Off the main thread: a sculpted body takes a few tens of milliseconds to mix.
+            let snapshot = profile.flatMap { try? AvatarSnapshot.make(for: $0) }
+            let mesh = await Task.detached(priority: .userInitiated) { snapshot.flatMap { BodyMesh.best(from: $0) } }.value
+            if !Task.isCancelled, let mesh { startPreview = mesh }
+        }
+    }
+
+    private func startSummary(_ profile: BodyProfile?) -> String {
+        guard let profile else { return "Başlangıç şekli; ölçü girilmedi." }
+        return "\(profile.template.displayName) model. " + BodyParameter.allCases
+            .map { "\($0.displayName) \(profile[$0].length.formatted(unit))" }.joined(separator: ", ")
+    }
+
+    /// Says when a typed weight does not shape the body (outside the range the estimate was fitted on).
+    private func estimateNote(_ profile: BodyProfile) -> String? {
+        guard let kg = profile.weightKg else { return nil }
+        let height = profile[.height].length.centimeters
+        guard BodyShapeEstimate.cm(template: profile.template, heightCm: height, weightKg: kg) == nil else { return nil }
+        return "Bu boy ve kilo için tahmin yapılmıyor (tahmin \(Int(BodyShapeEstimate.heightRangeCm.lowerBound))–\(Int(BodyShapeEstimate.heightRangeCm.upperBound)) cm, \(Int(BodyShapeEstimate.weightRangeKg.lowerBound))–\(Int(BodyShapeEstimate.weightRangeKg.upperBound)) kg için). Model başlangıç biçiminde kalır; kaydırıcılarla şekillendirebilirsin."
     }
 
     // MARK: Editor
@@ -81,22 +211,8 @@ struct BodyStudioSection: View {
     @ViewBuilder
     private func editor(_ profile: BodyProfile) -> some View {
         VStack(spacing: Token.Space.tight) {
-            if let scene = model.bodyScene, !scene.isFallback, let mesh = scene.mesh {
-                BodyModel3DView(mesh: mesh, summary: summary(profile), alive: model.allowsLivelyMotion && !reduceMotion)
-                    .frame(height: 460)
-                    .frame(maxWidth: .infinity)
-                    .background(LinearGradient(colors: [Atelier.surfaceSecondary, Atelier.sand], startPoint: .top, endPoint: .bottom),
-                                in: RoundedRectangle(cornerRadius: Atelier.Radius.hero, style: .continuous))
-            } else {
-                // G0 fallback (ADR-007 §5): the 2D outline with the same controls, when the budget says
-                // 2D_CARD or the mesh could not be built.
-                SilhouetteView(scene: model.bodyScene, heightCm: draftValue(.height, profile), summary: summary(profile))
-                    .frame(height: 280)
-                    .frame(maxWidth: .infinity)
-                    .animation(reduceMotion ? nil : .smooth(duration: 0.28), value: model.bodyScene?.bodyRevision)
-            }
             if let scene = model.bodyScene, !scene.isFallback {
-                Text(scene.mesh == nil ? "Basit siluet. Görünüm, beden uyumunun kanıtı değildir." : "Nötr 3B model. Görünüm, beden uyumunun kanıtı değildir.")
+                Text(scene.mesh == nil ? "Basit siluet. Görünüm, beden uyumunun kanıtı değildir." : "3B model (\(profile.template.displayName.lowercased())). Görünüm, beden uyumunun kanıtı değildir.")
                     .font(.caption).foregroundStyle(Token.textSecondary)
                     .accessibilityIdentifier("bodyFidelityLabel")
             }
@@ -135,6 +251,8 @@ struct BodyStudioSection: View {
             .buttonStyle(.borderless)
         }
         .listRowSeparator(.hidden)
+
+        appearance(profile)
 
         ForEach(BodyParameter.allCases, id: \.self) { parameter in
             sliderRow(parameter, profile)
@@ -235,6 +353,68 @@ struct BodyStudioSection: View {
             pendingCommit[p] = nil
             drafts[p] = nil
         }
+    }
+
+    // MARK: Gender and weight (ADR-011)
+
+    /// Optional gender (the body's form) and weight. Neither is required, inferred or used for size
+    /// advice; values the person shaped or typed never move when these change.
+    @ViewBuilder
+    private func appearance(_ profile: BodyProfile) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Cinsiyet").font(.subheadline)
+            Picker("Cinsiyet", selection: Binding(
+                get: { profile.template },
+                set: { new in
+                    dropDrafts()
+                    Task { await model.setBodyAppearance(template: new, weightKg: profile.weightKg) }
+                }
+            )) {
+                ForEach(Self.genderOrder, id: \.self) { Text($0.displayName).tag($0) }
+            }
+            .pickerStyle(.segmented)
+            .accessibilityIdentifier("bodyTemplate")
+            Text("İsteğe bağlı. Modelin biçimini belirler; beden önerisinde kullanılmaz. Nötr: cinsiyet belirtmeden.")
+                .font(.caption).foregroundStyle(Token.textSecondary)
+        }
+        .padding(.vertical, 2)
+
+        let parsed = Double(weightText.replacingOccurrences(of: ",", with: "."))
+        let valid = parsed.map { BodyProfile.weightRangeKg.contains($0) } ?? false
+        HStack {
+            TextField(profile.weightKg.map { "Kilo: \(Self.kg($0))" } ?? "Kilo (isteğe bağlı, kg)", text: $weightText)
+                .keyboardType(.decimalPad)
+                .focused($weightFocused)
+                .accessibilityIdentifier("bodyWeight")
+            Button("Kaydet") {
+                guard let kg = parsed, valid else { return }
+                weightText = ""
+                weightFocused = false
+                dropDrafts()
+                Task { await model.setBodyAppearance(template: profile.template, weightKg: kg) }
+            }
+            .buttonStyle(.borderless)
+            .disabled(!valid)
+            .accessibilityIdentifier("saveWeight")
+            if profile.weightKg != nil {
+                Button("Kaldır") {
+                    dropDrafts()
+                    Task { await model.setBodyAppearance(template: profile.template, weightKg: nil) }
+                }
+                .buttonStyle(.borderless)
+                .accessibilityHint("Kiloyu siler; tahmin edilen çevreler başlangıç değerlerine döner.")
+                .accessibilityIdentifier("clearWeight")
+            }
+        }
+        Text(estimateNote(profile) ?? (profile.weightKg.map {
+            "Kilo: \(Self.kg($0)). Tahmin edilen değerler yalnız çizim içindir; beden önerisinde kullanılmaz."
+        } ?? "Kilo girersen, kaydırmadığın ve elle girmediğin omuz, göğüs, bel ve kalça boy ve kilodan tahmin edilir. Tahmin yalnız çizim içindir."))
+            .font(.caption).foregroundStyle(Token.textSecondary)
+            .accessibilityIdentifier("weightNote")
+    }
+
+    private static func kg(_ value: Double) -> String {
+        "\(value.formatted(.number.precision(.fractionLength(0...1)).locale(Locale(identifier: "tr_TR")))) kg"
     }
 
     /// Separate rows on purpose: in a List, one row with several controls sends every tap to the first one.

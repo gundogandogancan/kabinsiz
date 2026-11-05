@@ -10,6 +10,7 @@
 | ADR-006 | Kanon v2.1 ve öncelik zinciri | KABUL | docs/adr/ADR-006-canon-v2.1.md |
 | ADR-007 | Nötr 3D morf avatar P0, özgün prosedürel mesh, 360° manuel; 2D siluet G0 yedeği (D-003 kapandı) | KABUL | docs/adr/ADR-007-neutral-3d-avatar.md |
 | ADR-010 | Yontulmuş nötr gövde: NAVER Anny (Apache-2.0 + CC0) fırınlanmış şekil tabanı, cihazda karıştırma, yüzsüz manken başı; prosedürel gövde (ADR-007) yedek | KABUL (kullanıcı kararı 2026-11-04; ticari yayın öncesi AG-14) | docs/adr/ADR-010-sculpted-neutral-body.md |
+| ADR-011 | Model başlangıç formuyla oluşturulur: isteğe bağlı Cinsiyet (Kadın / Erkek / Nötr varsayılan), boy ve kilo; kilodan çizim tahmini ANSUR II'ye dayanır, ölçü ve beden önerisi değil; çıkarım yok | KABUL (kullanıcı kararı 2026-11-05; ticari yayın öncesi AG-14) | docs/adr/ADR-011-body-template-and-weight.md |
 | ADR-008 | Canlı Ayna iki motor: yerel varsayılan; bulut bayrak OFF + stub, insan kararı + DPA olmadan açılmaz | KABUL / BLOCKED_EXTERNAL (bulut) | docs/adr/ADR-008-two-engine-live-mirror.md |
 | D-001 | Ürün adı "Kabinsiz", iç kod adı WEARFORM; kamuya ilan yok | KULLANICI KARARI | 2026-11-03 sohbet |
 | D-002 | Kamera/barkod yerine P0'da manuel ürün kodu girişi (§60.3 fallback) | GEÇİCİ | Cihaz yok, kamera simülatörde test edilemez |

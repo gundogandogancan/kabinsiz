@@ -256,7 +256,12 @@ public actor BodyStudio {
     // MARK: Commits (serialized, not cancellable)
 
     public func createNeutral(unit: LengthUnit = .centimeters) async -> DecisionEnvelope<PreviewScene> {
-        await serialized { studio in await studio.performCreateNeutral(unit: unit) }
+        await serialized { studio in await studio.performCreate(BodyProfile.neutral(unit: unit)) }
+    }
+
+    /// First body from the person's choices (`BodyProfile.start`, ADR-011). Only from empty, like neutral.
+    public func create(_ start: BodyProfile) async -> DecisionEnvelope<PreviewScene> {
+        await serialized { studio in await studio.performCreate(start) }
     }
 
     public func commit(_ edit: BodyEdit) async -> DecisionEnvelope<PreviewScene> {
@@ -277,6 +282,20 @@ public actor BodyStudio {
             var target = base.restoring(base)
             target.preferredUnit = unit
             return await studio.perform(.restore(target), recordHistory: false)
+        }
+    }
+
+    /// Body template and/or weight (ADR-011): one undoable commit. Shaped and typed values stay as they are.
+    public func setAppearance(template: BodyTemplate, weightKg: Double?) async -> DecisionEnvelope<PreviewScene>? {
+        await serialized { studio in
+            guard let base = await studio.profile else { return nil }
+            guard base.template != template || base.weightKg != weightKg else { return nil }
+            do {
+                let target = try base.withAppearance(template: template, weightKg: weightKg)
+                return await studio.perform(.restore(target))
+            } catch {
+                return .failure(traceID: UUID().uuidString, .schemaInvalid)
+            }
         }
     }
 
@@ -308,20 +327,18 @@ public actor BodyStudio {
             case .restore(let target):
                 next = target
             }
-            let stamped = BodyProfile(revision: revision, values: next.values, preferredUnit: next.preferredUnit)
+            let stamped = next.stamped(revision: revision)
             try stamped.validate()
             return stamped
         }
     }
 
-    private func performCreateNeutral(unit: LengthUnit) async -> DecisionEnvelope<PreviewScene> {
+    private func performCreate(_ start: BodyProfile) async -> DecisionEnvelope<PreviewScene> {
         // Only from empty: a double tap must never reset an existing body without undo.
         guard status == .noProfile else {
             return .failure(traceID: UUID().uuidString, status == .ready ? .schemaInvalid : .storageCorrupted)
         }
-        let start = BodyProfile.neutral(unit: unit)
-        let target = BodyProfile(revision: 0, values: start.values, preferredUnit: unit)
-        return await perform(.restore(target), recordHistory: false, allowFromEmpty: true)
+        return await perform(.restore(start.stamped(revision: 0)), recordHistory: false, allowFromEmpty: true)
     }
 
     private func performUndoRedo(undo: Bool) async -> DecisionEnvelope<PreviewScene>? {

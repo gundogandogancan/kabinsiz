@@ -150,13 +150,33 @@ public struct Silhouette: Codable, Hashable, Sendable {
 public struct AvatarSnapshot: Codable, Hashable, Sendable {
     public let bodyRevision: Int
     public let silhouette: Silhouette
+    /// Which baked body the 3D tier draws (ADR-011). The 2D silhouette does not depend on it.
+    public let template: BodyTemplate
 
-    public init(bodyRevision: Int, silhouette: Silhouette) {
+    public init(bodyRevision: Int, silhouette: Silhouette, template: BodyTemplate = .neutral) {
         self.bodyRevision = bodyRevision
         self.silhouette = silhouette
+        self.template = template
     }
 
     public static func make(for profile: BodyProfile) throws(BodyEditError) -> AvatarSnapshot {
-        AvatarSnapshot(bodyRevision: profile.revision, silhouette: try Silhouette.make(for: profile))
+        AvatarSnapshot(bodyRevision: profile.revision, silhouette: try Silhouette.make(for: profile), template: profile.template)
+    }
+
+    enum CodingKeys: String, CodingKey { case bodyRevision, silhouette, template }
+
+    // Caches written before ADR-011 have no template; a neutral snapshot writes none.
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        bodyRevision = try c.decode(Int.self, forKey: .bodyRevision)
+        silhouette = try c.decode(Silhouette.self, forKey: .silhouette)
+        template = try c.decodeIfPresent(BodyTemplate.self, forKey: .template) ?? .neutral
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(bodyRevision, forKey: .bodyRevision)
+        try c.encode(silhouette, forKey: .silhouette)
+        if template != .neutral { try c.encode(template, forKey: .template) }
     }
 }

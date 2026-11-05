@@ -30,10 +30,15 @@ let package = Package(
         // v1.5 §111/§116 encrypted PrivateVault: CryptoKit AES-GCM, Keychain KEK, per-domain keys.
         .target(name: "Vault", dependencies: ["SystemContracts", "LocalStore"]),
         // v1.5 §108/§133.1 body truth + neutral covered 2D silhouette (3D mesh is WP15-07/08).
-        // ADR-010: sculpted neutral body basis baked from NAVER Anny (Apache-2.0 / CC0), see Resources/NOTICE.md.
+        // ADR-010/011: sculpted body bases (neutral, female, male) baked from NAVER Anny (Apache-2.0 / CC0), see Resources/NOTICE.md.
         .target(
             name: "BodyGeometry",
-            resources: [.copy("Resources/SculptedBody.bin"), .copy("Resources/SculptedBody.json"), .copy("Resources/NOTICE.md")]
+            resources: [
+                .copy("Resources/SculptedBody-neutral.bin"), .copy("Resources/SculptedBody-neutral.json"),
+                .copy("Resources/SculptedBody-female.bin"), .copy("Resources/SculptedBody-female.json"),
+                .copy("Resources/SculptedBody-male.bin"), .copy("Resources/SculptedBody-male.json"),
+                .copy("Resources/NOTICE.md"),
+            ]
         ),
         // v1.5 §103 OctopusCoordinator: task DAG, policy, budget, timeouts, latest-wins; body journey.
         .target(name: "Octopus", dependencies: ["DomainContracts", "SystemContracts", "BodyGeometry", "Vault"]),

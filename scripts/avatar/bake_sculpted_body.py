@@ -1,4 +1,4 @@
-"""Bake the sculpted neutral body (ADR-010) from NAVER Anny into a small on-device basis.
+"""Bake the sculpted body (ADR-010, ADR-011) from NAVER Anny into a small on-device basis, per body template.
 
 Offline tool. Runs once on a developer Mac; nothing here ships in the app except its output files.
 The app never runs Anny, PyTorch or any network code: it only mixes the baked shapes below.
@@ -8,16 +8,22 @@ what Anny itself would produce up to the small pose/phenotype cross-terms report
 
 1. Anny (Apache-2.0 code, MakeHuman/MPFB2 CC0 assets), default `anny` topology only. The optional
    `smplx`/`smpl` topologies are non-commercial and are never loaded.
-2. One neutral phenotype (gender 0.5, young adult) — no gendered or ethnic shaping is ever applied.
+2. One phenotype per body template (ADR-011): neutral (Anny gender 0.5, the default), female (1.0) or
+   male (0.0); young adult, mid muscle, weight and proportions. No ethnic shaping is ever applied. The
+   template is a drawing preset the user picks; it is never inferred and never used for sizing.
 3. Arms lowered from the rest A-pose to hang beside the body (fixed pose for every shape).
 4. Eye, mouth and tongue cavities removed, the openings closed, then the head smoothed into a
    faceless mannequin head (v1.5 §108.3: covered, faceless, no anatomical detail).
 5. One-sided shape bases: MakeHuman measurement targets (shoulder, bust, waist, hips) and the
    weight phenotype. Their effect on four tape measurements gives a Jacobian the app solves with.
+6. The binary is stored raw-DEFLATE compressed (≈ 3×smaller); the app checks the compressed file's
+   SHA-256 before inflating and the inflated size after. Height + weight → girths is not baked here:
+   it comes from ANSUR II (scripts/avatar/fit_ansur_estimate.py, ADR-011).
 
 Usage (from the repo root, with a venv that has `pip install ./vendor/anny`):
     ANNY_CACHE_DIR=vendor/.anny-cache vendor/.venv-anny/bin/python -I scripts/avatar/bake_sculpted_body.py \
-        --out Packages/KabinsizCore/Sources/BodyGeometry/Resources --preview /tmp/sculpted
+        --template neutral --out Packages/KabinsizCore/Sources/BodyGeometry/Resources --preview /tmp/sculpted
+    (once per template: neutral, female, male)
 """
 from __future__ import annotations
 
@@ -25,6 +31,7 @@ import argparse
 import hashlib
 import json
 import subprocess
+import zlib
 from collections import defaultdict
 from pathlib import Path
 
@@ -34,9 +41,13 @@ import roma
 import torch
 from anny.face_segmentation import get_face_segmentation_mask
 
-FORMAT_VERSION = 1
-# Neutral, ungendered young adult. Age 2/3 is Anny's "young" anchor; 0.5 elsewhere is the midpoint.
+FORMAT_VERSION = 3
+# Anny's gender phenotype runs from 0 (male) to 1 (female); see anny/shape_distribution.py.
+TEMPLATES = {"neutral": 0.5, "female": 1.0, "male": 0.0}
+# Young adult. Age 2/3 is Anny's "young" anchor; 0.5 elsewhere is the midpoint. Gender set per template.
 BASE_PHENOTYPE = dict(gender=0.5, age=2 / 3, muscle=0.5, weight=0.5, height=0.5, proportions=0.5)
+# The head constants below were tuned on the neutral base (this height); other bases scale them.
+REFERENCE_HEIGHT_M = 1.837
 ARM_TILT_DEG = 9.0  # arms hang this far out from vertical, in the frontal plane
 CAVITY_LABELS = [
     "eye_back.L", "eye_front.L", "eye_cavity.L",
@@ -53,7 +64,7 @@ HEAD_EGG_TILT_DEG = 16.0  # chin end forward, like a head held level
 HEAD_CHIN_ABSORB = 0.03  # vertices this far below the egg's bottom still go fully onto the egg
 HEAD_NECK_BLEND = 0.05  # below that, the egg fades into the real neck over this height
 # Covered form: landmark patches (metres) smoothed with a fixed rim.
-COVER_RADIUS_NIPPLE = 0.04
+COVER_RADIUS_NIPPLE = 0.04  # every template; wider patches flatten the bust into a dish with a rim crease
 COVER_RADIUS_NAVEL = 0.045
 COVER_RADIUS_CROTCH = 0.08
 COVER_SMOOTH_ITERATIONS = 150
@@ -89,7 +100,8 @@ def to_app(v: np.ndarray) -> np.ndarray:
 
 
 class Baker:
-    def __init__(self) -> None:
+    def __init__(self, phenotype: dict) -> None:
+        self.phenotype = phenotype
         self.model = anny.Anny(topology="anny", local_changes="default").to(dtype=torch.float32)
         m = self.model
         self.faces = np.asarray(m.faces, dtype=np.int64)
@@ -109,7 +121,7 @@ class Baker:
 
     def _arms_down_pose(self) -> torch.Tensor:
         m = self.model
-        out = m(pose_parameters=self.identity, phenotype_kwargs=BASE_PHENOTYPE, pose_parameterization="local-bone")
+        out = m(pose_parameters=self.identity, phenotype_kwargs=self.phenotype, pose_parameterization="local-bone")
         rest = out["rest_bone_poses"][0]
         pose = self.identity.clone()
         for side, sx in (("L", 1.0), ("R", -1.0)):
@@ -228,8 +240,9 @@ class Baker:
         head = self.smooth_mask | self.head_border
         y = v[:, 1]
         top = y.max()
-        jaw = top - HEAD_EGG_HEIGHT
-        skull = head & (y > top - 0.09)
+        k = (top - y.min()) / REFERENCE_HEIGHT_M
+        jaw = top - HEAD_EGG_HEIGHT * k
+        skull = head & (y > top - 0.09 * k)
         centre = np.array([0.0, (top + jaw) / 2, v[skull, 2].min() / 2 + v[skull, 2].max() / 2 + HEAD_EGG_FORWARD])
         radii = np.array([
             np.percentile(np.abs(v[skull, 0]), 99) * HEAD_EGG_WIDTH_SCALE,
@@ -240,9 +253,10 @@ class Baker:
         rot = np.array([[1, 0, 0], [0, np.cos(tilt), -np.sin(tilt)], [0, np.sin(tilt), np.cos(tilt)]])
         # Fully on the egg down to just below its bottom (so the real chin and lips are absorbed),
         # then fading into the real neck.
-        full_below = jaw - HEAD_CHIN_ABSORB
-        region = np.flatnonzero(head & (y > full_below - HEAD_NECK_BLEND))
-        weight = np.clip((y[region] - (full_below - HEAD_NECK_BLEND)) / HEAD_NECK_BLEND, 0, 1)
+        full_below = jaw - HEAD_CHIN_ABSORB * k
+        blend = HEAD_NECK_BLEND * k
+        region = np.flatnonzero(head & (y > full_below - blend))
+        weight = np.clip((y[region] - (full_below - blend)) / blend, 0, 1)
         weight = (weight * weight * (3 - 2 * weight))[:, None]
         print(f"faceless head: {len(region)} vertices on the egg, radii {np.round(radii, 3)}")
 
@@ -325,7 +339,7 @@ class Baker:
         self.tapes = {k: slice_at(f)[0] for k, f in self.tape_fractions.items()}
         # Shoulder width: shoulder point to shoulder point (top of the shoulder, just outside the
         # upper-arm joint), the way a tailor measures across the shoulders.
-        out = m(pose_parameters=self.pose, phenotype_kwargs=BASE_PHENOTYPE, pose_parameterization="local-bone")
+        out = m(pose_parameters=self.pose, phenotype_kwargs=self.phenotype, pose_parameterization="local-bone")
         joint = to_app(out["bone_poses"][0][:, :3, 3].detach().numpy().astype(np.float64))[m.bone_labels.index("upperarm01.L")]
         joint = joint + (v[:, 1].min() - to_app(out["vertices"][0].detach().numpy().astype(np.float64))[:, 1].min()) * np.array([0, 1, 0])
         near = (np.abs(v[:, 0] - (joint[0] + 0.02)) < 0.012) & (np.abs(v[:, 2] - joint[2]) < 0.03)
@@ -407,12 +421,14 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--preview", type=Path)
+    ap.add_argument("--template", choices=sorted(TEMPLATES), required=True)
     ap.add_argument("--anny-src", type=Path, default=Path("vendor/anny"), help="the Anny git clone that was pip-installed")
     args = ap.parse_args()
 
-    bk = Baker()
+    phenotype = dict(BASE_PHENOTYPE, gender=TEMPLATES[args.template])
+    bk = Baker(phenotype)
     bk.build_topology()
-    base_anny = bk.evaluate(BASE_PHENOTYPE, {})
+    base_anny = bk.evaluate(phenotype, {})
     base = bk.finish(base_anny)
     if signed_volume(base, bk.out_faces) < 0:
         bk.out_faces = bk.out_faces[:, [0, 2, 1]]
@@ -421,7 +437,7 @@ def main() -> None:
 
     deltas, jac = [], []
     for name, kind, key, value in BASES:
-        ph, lc = dict(BASE_PHENOTYPE), {}
+        ph, lc = dict(phenotype), {}
         if kind == "phenotype":
             ph[key] = value
         else:
@@ -437,7 +453,7 @@ def main() -> None:
     rng = np.random.default_rng(7)
     worst = 0.0
     for _ in range(6):
-        ph, lc, w = dict(BASE_PHENOTYPE), {}, np.zeros(len(BASES))
+        ph, lc, w = dict(phenotype), {}, np.zeros(len(BASES))
         for m_i, key in enumerate(["measure-shoulder-dist-incr", "measure-bust-circ-incr", "measure-waist-circ-incr", "measure-hips-circ-incr"]):
             val = float(rng.uniform(-1, 1))
             lc[key] = val
@@ -462,7 +478,10 @@ def main() -> None:
         + q.tobytes()
         + bk.arm_mask.astype("u1").tobytes()
     )
-    (args.out / "SculptedBody.bin").write_bytes(blob)
+    stem = f"SculptedBody-{args.template}"
+    deflate = zlib.compressobj(9, zlib.DEFLATED, -15)  # raw DEFLATE, what Apple's `.zlib` inflates
+    packed = deflate.compress(blob) + deflate.flush()
+    (args.out / f"{stem}.bin").write_bytes(packed)
     # The installed package has no git metadata: read the commit from the clone it was installed from.
     try:
         top = subprocess.run(["git", "-C", str(args.anny_src), "rev-parse", "--show-toplevel"], capture_output=True, text=True).stdout.strip()
@@ -472,6 +491,7 @@ def main() -> None:
         commit = ""
     meta = {
         "formatVersion": FORMAT_VERSION,
+        "template": args.template,
         "vertexCount": int(len(base)),
         "triangleCount": int(len(bk.out_faces)),
         "bases": [b[0] for b in BASES],
@@ -483,7 +503,9 @@ def main() -> None:
         "shoulderPair": list(bk.shoulder_pair),
         "tapes": {k: [[i, j, round(t, 6)] for i, j, t in e] for k, e in bk.tapes.items()},
         "tapeHeightFractions": bk.tape_fractions,
-        "binarySHA256": hashlib.sha256(blob).hexdigest(),
+        "compression": "deflate-raw",
+        "rawByteCount": len(blob),
+        "binarySHA256": hashlib.sha256(packed).hexdigest(),
         "provenance": {
             "source": "NAVER Anny (https://github.com/naver/anny)",
             "annyVersion": getattr(anny, "__version__", "UNKNOWN"),
@@ -491,22 +513,21 @@ def main() -> None:
             "codeLicense": "Apache-2.0",
             "assetLicense": "CC0-1.0 (MakeHuman / MPFB2)",
             "topology": "anny (MakeHuman-derived; non-commercial smplx/smpl topologies not used)",
-            "phenotype": BASE_PHENOTYPE,
+            "phenotype": phenotype,
             "armTiltDeg": ARM_TILT_DEG,
             "headSmoothing": {"iterations": HEAD_SMOOTH_ITERATIONS, "lambda": TAUBIN_LAMBDA, "mu": TAUBIN_MU},
             "linearityWorstMm": round(worst * 1000, 2),
         },
     }
-    (args.out / "SculptedBody.json").write_text(json.dumps(meta, indent=1) + "\n")
-    print(f"wrote {len(blob) / 1e6:.2f} MB, base measures cm {np.round(m0, 1)}, height {meta['baseHeightM']:.3f} m")
+    (args.out / f"{stem}.json").write_text(json.dumps(meta, indent=1) + "\n")
+    print(f"wrote {len(packed) / 1e6:.2f} MB ({len(blob) / 1e6:.2f} MB raw), base measures cm {np.round(m0, 1)}, height {meta['baseHeightM']:.3f} m")
 
     if args.preview:
         import sys
         sys.path.insert(0, str(args.preview.parent))
         args.preview.mkdir(parents=True, exist_ok=True)
-        np.save(args.preview / "base.npy", base)
-        np.save(args.preview / "faces.npy", bk.out_faces)
-        np.save(args.preview / "deltas.npy", deltas)
+        np.save(args.preview / f"{args.template}-base.npy", base)
+        np.save(args.preview / f"{args.template}-faces.npy", bk.out_faces)
 
 
 if __name__ == "__main__":

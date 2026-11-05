@@ -20,7 +20,7 @@
 - **Sahte bitmişlik yok.** Mock, sentetik ve engelli olanları raporda ayrı yaz; bilinmiyorsa `UNKNOWN` de.
 - İnsan onayı gerektirenler: ücretli harcama, dış hesap, gerçek kullanıcı verisi, sözleşme, marka tescili, canlı ödeme, App Store/TestFlight yayını, kamuya gönderim.
 - `STOP_THE_LINE` koşulları: mahremiyet sızıntısı, yanıltıcı beden/uyum iddiası, belirsiz veri hakkı, App Review ihlali, kırık build.
-- iOS projesi XcodeGen ile üretilir (`~/.local/bin/xcodegen`). Toolchain: Xcode 26.6. Bu Mac'te brew, docker ve uv yok; `gh` `~/.local/bin/gh`, Blender 5.2.3 `~/Applications/Blender.app` (PATH'te değil).
+- iOS projesi XcodeGen ile üretilir (`/opt/homebrew/bin/xcodegen`). Toolchain: Xcode 27.2. Homebrew `/opt/homebrew`'da. 2026-11-05 kontrolünde `uv`, `gh` ve Blender bulunamadı.
 - Kullanıcıyla Türkçe konuş.
 
 ## Uzman ajanlar (anayasa §17 → `.claude/agents/`)
@@ -45,6 +45,6 @@ AG-06 (Fit Science), AG-07 (Styling), AG-08 (Retail) ve AG-11 (Perf/SRE) için h
 
 ## Skill'ler
 
-- **Projeye özel (`.claude/skills/`):** `design-motion-principles` (MIT, kylezantos; hareket/etkileşim: mobil = incelikli cila önce, sık işlem animasyonsuz, Hareketi Azalt'a uy), `swiftui-patterns`, `swift-concurrency-6-2`, `swift-actor-persistence`, `swift-protocol-di-testing`, `ios-icon-gen` (ECC); `spec-to-code-compliance`, `differential-review`, `sharp-edges`, `audit-context-building` (Trail of Bits).
-- **Global (zaten kurulu):** superpowers (TDD, planlama, debugging, verification), planning-with-files, impeccable, ui-ux-pro-max, plugin87 tasarım skill'leri (design-doctrine, a11y-audit, design-review, design-tokens …), context-engineering, Trail of Bits çekirdek seti.
+- **Projeye özel (`.claude/skills/`):** otomatik yüklenir. Hareket kararlarında `design-motion-principles`: mobilde önce incelikli cila, sık işlemde animasyon yok, Hareketi Azalt'a uy.
+- **Global skill'ler** (superpowers, impeccable, ui-ux-pro-max, plugin87 …) her makinede kurulu olmayabilir; yoksa varmış gibi davranma.
 - Hangi repodan neyin alındığı ve neyin neden alınmadığı: `docs/VENDOR_INTEGRATION.md`.

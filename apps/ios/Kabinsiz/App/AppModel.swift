@@ -355,6 +355,13 @@ final class AppModel {
         return BodyMesh.best(from: snapshot)
     }()
 
+    /// First body from the start form (ADR-011): gender, height and weight are each optional.
+    func createBody(_ start: BodyProfile) async {
+        guard let studio = bodyStudio else { return }
+        await untilVaultReachable()
+        await apply(await studio.create(start), from: studio)
+    }
+
     func createNeutralBody(unit: LengthUnit) async {
         guard let studio = bodyStudio else { return }
         await untilVaultReachable()
@@ -387,6 +394,14 @@ final class AppModel {
         guard let studio = bodyStudio else { return }
         await untilVaultReachable()
         await apply(await studio.redo(), from: studio)
+    }
+
+    /// Body template and/or weight (ADR-011). Optional; shapes the drawing only, never size advice.
+    func setBodyAppearance(template: BodyTemplate, weightKg: Double?) async {
+        guard let studio = bodyStudio else { return }
+        await untilVaultReachable()
+        guard let envelope = await studio.setAppearance(template: template, weightKg: weightKg) else { return }
+        await apply(envelope, from: studio)
     }
 
     func setBodyUnit(_ unit: LengthUnit) async {

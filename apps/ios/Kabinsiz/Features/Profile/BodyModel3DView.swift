@@ -171,6 +171,7 @@ final class Stage {
     private static let breathPeriod: Double = 4.6
 
     func build(in content: inout RealityViewCameraContent) {
+        updates?.cancel()
         camera.camera.fieldOfViewInDegrees = 28
         content.add(camera)
 

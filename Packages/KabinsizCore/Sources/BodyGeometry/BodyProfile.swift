@@ -42,6 +42,44 @@ public enum BodyParameter: String, Codable, CaseIterable, Sendable {
     }
 
     public static let sliderStepCm = 0.5
+
+    /// The girths (chest, waist, hip). With shoulder width, what a template or a weight estimate may
+    /// redraw; height is never estimated, it is what the person gave.
+    public static let girths: [BodyParameter] = [.chest, .waist, .hip]
+}
+
+/// The drawing preset of the 3D body (ADR-011). Optional, chosen by the person, neutral by default.
+/// It shapes only the picture: never inferred from anything, never asked as identity, never used for
+/// size advice (v1.5 §5 "kullanıcı model görünümünü kendi seçer", v1.7 §3.2 appearance is not evidence).
+public enum BodyTemplate: String, Codable, CaseIterable, Sendable {
+    case neutral = "NEUTRAL"
+    case female = "FEMALE"
+    case male = "MALE"
+
+    public var displayName: String {
+        switch self {
+        case .neutral: "Nötr"
+        case .female: "Kadın"
+        case .male: "Erkek"
+        }
+    }
+
+    /// Where a body drawn with this template starts. The neutral values are `neutralStartCm`; the other
+    /// two keep the neutral values and apply the template's own proportions (the baked female and male
+    /// bases against the neutral one, at the same height; ADR-011). Drawing points, not norms.
+    public func startCm(_ p: BodyParameter) -> Double {
+        switch (self, p) {
+        case (.neutral, _), (_, .height): p.neutralStartCm
+        case (.female, .shoulderWidth): 39.5
+        case (.female, .chest): 92.5
+        case (.female, .waist): 78.5
+        case (.female, .hip): 101
+        case (.male, .shoulderWidth): 42
+        case (.male, .chest): 98
+        case (.male, .waist): 85.5
+        case (.male, .hip): 97.5
+        }
+    }
 }
 
 public enum LengthUnit: String, Codable, CaseIterable, Sendable {
@@ -88,14 +126,21 @@ public enum ValueSource: String, Codable, Sendable {
     case neutralStart = "NEUTRAL_START"
     case sliderShaped = "SLIDER_SHAPED"
     case userMeasured = "USER_MEASURED"
+    /// Drawn from the optional height and weight (ADR-011). For the picture only, like a slider shape.
+    case weightEstimate = "WEIGHT_ESTIMATE"
 
     public var label: String {
         switch self {
         case .neutralStart: "Başlangıç (ölçü değil)"
         case .sliderShaped: "Kaydırıcıyla şekillendirildi (ölçü değil)"
         case .userMeasured: "Senin girdiğin ölçü"
+        case .weightEstimate: "Boy ve kilodan tahmin (ölçü değil)"
         }
     }
+
+    /// Values the app may redraw on its own when the template, height or weight changes. Anything the
+    /// person shaped or typed stays exactly as it is.
+    public var isRedrawable: Bool { self == .neutralStart || self == .weightEstimate }
 }
 
 public struct BodyValue: Codable, Hashable, Sendable {
@@ -133,6 +178,7 @@ public enum BodyEditError: Error, Equatable, Sendable {
     case outOfSafeRange(BodyParameter)
     case unsafeGeometry(String)
     case neutralIsNotAMeasurement
+    case weightOutOfRange
 }
 
 /// The canonical body truth (§102.3: one owner). Immutable value; every accepted change is a new revision.
@@ -142,6 +188,14 @@ public struct BodyProfile: Codable, Hashable, Sendable {
     public private(set) var revision: Int
     public private(set) var values: [BodyParameter: BodyValue]
     public var preferredUnit: LengthUnit
+    /// Drawing preset (ADR-011). Neutral unless the person picks another one.
+    public private(set) var template: BodyTemplate
+    /// Optional, typed by the person, one decimal. Shapes the picture only (ADR-011): it never becomes a
+    /// measurement and never reaches size advice.
+    public private(set) var weightKg: Double?
+
+    /// Accepted weights. Like the length ranges, a drawable span, not a judgement about bodies.
+    public static let weightRangeKg: ClosedRange<Double> = 30...250
 
     /// A new neutral body at revision 1. Every value is marked as a starting point, not a measurement.
     public static func neutral(unit: LengthUnit = .centimeters) -> BodyProfile {
@@ -150,10 +204,51 @@ public struct BodyProfile: Codable, Hashable, Sendable {
         return BodyProfile(revision: 1, values: values, preferredUnit: unit)
     }
 
-    public init(revision: Int, values: [BodyParameter: BodyValue], preferredUnit: LengthUnit) {
+    /// A first body from what the person chose before creating it (ADR-011): gender (neutral if they
+    /// did not choose), and optionally a typed height and weight. Every part is optional; with nothing
+    /// chosen this is exactly `neutral(unit:)`. A typed height is the person's own value.
+    public static func start(unit: LengthUnit = .centimeters, template: BodyTemplate = .neutral,
+                             height: Double? = nil, weightKg: Double? = nil) throws(BodyEditError) -> BodyProfile {
+        var p = neutral(unit: unit)
+        if let height { p = try p.applying(.measured(.height, height, unit)) }
+        if template != .neutral || weightKg != nil { p = try p.withAppearance(template: template, weightKg: weightKg) }
+        return p.stamped(revision: 1)
+    }
+
+    public init(revision: Int, values: [BodyParameter: BodyValue], preferredUnit: LengthUnit,
+                template: BodyTemplate = .neutral, weightKg: Double? = nil) {
         self.revision = revision
         self.values = values
         self.preferredUnit = preferredUnit
+        self.template = template
+        self.weightKg = weightKg
+    }
+
+    /// Same body at another revision (the studio stamps revisions).
+    public func stamped(revision: Int) -> BodyProfile {
+        BodyProfile(revision: revision, values: values, preferredUnit: preferredUnit, template: template, weightKg: weightKg)
+    }
+
+    // Records written before ADR-011 have neither key; a neutral body without weight writes neither, so
+    // its stored form is unchanged.
+    enum CodingKeys: String, CodingKey { case revision, values, preferredUnit, template, weightKg }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        revision = try c.decode(Int.self, forKey: .revision)
+        values = try c.decode([BodyParameter: BodyValue].self, forKey: .values)
+        preferredUnit = try c.decode(LengthUnit.self, forKey: .preferredUnit)
+        template = try c.decodeIfPresent(BodyTemplate.self, forKey: .template) ?? .neutral
+        weightKg = try c.decodeIfPresent(Double.self, forKey: .weightKg)
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(revision, forKey: .revision)
+        try c.encode(values, forKey: .values)
+        try c.encode(preferredUnit, forKey: .preferredUnit)
+        if template != .neutral { try c.encode(template, forKey: .template) }
+        try c.encodeIfPresent(weightKg, forKey: .weightKg)
     }
 
     public subscript(_ p: BodyParameter) -> BodyValue {
@@ -184,13 +279,47 @@ public struct BodyProfile: Codable, Hashable, Sendable {
 
     /// Range check, then a geometry check on the resulting shape. On failure nothing changes.
     public func applying(_ edit: BodyEdit) throws(BodyEditError) -> BodyProfile {
-        guard edit.source != .neutralStart else { throw .neutralIsNotAMeasurement }
+        // Starting values and weight estimates are the app's drawing, never something an edit can claim.
+        guard !edit.source.isRedrawable else { throw .neutralIsNotAMeasurement }
         guard allowedRange(edit.parameter).contains(edit.length.centimeters) else { throw .outOfSafeRange(edit.parameter) }
         var next = self
         next.values[edit.parameter] = BodyValue(edit.length, source: edit.source)
         next.revision = revision + 1
+        // A new height moves the weight estimate with it (same weight on a taller body is slimmer).
+        if edit.parameter == .height { next.redraw() }
         _ = try Silhouette.make(for: next)
         return next
+    }
+
+    /// A new template and/or weight (nil clears it), at the next revision. Values the person shaped or
+    /// typed never change; starting values and earlier weight estimates are redrawn: from height + weight
+    /// when a weight is given and the estimate is available, otherwise the template's starting values.
+    public func withAppearance(template: BodyTemplate, weightKg: Double?) throws(BodyEditError) -> BodyProfile {
+        let weight = weightKg.map { ($0 * 10).rounded() / 10 }
+        if let weight { guard weight.isFinite, Self.weightRangeKg.contains(weight) else { throw .weightOutOfRange } }
+        var next = self
+        next.template = template
+        next.weightKg = weight
+        next.revision = revision + 1
+        next.redraw()
+        _ = try Silhouette.make(for: next)
+        return next
+    }
+
+    /// Re-derives every redrawable value from the template, height and weight. Estimates are rounded to
+    /// the slider step and kept inside the range a slider could reach.
+    mutating func redraw() {
+        let estimate = weightKg.flatMap { BodyShapeEstimate.cm(template: template, heightCm: self[.height].length.centimeters, weightKg: $0) }
+        let step = BodyParameter.sliderStepCm
+        for p in BodyParameter.allCases where p != .height && self[p].source.isRedrawable {
+            if let cm = estimate?[p] {
+                let range = allowedRange(p)
+                let snapped = min(max((cm / step).rounded() * step, range.lowerBound), range.upperBound)
+                values[p] = BodyValue(BodyLength(snapped, .centimeters), source: .weightEstimate)
+            } else {
+                values[p] = BodyValue(BodyLength(template.startCm(p), .centimeters), source: .neutralStart)
+            }
+        }
     }
 
     /// Every parameter present and inside its safe range, and a drawable shape. Used for anything that
@@ -202,13 +331,14 @@ public struct BodyProfile: Codable, Hashable, Sendable {
         }
         guard allowedRange(.shoulderWidth).contains(self[.shoulderWidth].length.centimeters) else { throw .outOfSafeRange(.shoulderWidth) }
         guard revision > 0, values.count == BodyParameter.allCases.count else { throw .unsafeGeometry("shape") }
+        if let weightKg { guard weightKg.isFinite, Self.weightRangeKg.contains(weightKg) else { throw .weightOutOfRange } }
         _ = try Silhouette.make(for: self)
     }
 
     /// Same values as `other`, at the next revision. Used by undo/redo: revisions only ever go up, so
     /// stale-write guards keep working (V15-T-ORC-08), while the parameters match exactly (V15-T-BOD-03).
     public func restoring(_ other: BodyProfile) -> BodyProfile {
-        BodyProfile(revision: revision + 1, values: other.values, preferredUnit: preferredUnit)
+        BodyProfile(revision: revision + 1, values: other.values, preferredUnit: preferredUnit, template: other.template, weightKg: other.weightKg)
     }
 
     /// Only typed measurements, for size advice. Slider shapes and starting values never appear here.
@@ -218,7 +348,9 @@ public struct BodyProfile: Codable, Hashable, Sendable {
         }
     }
 
-    public func sameShape(as other: BodyProfile) -> Bool { values == other.values }
+    public func sameShape(as other: BodyProfile) -> Bool {
+        values == other.values && template == other.template && weightKg == other.weightKg
+    }
 }
 
 /// Undo/redo for one editing session. Keeps profiles, not diffs, so a restore is exact.

@@ -192,8 +192,10 @@ final class AcceptanceDemoUITests: XCTestCase {
         for _ in 0..<10 where !delete.isHittable { app.swipeUp() }
         delete.tap()
         app.buttons["Vücut profilini ve çizimini sil"].firstMatch.tap()
+        // Back to the start form; its button sits below the gender, height and weight fields.
         let create = app.buttons["createNeutralBody"]
-        for _ in 0..<10 where !create.exists { app.swipeDown() }
+        for _ in 0..<10 where !app.segmentedControls["startGender"].exists { app.swipeDown() }
+        for _ in 0..<4 where !(create.exists && create.isHittable) { app.swipeUp() }
         XCTAssertTrue(create.waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["bodyDeletionReceipt"].exists)
         attach(app, "11-body-deleted")
@@ -256,7 +258,7 @@ final class AcceptanceDemoUITests: XCTestCase {
 
         let model = app.descendants(matching: .any)["body3D"]
         XCTAssertTrue(model.waitForExistence(timeout: 5))
-        XCTAssertEqual(app.staticTexts["bodyFidelityLabel"].label, "Nötr 3B model. Görünüm, beden uyumunun kanıtı değildir.")
+        XCTAssertEqual(app.staticTexts["bodyFidelityLabel"].label, "3B model (nötr). Görünüm, beden uyumunun kanıtı değildir.")
         XCTAssertTrue((model.value as? String)?.hasPrefix("Önden") == true)
         sleep(2)
         XCTAssertTrue((model.value as? String)?.hasPrefix("Önden") == true, "the idle sway never turns it away from the front")

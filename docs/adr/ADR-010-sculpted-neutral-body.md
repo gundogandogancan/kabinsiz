@@ -2,6 +2,7 @@
 
 - Durum: KABUL · 2026-11-04 · kullanıcı kararı (2026-11-04 sohbet: "model kötü duruyor", seçenek "NAVER Anny") · ADR-007 §2'yi günceller · v1.5 §108.3, v1.7 §3.2, docs/research/VTON_LANDSCAPE_2026-11.md §3.4 / Katman A1
 - İnsan onayı: dış kaynak (Anny) indirme ve lisans incelemesi kullanıcı tarafından onaylandı (2026-11-04).
+- **Güncelleme 2026-11-05 (ADR-011):** §3'teki "tek fenotip" artık varsayılan nötr şablondur. Kişi isteğe bağlı olarak Kadın ya da Erkek şablonunu seçebilir; isteğe bağlı kilo yalnız çizimi şekillendirir. Kaynak dosyalar `SculptedBody-{neutral,female,male}.*` adını aldı; biçim 3'te `.bin` sıkıştırılmıştır (≈ 0,5 MB). Kilo tahmini Anny'den değil ANSUR II'den gelir.
 
 ## Karar
 

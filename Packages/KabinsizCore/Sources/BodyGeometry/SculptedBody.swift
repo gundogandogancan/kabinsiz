@@ -1,16 +1,16 @@
 import CryptoKit
 import Foundation
 
-/// The sculpted neutral body (ADR-010): a MakeHuman-derived human form from NAVER Anny (Apache-2.0
-/// code, CC0 assets), baked offline by `scripts/avatar/bake_sculpted_body.py` into one neutral mesh
-/// plus a handful of shape bases. On the phone nothing is downloaded and no model runs: the four
+/// The sculpted body (ADR-010, ADR-011): a MakeHuman-derived human form from NAVER Anny (Apache-2.0
+/// code, CC0 assets), baked offline by `scripts/avatar/bake_sculpted_body.py` into one mesh per body
+/// template (neutral, female, male) plus a handful of shape bases. On the phone nothing is downloaded and no model runs: the four
 /// girths from the `AvatarSnapshot` are matched by mixing the bases (a tiny box-constrained least
 /// squares), a smooth radial correction closes the last centimetres, and the result is scaled to the
 /// height. Faceless egg head, arms down, no anatomical detail (v1.5 §108.3); appearance is never fit
 /// evidence (v1.7 §3.2). If the resource is missing or damaged, `BodyMesh.best` falls back to the
 /// procedural body (ADR-007), so the 3D tier never depends on this file.
 public struct SculptedBodyBasis: Sendable {
-    public static let formatVersion = 1
+    public static let formatVersion = 3
 
     public let vertexCount: Int
     public let triangleCount: Int
@@ -23,6 +23,7 @@ public struct SculptedBodyBasis: Sendable {
 
     struct Metadata: Decodable, Sendable {
         let formatVersion: Int
+        let template: String
         let vertexCount: Int
         let triangleCount: Int
         let bases: [String]
@@ -34,35 +35,60 @@ public struct SculptedBodyBasis: Sendable {
         let shoulderPair: [Int]
         let tapes: [String: [[Double]]]
         let tapeHeightFractions: [String: Double]
+        /// The `.bin` file is raw DEFLATE; `binarySHA256` is of the file as shipped (compressed).
+        let compression: String
+        let rawByteCount: Int
         let binarySHA256: String
     }
 
-    /// The bundled basis, loaded once. nil if the resource is missing or fails any check.
-    public static let shared: SculptedBodyBasis? = {
-        guard let (json, binary) = bundledData() else { return nil }
-        return try? SculptedBodyBasis(json: json, binary: binary)
-    }()
+    /// The bundled basis for a template, loaded once. nil if the resource is missing or fails any check.
+    public static func shared(_ template: BodyTemplate) -> SculptedBodyBasis? {
+        switch template {
+        case .neutral: neutral
+        case .female: female
+        case .male: male
+        }
+    }
 
-    static func bundledData() -> (json: Data, binary: Data)? {
-        guard let json = Bundle.module.url(forResource: "SculptedBody", withExtension: "json"),
-              let bin = Bundle.module.url(forResource: "SculptedBody", withExtension: "bin"),
+    private static let neutral = load(.neutral)
+    private static let female = load(.female)
+    private static let male = load(.male)
+
+    private static func load(_ template: BodyTemplate) -> SculptedBodyBasis? {
+        guard let (json, binary) = bundledData(template) else { return nil }
+        return try? SculptedBodyBasis(json: json, binary: binary, template: template)
+    }
+
+    static func resourceName(_ template: BodyTemplate) -> String { "SculptedBody-\(template.rawValue.lowercased())" }
+
+    static func bundledData(_ template: BodyTemplate) -> (json: Data, binary: Data)? {
+        let name = resourceName(template)
+        guard let json = Bundle.module.url(forResource: name, withExtension: "json"),
+              let bin = Bundle.module.url(forResource: name, withExtension: "bin"),
               let j = try? Data(contentsOf: json), let b = try? Data(contentsOf: bin) else { return nil }
         return (j, b)
     }
 
-    /// Fails closed on anything unexpected: version, checksum, sizes, index range, finite values.
-    public init(json: Data, binary: Data) throws(BodyEditError) {
+    /// Fails closed on anything unexpected: version, template, checksum, inflated size, sizes, index
+    /// range, finite values. The checksum is checked before anything is inflated.
+    public init(json: Data, binary packed: Data, template: BodyTemplate) throws(BodyEditError) {
         guard let meta = try? JSONDecoder().decode(Metadata.self, from: json) else { throw .unsafeGeometry("basis-meta") }
         guard meta.formatVersion == Self.formatVersion else { throw .unsafeGeometry("basis-version") }
-        let digest = SHA256.hash(data: binary).map { String(format: "%02x", $0) }.joined()
+        // A female file under the male name (or any mix-up) is refused, never drawn as the wrong body.
+        guard meta.template == template.rawValue.lowercased() else { throw .unsafeGeometry("basis-template") }
+        let digest = SHA256.hash(data: packed).map { String(format: "%02x", $0) }.joined()
         guard digest == meta.binarySHA256 else { throw .unsafeGeometry("basis-checksum") }
         let n = meta.vertexCount, t = meta.triangleCount, k = meta.bases.count
+        let expected = n * 12 + t * 6 + k * n * 6 + n
+        guard meta.compression == "deflate-raw", meta.rawByteCount == expected,
+              let binary = try? (packed as NSData).decompressed(using: .zlib) as Data,
+              binary.count == expected else { throw .unsafeGeometry("basis-inflate") }
         guard n > 0, n <= Int(UInt16.max), t > 0, k > 0, meta.deltaScales.count == k,
               meta.baseMeasuresCm.count == 4, meta.measures.count == 4,
               meta.jacobianCm.count == 4, meta.jacobianCm.allSatisfy({ $0.count == k }),
               meta.shoulderPair.count == 2, meta.shoulderPair.allSatisfy({ (0..<n).contains($0) }),
               meta.baseHeightM > 0.5, meta.baseHeightM < 3,
-              binary.count == n * 12 + t * 6 + k * n * 6 + n else { throw .unsafeGeometry("basis-size") }
+              binary.count == expected else { throw .unsafeGeometry("basis-size") }
         for name in SculptedBody.tapeNames {
             guard let tape = meta.tapes[name], tape.count >= 8, meta.tapeHeightFractions[name] != nil,
                   tape.allSatisfy({ $0.count == 3 && (0..<n).contains(Int($0[0])) && (0..<n).contains(Int($0[1])) && (0...1).contains($0[2]) })
@@ -278,9 +304,14 @@ public enum SculptedBody {
 }
 
 extension BodyMesh {
-    /// The sculpted body for a snapshot (ADR-010), as one closed piece. Throws if the basis is missing
-    /// or the result fails the same structural checks as the procedural body.
-    public static func sculpted(from snapshot: AvatarSnapshot, basis: SculptedBodyBasis? = .shared) throws(BodyEditError) -> BodyMesh {
+    /// The sculpted body for a snapshot (ADR-010), drawn with the snapshot's template (ADR-011).
+    public static func sculpted(from snapshot: AvatarSnapshot) throws(BodyEditError) -> BodyMesh {
+        try sculpted(from: snapshot, basis: SculptedBodyBasis.shared(snapshot.template))
+    }
+
+    /// The sculpted body for a snapshot as one closed piece. Throws if the basis is missing or the
+    /// result fails the same structural checks as the procedural body.
+    public static func sculpted(from snapshot: AvatarSnapshot, basis: SculptedBodyBasis?) throws(BodyEditError) -> BodyMesh {
         guard let basis else { throw .unsafeGeometry("basis-missing") }
         let shape = snapshot.silhouette
         try shape.validate()
@@ -297,10 +328,12 @@ extension BodyMesh {
         return mesh
     }
 
-    /// What the 3D tier draws: the sculpted body, or the procedural one if that is unavailable (G0
-    /// fallback order, ADR-007 §5 / ADR-010). nil only if neither can be built.
+    /// What the 3D tier draws: the sculpted body with the chosen template, the neutral sculpted body if
+    /// that template's file is unusable, then the procedural one (G0 fallback order, ADR-007 §5 /
+    /// ADR-010 / ADR-011). nil only if none can be built.
     public static func best(from snapshot: AvatarSnapshot) -> BodyMesh? {
         if let mesh = try? sculpted(from: snapshot) { return mesh }
+        if snapshot.template != .neutral, let mesh = try? sculpted(from: snapshot, basis: SculptedBodyBasis.shared(.neutral)) { return mesh }
         return try? make(from: snapshot)
     }
 }

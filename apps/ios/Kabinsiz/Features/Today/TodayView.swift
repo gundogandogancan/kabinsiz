@@ -40,10 +40,8 @@ struct TodayView: View {
     /// The one primary action: make the stand-in theirs, or go and shape the body they already have.
     private var heroAction: PrimaryAction {
         if model.heroIsStandIn {
-            PrimaryAction(title: "Modelimi oluştur", systemImage: "person.crop.circle.badge.plus", id: "createModel") {
-                Task { await model.createNeutralBody(unit: .centimeters) }
-                onOpenMe()
-            }
+            // Opens the start form (gender, height, weight; all optional) instead of saving a neutral body.
+            PrimaryAction(title: "Modelimi oluştur", systemImage: "person.crop.circle.badge.plus", id: "createModel", action: onOpenMe)
         } else {
             PrimaryAction(title: "Modelimi düzenle", systemImage: "slider.horizontal.3", id: "editModel", action: onOpenMe)
         }
@@ -148,7 +146,7 @@ struct ModelHero: View {
                     .font(AtelierType.sectionTitle).foregroundStyle(Atelier.ink).atelierWrapping()
                     .accessibilityAddTraits(.isHeader)
                 Text(standIn
-                     ? "Ölçü ya da fotoğraf gerekmez. Kaydırıcılarla kendine benzet; her şey bu telefonda kalır."
+                     ? "Ölçü ya da fotoğraf gerekmez. Cinsiyet, boy ve kiloyla kendine benzet; hepsi isteğe bağlı ve bu telefonda kalır."
                      : "Parmağınla çevir, iki parmakla yaklaş. Ölçülerini Ben sekmesinde ayarlarsın.")
                     .font(AtelierType.secondary).foregroundStyle(Atelier.inkSecondary).atelierWrapping()
                 Label(fidelityLabel, systemImage: "info.circle")
@@ -172,7 +170,7 @@ struct ModelHero: View {
         if model.heroMesh == nil { return "Basit siluet. Görünüm, beden uyumunun kanıtı değildir." }
         return standIn
             ? "Nötr başlangıç şekli, senin ölçülerin değil. Görünüm, beden uyumunun kanıtı değildir."
-            : "Nötr 3B model. Görünüm, beden uyumunun kanıtı değildir."
+            : "3B model (\((model.body?.template ?? .neutral).displayName.lowercased())). Görünüm, beden uyumunun kanıtı değildir."
     }
 
     private var summary: String {

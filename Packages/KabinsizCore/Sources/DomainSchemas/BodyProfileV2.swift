@@ -97,9 +97,13 @@ public struct BodyProfileV2: VersionedContract, Hashable {
         }
     }
 
-    /// The drawn body. Shapes for the picture only; `source` says whether a value is still the neutral start.
+    /// The drawn body. Shapes for the picture only; `source` says whether a value is still the neutral start
+    /// or the app's estimate from height and weight. The body template and the weight live here too
+    /// (ADR-011): both shape only the picture and are never read as measurements or for size advice.
     public struct MorphState: Codable, Hashable, Sendable {
-        public enum Source: String, Codable, CaseIterable, Sendable { case neutralStart = "NEUTRAL_START", sliderShaped = "SLIDER_SHAPED" }
+        public enum Source: String, Codable, CaseIterable, Sendable {
+            case neutralStart = "NEUTRAL_START", sliderShaped = "SLIDER_SHAPED", weightEstimate = "WEIGHT_ESTIMATE"
+        }
         public struct Value: Codable, Hashable, Sendable {
             public var region: Region
             public var cm: Double
@@ -112,11 +116,16 @@ public struct BodyProfileV2: VersionedContract, Hashable {
         }
         public var values: [Value]
         public var preferredUnit: LengthUnit
-        public init(values: [Value], preferredUnit: LengthUnit) {
+        /// nil = neutral (records written before ADR-011).
+        public var template: BodyTemplate?
+        public var weightKg: Double?
+        public init(values: [Value], preferredUnit: LengthUnit, template: BodyTemplate? = nil, weightKg: Double? = nil) {
             self.values = values
             self.preferredUnit = preferredUnit
+            self.template = template
+            self.weightKg = weightKg
         }
-        enum CodingKeys: String, CodingKey { case values, preferredUnit = "preferred_unit" }
+        enum CodingKeys: String, CodingKey { case values, preferredUnit = "preferred_unit", template, weightKg = "weight_kg" }
     }
 
     public enum Approval: String, Codable, CaseIterable, Sendable {
@@ -165,6 +174,7 @@ public struct BodyProfileV2: VersionedContract, Hashable {
         }
         try require(allUnique(avatarMorphState.values.map(\.region)))
         try require(avatarMorphState.values.allSatisfy { $0.cm.isFinite(in: $0.region.entryRangeCm) })
+        if let kg = avatarMorphState.weightKg { try require(kg.isFinite(in: BodyProfile.weightRangeKg)) }
     }
 
     /// Measurements size advice may use: approved, and never a photo estimate.
@@ -197,11 +207,14 @@ public enum BodyProfileMigration {
                 morph.append(.init(region: region, cm: v.length.centimeters, source: .sliderShaped))
             case .neutralStart:
                 morph.append(.init(region: region, cm: v.length.centimeters, source: .neutralStart))
+            case .weightEstimate:
+                morph.append(.init(region: region, cm: v.length.centimeters, source: .weightEstimate))
             }
         }
         let v2 = BodyProfileV2(
             profileRevision: v1.revision, measurements: measurements,
-            avatarMorphState: .init(values: morph, preferredUnit: v1.preferredUnit),
+            avatarMorphState: .init(values: morph, preferredUnit: v1.preferredUnit,
+                                    template: v1.template == .neutral ? nil : v1.template, weightKg: v1.weightKg),
             userApproval: measurements.isEmpty ? .notAsked : .approved
         )
         try v2.validate()
@@ -219,12 +232,19 @@ public enum BodyProfileMigration {
             if let m = v2.measurements.first(where: { $0.region == region }) {
                 values[p] = BodyValue(BodyLength(m.cm, .centimeters), source: m.origin.mayInformSizeAdvice ? .userMeasured : .sliderShaped)
             } else if let shape = v2.avatarMorphState.values.first(where: { $0.region == region }) {
-                values[p] = BodyValue(BodyLength(shape.cm, .centimeters), source: shape.source == .neutralStart ? .neutralStart : .sliderShaped)
+                let source: ValueSource = switch shape.source {
+                case .neutralStart: .neutralStart
+                case .sliderShaped: .sliderShaped
+                case .weightEstimate: .weightEstimate
+                }
+                values[p] = BodyValue(BodyLength(shape.cm, .centimeters), source: source)
             } else {
                 values[p] = BodyValue(BodyLength(p.neutralStartCm, .centimeters), source: .neutralStart)
             }
         }
-        let v1 = BodyProfile(revision: v2.profileRevision, values: values, preferredUnit: v2.avatarMorphState.preferredUnit)
+        let morph = v2.avatarMorphState
+        let v1 = BodyProfile(revision: v2.profileRevision, values: values, preferredUnit: morph.preferredUnit,
+                             template: morph.template ?? .neutral, weightKg: morph.weightKg)
         do { try v1.validate() } catch { throw .schemaInvalid }
         return v1
     }
@@ -234,7 +254,9 @@ public enum BodyProfileMigration {
     public static func read(_ data: Data, now: Date) throws(FaultCode) -> BodyProfileV2 {
         guard let top = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else { throw .schemaInvalid }
         if top["schema_version"] != nil { return try ContractCoder.decode(BodyProfileV2.self, from: data) }
-        guard Set(top.keys) == ["revision", "values", "preferredUnit"],
+        let keys = Set(top.keys)
+        guard keys.isSuperset(of: ["revision", "values", "preferredUnit"]),
+              keys.isSubset(of: ["revision", "values", "preferredUnit", "template", "weightKg"]),
               let v1 = try? JSONDecoder().decode(BodyProfile.self, from: data)
         else { throw .schemaInvalid }
         return try upgrade(v1, at: now)
