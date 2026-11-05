@@ -99,7 +99,11 @@ public struct BodyProfileV2: VersionedContract, Hashable {
 
     /// The drawn body. Shapes for the picture only; `source` says whether a value is still the neutral start.
     public struct MorphState: Codable, Hashable, Sendable {
-        public enum Source: String, Codable, CaseIterable, Sendable { case neutralStart = "NEUTRAL_START", sliderShaped = "SLIDER_SHAPED" }
+        public enum Source: String, Codable, CaseIterable, Sendable {
+            case neutralStart = "NEUTRAL_START", sliderShaped = "SLIDER_SHAPED"
+            /// V37-01: estimated from the user's photo; a shape, never a measurement.
+            case photoEstimated = "PHOTO_ESTIMATED"
+        }
         public struct Value: Codable, Hashable, Sendable {
             public var region: Region
             public var cm: Double
@@ -197,6 +201,8 @@ public enum BodyProfileMigration {
                 morph.append(.init(region: region, cm: v.length.centimeters, source: .sliderShaped))
             case .neutralStart:
                 morph.append(.init(region: region, cm: v.length.centimeters, source: .neutralStart))
+            case .photoEstimated:
+                morph.append(.init(region: region, cm: v.length.centimeters, source: .photoEstimated))
             }
         }
         let v2 = BodyProfileV2(
@@ -219,7 +225,7 @@ public enum BodyProfileMigration {
             if let m = v2.measurements.first(where: { $0.region == region }) {
                 values[p] = BodyValue(BodyLength(m.cm, .centimeters), source: m.origin.mayInformSizeAdvice ? .userMeasured : .sliderShaped)
             } else if let shape = v2.avatarMorphState.values.first(where: { $0.region == region }) {
-                values[p] = BodyValue(BodyLength(shape.cm, .centimeters), source: shape.source == .neutralStart ? .neutralStart : .sliderShaped)
+                values[p] = BodyValue(BodyLength(shape.cm, .centimeters), source: shape.source == .neutralStart ? .neutralStart : shape.source == .photoEstimated ? .photoEstimated : .sliderShaped)
             } else {
                 values[p] = BodyValue(BodyLength(p.neutralStartCm, .centimeters), source: .neutralStart)
             }

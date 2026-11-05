@@ -24,6 +24,9 @@ let package = Package(
         .library(name: "MorningReady", targets: ["MorningReady"]),
         .library(name: "ProductCapture", targets: ["ProductCapture"]),
         .library(name: "WardrobeInsights", targets: ["WardrobeInsights"]),
+        .library(name: "GarmentPattern", targets: ["GarmentPattern"]),
+        .library(name: "SelfModel", targets: ["SelfModel"]),
+        .executable(name: "kabinsiz-mcp", targets: ["KabinsizMCP"]),
     ],
     targets: [
         .target(name: "DomainContracts"),
@@ -58,6 +61,17 @@ let package = Package(
         .target(name: "ProductCapture", dependencies: ["ShoppingCopilot", "DomainContracts"]),
         // V36 (rival recon, ADR-017): wear log, cost per wear, closet gaps, day needs from weather and calendar. Local only.
         .target(name: "WardrobeInsights", dependencies: ["DomainContracts", "WardrobeDomain", "TravelEngine", "LivingWorld"]),
+        // V37 (docs/audit/V37_SELF_MODEL_PROGRAM.md): sewing-pattern blocks from body or garment measurements,
+        // sewn into a 3D garment mesh whose front panel carries the photo's own pixels. No network.
+        .target(name: "GarmentPattern", dependencies: ["BodyGeometry", "DomainContracts"]),
+        // V37: the user's chosen photo → appearance (no identity), body proportion estimates, worn garments,
+        // written brand marks; run as one Octopus task graph. On device, no network.
+        .target(name: "SelfModel", dependencies: ["ProductCapture", "BodyGeometry", "DomainContracts", "SystemContracts", "Octopus", "GarmentPattern"]),
+        // V37-07: local stdio MCP server exposing the analyzers to development agents. Mac only, no network.
+        .executableTarget(name: "KabinsizMCP", dependencies: ["ProductCapture", "GarmentPattern", "SelfModel", "BodyGeometry", "DomainContracts"]),
+        .testTarget(name: "SelfModelTests", dependencies: ["SelfModel", "ProductCapture", "BodyGeometry", "DomainContracts", "SystemContracts", "Octopus", "GarmentPattern"],
+                    resources: [.copy("Fixtures")]),
+        .testTarget(name: "GarmentPatternTests", dependencies: ["GarmentPattern", "BodyGeometry", "DomainContracts"]),
         .testTarget(name: "WardrobeInsightsTests", dependencies: ["WardrobeInsights", "DomainContracts", "WardrobeDomain", "TravelEngine", "LivingWorld"]),
         .testTarget(name: "ProductCaptureTests", dependencies: ["ProductCapture", "ShoppingCopilot", "DomainContracts"]),
         .testTarget(

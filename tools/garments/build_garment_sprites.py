@@ -57,6 +57,9 @@ def args():
     p.add_argument("--samples", type=int, default=48)
     p.add_argument("--forms", default=",".join(FORMS))
     p.add_argument("--mannequin")
+    p.add_argument("--variant", default="{}",
+                   help="JSON: skin, hair, top, bottom, shoe (sRGB 0-1), sleeve short|long, lower trousers|shorts, "
+                        "hairLong bool, wordmark text (fictional brand only)")
     return p.parse_args(argv)
 
 
@@ -645,13 +648,21 @@ def build_form(form, out, samples):
 
 # ---------------------------------------------------------------- mannequin (simulator fixture)
 
-def build_mannequin(path):
-    """A plain human figure (no face, no identity) for the Simulator mirror fixture only."""
+def build_mannequin(path, variant=None):
+    """A plain human figure (no face, no identity) for the Simulator mirror fixture and the V37 self-model
+    fixtures. `variant` changes skin, hair, clothes and an optional fictional wordmark on the chest; every
+    value is ours, so the render stays OWNED_ORIGINAL with known ground truth."""
+    v = variant or {}
     scene = reset()
     scene.cycles.samples = 64
-    skin = fixed_material("skin", (0.62, 0.47, 0.38), rough=0.6)
-    cloth = fixed_material("base", (0.34, 0.35, 0.37), rough=0.85)
-    hair = fixed_material("hair", (0.08, 0.06, 0.05), rough=0.7)
+    skin = fixed_material("skin", tuple(v.get("skin", (0.62, 0.47, 0.38))), rough=0.6)
+    cloth = fixed_material("base", tuple(v.get("top", (0.34, 0.35, 0.37))), rough=0.85)
+    lower = fixed_material("lower", tuple(v.get("bottom", v.get("top", (0.34, 0.35, 0.37)))), rough=0.85)
+    hair = fixed_material("hair", tuple(v.get("hair", (0.08, 0.06, 0.05))), rough=0.7)
+    shoe = fixed_material("shoe", tuple(v.get("shoe", v.get("hair", (0.08, 0.06, 0.05)))), rough=0.6)
+    eye = fixed_material("eye", (0.05, 0.04, 0.04), rough=0.5)
+    long_sleeve = v.get("sleeve", "short") == "long"
+    shorts = v.get("lower", "trousers") == "shorts"
 
     def capsule(a, b, r0, r1, mat, name):
         a, b = Vector(a), Vector(b)
@@ -697,10 +708,15 @@ def build_mannequin(path):
     hr = bpy.context.active_object
     hr.scale = (0.9, 0.98, 0.95)
     hr.data.materials.append(hair)
+    if v.get("hairLong"):
+        bpy.ops.mesh.primitive_uv_sphere_add(radius=0.1, location=(0, 0.045, 1.56))
+        back = bpy.context.active_object
+        back.scale = (1.0, 0.55, 1.55)
+        back.data.materials.append(hair)
     # Simple eyes and nose shading so a face reads as a face (no identity).
     for side in (-1, 1):
         bpy.ops.mesh.primitive_uv_sphere_add(radius=0.011, location=(side * 0.035, -0.088, 1.655))
-        bpy.context.active_object.data.materials.append(hair)
+        bpy.context.active_object.data.materials.append(eye)
     capsule((0, -0.095, 1.645), (0, -0.104, 1.62), 0.012, 0.014, skin, "nose")
     # Arms slightly away from the body, legs apart.
     for side in (-1, 1):
@@ -708,7 +724,7 @@ def build_mannequin(path):
         el = (side * (sx + 0.06), 0, sz - UPPER_ARM)
         wr = (side * (sx + 0.10), -0.02, sz - UPPER_ARM - FOREARM)
         capsule(sh, el, 0.052, 0.043, cloth, f"upperarm{side}")
-        capsule(el, wr, 0.040, 0.032, skin, f"forearm{side}")
+        capsule(el, wr, 0.040, 0.032, cloth if long_sleeve else skin, f"forearm{side}")
         bpy.ops.mesh.primitive_uv_sphere_add(radius=0.045, location=(wr[0] + side * 0.01, -0.02, wr[2] - 0.06))
         hand = bpy.context.active_object
         hand.scale = (0.6, 0.35, 1.0)
@@ -716,12 +732,20 @@ def build_mannequin(path):
         hp = (side * hx, 0, hz)
         kn = (side * (hx + 0.015), 0, hz - THIGH)
         an = (side * (hx + 0.03), 0, hz - THIGH - SHIN)
-        capsule(hp, kn, 0.085, 0.058, cloth, f"thigh{side}")
-        capsule(kn, an, 0.055, 0.040, cloth, f"shin{side}")
+        capsule(hp, kn, 0.085, 0.058, lower, f"thigh{side}")
+        capsule(kn, an, 0.055, 0.040, skin if shorts else lower, f"shin{side}")
         bpy.ops.mesh.primitive_cube_add(size=1, location=(an[0], -0.05, 0.04))
         foot = bpy.context.active_object
         foot.scale = (0.09, 0.24, 0.07)
-        foot.data.materials.append(hair)
+        foot.data.materials.append(shoe)
+    if v.get("wordmark"):
+        bpy.ops.object.text_add(location=(0, -0.2, 1.30), rotation=(math.radians(90), 0, 0))
+        txt = bpy.context.active_object
+        txt.data.body = v["wordmark"]
+        txt.data.align_x = "CENTER"
+        txt.data.size = 0.05
+        txt.data.extrude = 0.002
+        txt.data.materials.append(fixed_material("mark", tuple(v.get("markColour", (0.96, 0.96, 0.95))), rough=0.5))
     # Room: a soft wall and floor behind the person, like a mirror at home.
     bpy.ops.mesh.primitive_plane_add(size=8, location=(0, 1.2, 1.5), rotation=(math.radians(90), 0, 0))
     bpy.context.active_object.data.materials.append(fixed_material("wall", (0.78, 0.74, 0.68), rough=0.9))
@@ -747,7 +771,7 @@ def build_mannequin(path):
 def main():
     a = args()
     if a.mannequin:
-        build_mannequin(a.mannequin)
+        build_mannequin(a.mannequin, json.loads(a.variant))
         return
     os.makedirs(a.out, exist_ok=True)
     specs = {}

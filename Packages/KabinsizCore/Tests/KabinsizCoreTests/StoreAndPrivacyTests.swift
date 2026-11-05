@@ -97,6 +97,7 @@ struct StoreAndPrivacyTests {
                          "EgressRoute(", "routes:", "UIApplication.shared.open"]
         // Egress register: full repo-relative paths, so a same-named file elsewhere gets no exemption.
         let weatherFile = "apps/ios/Kabinsiz/Services/AppleWeatherProvider.swift"
+        let feedTransportFile = "Packages/KabinsizCore/Sources/ShoppingCopilot/PartnerFeedTransport.swift"
         let allowed: [String: Set<String>] = [
             weatherFile: ["import WeatherKit", "WeatherService", "AsyncImage"],
             "Packages/KabinsizCore/Sources/SystemContracts/CitadelGate.swift": ["EgressRoute(", "routes:"],
@@ -109,6 +110,8 @@ struct StoreAndPrivacyTests {
             // SCAN-T022 / V32-WEB-02: the user's own Safari search for a product code they tapped; the URL
             // comes only from `BrandSourceGate.userSearchURL` (code only) and Kabinsiz reads nothing back.
             "apps/ios/Kabinsiz/Features/TryOn/ProductDetailView.swift": ["openURL"],
+            // V37-06: GET of a signed partner feed, cookie-less, no body; settings pinned below.
+            feedTransportFile: ["URLSession", "URLRequest"],
         ]
         for file in files {
             let relative = String(file.standardizedFileURL.path.dropFirst(repo.standardizedFileURL.path.count + 1))
@@ -156,6 +159,18 @@ struct StoreAndPrivacyTests {
                     // Between `gate.send(` and the call, the closure is still open: more `{` than `}`.
                     let span = before[sendStart.upperBound...]
                     #expect(span.filter { $0 == "{" }.count > span.filter { $0 == "}" }.count, "\(relative): WeatherKit call outside the transport closure")
+                }
+            }
+            // V37-06: the feed transport stays ephemeral, cookie-less, body-less, GET-only and redirect-refusing.
+            if relative == feedTransportFile {
+                for required in [".ephemeral", "httpCookieStorage=nil", "httpShouldSetCookies=false", "httpCookieAcceptPolicy=.never",
+                                 "urlCredentialStorage=nil", "urlCache=nil", "request.httpMethod=\"GET\"", "httpShouldHandleCookies=false",
+                                 "completionHandler(nil)", "\"User-Agent\":"] {
+                    #expect(compact.contains(required), "\(relative) must keep \(required)")
+                }
+                for leak in ["httpBody", "httpBodyStream", ".default", "uploadTask", "upload(", "setValue(", "addValue(", "URLComponents",
+                             "UserDefaults", "FileManager", "Logger", "print("] {
+                    #expect(!compact.contains(leak), "\(relative) must not use \(leak)")
                 }
             }
             // Only the user-tap handler builds the live provider (D-009).

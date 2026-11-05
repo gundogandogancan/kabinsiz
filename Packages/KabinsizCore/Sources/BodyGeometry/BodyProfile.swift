@@ -131,12 +131,16 @@ public enum ValueSource: String, Codable, Sendable {
     case neutralStart = "NEUTRAL_START"
     case sliderShaped = "SLIDER_SHAPED"
     case userMeasured = "USER_MEASURED"
+    /// V37-01: read from the user's own photo with their typed height as the scale. Shapes the picture like
+    /// a slider; never feeds size advice.
+    case photoEstimated = "PHOTO_ESTIMATED"
 
     public var label: String {
         switch self {
         case .neutralStart: "Başlangıç (ölçü değil)"
         case .sliderShaped: "Kaydırıcıyla şekillendirildi (ölçü değil)"
         case .userMeasured: "Senin girdiğin ölçü"
+        case .photoEstimated: "Fotoğraftan tahmin (ölçü değil)"
         }
     }
 }
