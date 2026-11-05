@@ -28,9 +28,8 @@ public enum ProductLabelReader {
 
     /// Runs barcode detection and text recognition off the main actor.
     public static func read(_ image: CGImage, orientation: CGImagePropertyOrientation = .up) async throws -> ProductLabelReading {
-        try await Task.detached(priority: .userInitiated) {
-            try readNow(image, orientation: orientation)
-        }.value
+        // Off the cooperative pool: see `VisionLane`.
+        try await VisionLane.run { try readNow(image, orientation: orientation) }
     }
 
     /// Barcodes and text are read separately so one failing detector does not lose the other. Vision may
@@ -53,7 +52,7 @@ public enum ProductLabelReader {
                                    unreadParts: (codes == nil ? [.barcodes] : []) + (lines == nil ? [.text] : []))
     }
 
-    static func withCPUFallback<T>(_ body: (Bool) throws -> T) throws -> T {
+    package static func withCPUFallback<T>(_ body: (Bool) throws -> T) throws -> T {
         do { return try body(false) } catch { return try body(true) }
     }
 
@@ -81,7 +80,7 @@ public enum ProductLabelReader {
         let supported = Set((try? request.supportedSymbologies()) ?? symbologies)
         request.symbologies = symbologies.filter(supported.contains)
         if cpuOnly { forceCPU(request) }
-        try VNImageRequestHandler(cgImage: image, orientation: orientation, options: [:]).perform([request])
+        try VisionSerial.run { try VNImageRequestHandler(cgImage: image, orientation: orientation, options: [:]).perform([request]) }
         return (request.results ?? [])
             .sorted { $0.confidence > $1.confidence }
             .compactMap { obs -> ProductLabelReading.Barcode? in
@@ -98,7 +97,7 @@ public enum ProductLabelReader {
         request.recognitionLanguages = ["en-US", "tr-TR"]
         request.minimumTextHeight = 0.015
         if cpuOnly { forceCPU(request) }
-        try VNImageRequestHandler(cgImage: image, orientation: orientation, options: [:]).perform([request])
+        try VisionSerial.run { try VNImageRequestHandler(cgImage: image, orientation: orientation, options: [:]).perform([request]) }
         // Top to bottom, then left to right, so the result does not depend on Vision's internal order.
         return (request.results ?? [])
             .sorted { a, b in
@@ -107,7 +106,7 @@ public enum ProductLabelReader {
             .compactMap { $0.topCandidates(1).first?.string }
     }
 
-    static func forceCPU(_ request: VNRequest) {
+    package static func forceCPU(_ request: VNRequest) {
         guard let stages = try? request.supportedComputeStageDevices else { return }
         for (stage, devices) in stages {
             if let cpu = devices.first(where: { if case .cpu = $0 { true } else { false } }) {

@@ -85,12 +85,12 @@ public enum GarmentPhotoAnalyzer {
 
     // MARK: Masks
 
-    static func visionMask(_ image: CGImage, width: Int, height: Int) throws -> [Float]? {
+    package static func visionMask(_ image: CGImage, width: Int, height: Int) throws -> [Float]? {
         let request = VNGenerateForegroundInstanceMaskRequest()
         let handler = VNImageRequestHandler(cgImage: image, options: [:])
         try ProductLabelReader.withCPUFallback { cpu in
             if cpu { ProductLabelReader.forceCPU(request) }
-            try handler.perform([request])
+            try VisionSerial.run { try handler.perform([request]) }
         }
         guard let obs = request.results?.first, !obs.allInstances.isEmpty else { return nil }
         let buffer = try obs.generateScaledMaskForImage(forInstances: obs.allInstances, from: handler)
@@ -109,7 +109,7 @@ public enum GarmentPhotoAnalyzer {
 
     /// One plain background (studio sweep, bed sheet, floor): estimate it from the border and keep what
     /// differs. Refuses busy borders, where this rule would cut the garment wrongly.
-    static func plainBackgroundMask(_ img: RGBABuffer, threshold: Double = 0.12) -> [Float]? {
+    package static func plainBackgroundMask(_ img: RGBABuffer, threshold: Double = 0.12) -> [Float]? {
         let w = img.width, h = img.height
         var border: [SIMD3<Double>] = []
         let step = max(1, (w + h) / 400)
@@ -127,11 +127,11 @@ public enum GarmentPhotoAnalyzer {
         return mask
     }
 
-    static func coverage(of mask: [Float]) -> Double {
+    package static func coverage(of mask: [Float]) -> Double {
         mask.isEmpty ? 0 : Double(mask.reduce(0, +)) / Double(mask.count)
     }
 
-    static func bounds(of mask: [Float], width: Int) -> CGRect {
+    package static func bounds(of mask: [Float], width: Int) -> CGRect {
         var minX = Int.max, minY = Int.max, maxX = -1, maxY = -1
         for (i, v) in mask.enumerated() where v > 0.5 {
             let x = i % width, y = i / width
@@ -145,7 +145,7 @@ public enum GarmentPhotoAnalyzer {
 
     /// The biggest of three k-means clusters over the garment pixels (deterministic seeds), so a print,
     /// a shadow fold or a white button does not decide the colour.
-    static func dominantColour(_ img: RGBABuffer, mask: [Float]) -> SIMD3<Double> {
+    package static func dominantColour(_ img: RGBABuffer, mask: [Float]) -> SIMD3<Double> {
         var pixels: [SIMD3<Double>] = []
         let stride = max(1, Int((Double(img.width * img.height) / 40000).squareRoot()))
         for y in Swift.stride(from: 0, to: img.height, by: stride) {
@@ -182,6 +182,7 @@ public enum GarmentPhotoAnalyzer {
         ("kırmızı", SIMD3(0.80, 0.12, 0.14), false), ("bordo", SIMD3(0.48, 0.10, 0.16), false),
         ("pembe", SIMD3(0.95, 0.62, 0.72), false), ("turuncu", SIMD3(0.95, 0.50, 0.15), false),
         ("sarı", SIMD3(0.97, 0.85, 0.25), false), ("yeşil", SIMD3(0.20, 0.55, 0.30), false),
+        ("açık yeşil", SIMD3(0.60, 0.80, 0.62), false),
         ("zeytin yeşili", SIMD3(0.36, 0.38, 0.18), false), ("mor", SIMD3(0.45, 0.25, 0.58), false),
     ]
 
@@ -213,7 +214,7 @@ public enum GarmentPhotoAnalyzer {
         let request = VNClassifyImageRequest()
         try ProductLabelReader.withCPUFallback { cpu in
             if cpu { ProductLabelReader.forceCPU(request) }
-            try VNImageRequestHandler(cgImage: image, options: [:]).perform([request])
+            try VisionSerial.run { try VNImageRequestHandler(cgImage: image, options: [:]).perform([request]) }
         }
         // Apple's taxonomy is weak on garments (measured 2026-11-04: 0.01–0.03 on clothing renders), so a
         // label only counts when Vision is fairly sure; otherwise the cut-out's shape decides.
@@ -227,15 +228,15 @@ public enum GarmentPhotoAnalyzer {
 
     // MARK: Maths
 
-    static func distance(_ a: SIMD3<Double>, _ b: SIMD3<Double>) -> Double { ((a - b) * (a - b)).sum().squareRoot() }
+    package static func distance(_ a: SIMD3<Double>, _ b: SIMD3<Double>) -> Double { ((a - b) * (a - b)).sum().squareRoot() }
 
-    static func median(_ xs: [SIMD3<Double>]) -> SIMD3<Double> {
+    package static func median(_ xs: [SIMD3<Double>]) -> SIMD3<Double> {
         func m(_ k: Int) -> Double { let s = xs.map { $0[k] }.sorted(); return s[s.count / 2] }
         return SIMD3(m(0), m(1), m(2))
     }
 
     /// sRGB → CIELAB (D65), scaled to 0…1-ish so distances compare perceptually.
-    static func toLab(_ c: SIMD3<Double>) -> SIMD3<Double> {
+    package static func toLab(_ c: SIMD3<Double>) -> SIMD3<Double> {
         func lin(_ v: Double) -> Double { v <= 0.04045 ? v / 12.92 : pow((v + 0.055) / 1.055, 2.4) }
         let r = lin(c.x), g = lin(c.y), b = lin(c.z)
         let x = (0.4124 * r + 0.3576 * g + 0.1805 * b) / 0.95047
@@ -247,12 +248,12 @@ public enum GarmentPhotoAnalyzer {
 }
 
 /// Straight (non-premultiplied) RGBA8 pixels of an image, sRGB.
-struct RGBABuffer {
-    let width: Int
-    let height: Int
-    var bytes: [UInt8]
+package struct RGBABuffer {
+    package let width: Int
+    package let height: Int
+    package var bytes: [UInt8]
 
-    init?(_ image: CGImage) {
+    package init?(_ image: CGImage) {
         width = image.width
         height = image.height
         bytes = [UInt8](repeating: 0, count: width * height * 4)
@@ -270,15 +271,15 @@ struct RGBABuffer {
         }
     }
 
-    func rgb(_ x: Int, _ y: Int) -> SIMD3<Double> {
+    package func rgb(_ x: Int, _ y: Int) -> SIMD3<Double> {
         let i = (y * width + x) * 4
         return SIMD3(Double(bytes[i]), Double(bytes[i + 1]), Double(bytes[i + 2])) / 255
     }
 
-    func alpha(_ x: Int, _ y: Int) -> Double { Double(bytes[(y * width + x) * 4 + 3]) / 255 }
+    package func alpha(_ x: Int, _ y: Int) -> Double { Double(bytes[(y * width + x) * 4 + 3]) / 255 }
 
     /// The original pixels where the mask is set; transparent elsewhere. Nothing is recoloured.
-    func applying(mask: [Float]) -> CGImage? {
+    package func applying(mask: [Float]) -> CGImage? {
         var out = [UInt8](repeating: 0, count: bytes.count)
         for p in 0 ..< width * height where mask[p] > 0.5 {
             let a = Double(bytes[p * 4 + 3]) / 255

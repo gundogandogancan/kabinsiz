@@ -145,7 +145,7 @@ struct GarmentPhotoAnalyzerTests {
     }
 
     @Test("PHOTO-T07: our own Blender garments on a floor: cut out, neutral fabric reads as white or grey; Vision runs on the device")
-    func ownedGarments() throws {
+    func ownedGarments() async throws {
         guard FileManager.default.fileExists(atPath: Self.garmentsDir.path) else { return }
         let expected: [String: GarmentCategory] = [
             "shirt": .top, "tee": .top, "longSleeveTee": .top, "knit": .top, "jacket": .outerwear, "coat": .outerwear,
@@ -156,7 +156,7 @@ struct GarmentPhotoAnalyzerTests {
         for (stem, want) in expected.sorted(by: { $0.key < $1.key }) {
             let name = "\(stem)-thumb-fabric.png"
             let img = try #require(loadOwned(name), "\(name)")
-            let r = try GarmentPhotoAnalyzer.analyze(onFloor(img))
+            let r = try await VisionLane.run { try GarmentPhotoAnalyzer.analyze(onFloor(img)) }
             #expect(r.method != .none, "\(name): \(r.method)")
             #expect(r.coverage > 0.05 && r.coverage < 0.95, "\(name): \(r.coverage)")
             if r.categorySuggestion?.category == want { right += 1 }

@@ -67,11 +67,11 @@ struct ProductCaptureTests {
     }
 
     @Test("SCAN-T006b: the CPU-only path reads the same label (used when Vision has no accelerator context)")
-    func cpuOnly() throws {
+    func cpuOnly() async throws {
         let image = try #require(SyntheticLabel.render(.code128("KB-SNK-04-WHT"), lines: ["KB-SNK-04-WHT"]))
-        let codes = try ProductLabelReader.detectBarcodes(image, orientation: .up, cpuOnly: true)
+        let codes = try await VisionLane.run { try ProductLabelReader.detectBarcodes(image, orientation: .up, cpuOnly: true) }
         #expect(codes.first?.payload == "KB-SNK-04-WHT")
-        let lines = try ProductLabelReader.recognizeText(image, orientation: .up, cpuOnly: true)
+        let lines = try await VisionLane.run { try ProductLabelReader.recognizeText(image, orientation: .up, cpuOnly: true) }
         #expect(lines.contains { $0.replacingOccurrences(of: " ", with: "").contains("KB-SNK-04-WHT") }, "\(lines)")
         // The classic detector used as the simulator fallback reads the same barcode.
         let classic = try ProductLabelReader.barcodes(image, orientation: .up, cpuOnly: true, revision: VNDetectBarcodesRequestRevision2)
