@@ -172,10 +172,21 @@ struct AddGarmentView: View {
     @State private var walking: Int = 0
     @State private var weight = ""
     @State private var waterResistantLabel = false
+    @State private var showPhoto = false
 
     var body: some View {
         NavigationStack {
             Form {
+                // V37: the simplest way in is the photo; the form below stays for adding by hand.
+                Section {
+                    Button { showPhoto = true } label: {
+                        Label("Fotoğraftan 3B giysi", systemImage: "camera.viewfinder")
+                            .fontWeight(.semibold)
+                    }
+                    .accessibilityIdentifier("photoGarmentOpen")
+                } footer: {
+                    Text("Giysi kendi kalıbından dikilir; önündeki desen fotoğraftan gelir. Ya da aşağıdan elle ekle.")
+                }
                 TextField("Adı (ör. Lacivert ceket)", text: $name)
                 Picker("Tür", selection: $category) {
                     ForEach(GarmentCategory.allCases, id: \.self) { Text($0.displayName).tag($0) }
@@ -198,6 +209,7 @@ struct AddGarmentView: View {
                 }
             }
             .navigationTitle("Kıyafet ekle")
+            .sheet(isPresented: $showPhoto) { PhotoGarmentFlowView(onAdded: { dismiss() }) }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Vazgeç") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {

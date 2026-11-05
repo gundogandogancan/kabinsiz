@@ -1,4 +1,5 @@
 import BackgroundTasks
+import SelfModel
 import SwiftUI
 import Vault
 
@@ -26,6 +27,8 @@ struct KabinsizApp: App {
         WindowGroup {
             RootView()
                 .environment(model)
+                .environment(\.personalLook, model.personalLook)
+                .environment(\.photoGarments, model.photoGarments)
                 .task { await model.load() }
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in
                     MorningRefresh.shared.schedule()
@@ -121,4 +124,7 @@ extension EnvironmentValues {
     /// True while the home world is out of sight (the profile cover is up, or another tab is
     /// chosen). Its stage then stops its frame work (`WorldStage.setPaused`).
     @Entry var worldPaused = false
+    /// V37: the user's accepted look for every 3D figure (home and profile). Nil = the neutral form.
+    @Entry var personalLook: PersonalLook? = nil
+    @Entry var photoGarments: [String: PhotoGarment] = [:]
 }

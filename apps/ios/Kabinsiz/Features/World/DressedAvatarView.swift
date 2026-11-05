@@ -2,6 +2,7 @@ import AvatarDressing
 import BodyGeometry
 import LivingWorld
 import RealityKit
+import SelfModel
 import SwiftUI
 
 /// The dressed figure in the world (v2.5 §2.3, user decision 2026-11-04): it stands still until the
@@ -38,6 +39,8 @@ struct DressedAvatarView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// Out of sight: the stage stops its frame work (`WorldStage.setPaused`).
     @Environment(\.worldPaused) private var paused
+    @Environment(\.personalLook) private var look
+    @Environment(\.photoGarments) private var photoGarments
     @State private var stage = WorldStage()
     @State private var dragStartYaw: Float?
     @State private var pinchStartZoom: Float?
@@ -114,9 +117,9 @@ struct DressedAvatarView: View {
     private func sync() {
         stage.light(light)
         stage.spotlight(spotlight)
-        stage.show(body: body3D)
+        stage.show(body: body3D, look: look)
         stage.prewarm(prewarm, snapshot: snapshot)
-        stage.dress(outfit, snapshot: snapshot)
+        stage.dress(outfit, snapshot: snapshot, photos: photoGarments)
         if stage.selectedSlot != selectedSlot { stage.highlight(selectedSlot) }
         // The callbacks capture a binding and a closure, never `self`: through `self` they would hold
         // this view's state, which holds the stage, and the stage and its RealityKit view would

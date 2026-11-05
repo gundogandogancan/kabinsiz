@@ -350,9 +350,10 @@ final class HomeWorldModel {
     }
 
     /// Pieces for a slot: the user's own first; the example closet only while the figure wears the example.
+    /// A garment the user just added (even the first one) can be tried on at once, over the example look.
     func choices(for slot: GarmentSlotID, wardrobe: Wardrobe) -> [DressItem] {
-        let pool = isExample ? SyntheticCloset.studio : wardrobe
-        return pool.garments.filter { $0.condition.isPlannable }
+        let pool = wardrobe.garments + (isExample ? SyntheticCloset.studio.garments : [])
+        return pool.filter { $0.condition.isPlannable }
             .compactMap(GarmentAppearance.dressItem(for:))
             .filter { $0.slot == slot }
     }

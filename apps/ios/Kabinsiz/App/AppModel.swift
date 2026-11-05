@@ -7,6 +7,7 @@ import LocalStore
 import Observation
 import Octopus
 import ShoppingCopilot
+import SelfModel
 import SystemContracts
 import TravelEngine
 import Vault
@@ -21,6 +22,10 @@ enum Records {
     static let legacyMeasurements = VaultRecordSpec(id: "measurements", type: "measurements", domain: .body, classification: .localSensitive)
     static let trips = VaultRecordSpec(id: "trips", type: "trips", domain: .travel)
     static let consent = VaultRecordSpec(id: "consent", type: "consent", domain: .preferences)
+    /// V37: skin, hair and the opted-in face texture for the figure. Sensitive: one tap deletes it.
+    static let personalLook = VaultRecordSpec(id: "personal-look", type: "personal-look", domain: .body, classification: .localSensitive)
+    /// Garments rebuilt from their own photo: pattern + front pixels (V37, ADR-018 §7).
+    static let photoGarments = VaultRecordSpec(id: "photo-garments", type: "photo-garments", domain: .wardrobe)
     static func plan(_ tripID: String) -> VaultRecordSpec { VaultRecordSpec(id: "plan-\(tripID)", type: "plan", domain: .travel) }
     static func packing(_ tripID: String) -> VaultRecordSpec {
         VaultRecordSpec(id: "packing-\(tripID)", type: "packing", domain: .travel, derivedFrom: ["plan-\(tripID)"])
@@ -58,6 +63,10 @@ final class AppModel {
     private(set) var canUndoBody = false
     private(set) var canRedoBody = false
     private(set) var lastBodyDeletionReceipt: DeletionReceipt?
+    /// V37 "ayna ikiz": what the user accepted from their own photo. Nil = the neutral figure.
+    private(set) var personalLook: PersonalLook?
+    /// Wardrobe garment ID → the garment sewn from its photo. Shown on the figure instead of the generic shape.
+    private(set) var photoGarments: [String: PhotoGarment] = [:]
     private var bodyStudio: BodyStudio?
     /// The single §113 governor: thermal, Low Power, memory, lock and network decide what may run.
     let governor = DeviceResourceGovernor()
@@ -157,6 +166,8 @@ final class AppModel {
         wardrobe = await read(Wardrobe.self, Records.wardrobe, Wardrobe.schemaVersion, from: vault) ?? Wardrobe()
         passport = await read(FitPassport.self, Records.passport, FitPassport.schemaVersion, from: vault) ?? FitPassport()
         trips = await read([Trip].self, Records.trips, Trip.schemaVersion, from: vault) ?? []
+        personalLook = await read(PersonalLook.self, Records.personalLook, PersonalLook.schemaVersion, from: vault)
+        photoGarments = await read([String: PhotoGarment].self, Records.photoGarments, PhotoGarment.schemaVersion, from: vault) ?? [:]
         for trip in trips {
             plans[trip.id] = await read(TripPlan.self, Records.plan(trip.id), TripPlan.schemaVersion, from: vault)
             packingLists[trip.id] = await read(PackingList.self, Records.packing(trip.id), PackingList.schemaVersion, from: vault)
@@ -218,6 +229,19 @@ final class AppModel {
     func removeGarment(id: String) {
         wardrobe.remove(id: id)
         persistWardrobe()
+        if photoGarments.removeValue(forKey: id) != nil { persistPhotoGarments() }
+    }
+
+    /// "Fotoğraftan 3B giysi": the wardrobe entry and its pattern + photo, saved together.
+    func addPhotoGarment(_ garment: Garment, _ photo: PhotoGarment) {
+        upsert(garment)
+        photoGarments[garment.id] = photo
+        persistPhotoGarments()
+    }
+
+    private func persistPhotoGarments() {
+        let value = photoGarments
+        save([Records.photoGarments.id]) { try await $0.put(value, Records.photoGarments, schemaVersion: PhotoGarment.schemaVersion) }
     }
 
     func setCondition(_ condition: ItemCondition, garmentID: String) {
@@ -653,6 +677,8 @@ final class AppModel {
         MorningStore.eraseAll()
         NotificationCenter.default.post(name: .kabinsizDidDeleteAll, object: nil)
         wardrobe = Wardrobe()
+        personalLook = nil
+        photoGarments = [:]
         passport = FitPassport()
         body = nil
         bodyScene = nil
@@ -718,6 +744,27 @@ final class AppModel {
         save([Records.plan(tripID).id, Records.packing(tripID).id]) {
             if let plan { try await $0.put(plan, Records.plan(tripID), schemaVersion: TripPlan.schemaVersion) }
             if let list { try await $0.put(list, Records.packing(tripID), schemaVersion: PackingList.schemaVersion) }
+        }
+    }
+
+    // MARK: Self-model (V37)
+
+    /// Applies what the user ticked on the self-model review: the look (skin, hair, face only with its
+    /// opt-in), body rows one commit each (undoable like any edit), and garments into the wardrobe.
+    func acceptSelfModel(look: PersonalLook?, bodyEdits: [BodyEdit], garments: [Garment]) async {
+        if let look {
+            personalLook = look
+            save([Records.personalLook.id]) { try await $0.put(look, Records.personalLook, schemaVersion: PersonalLook.schemaVersion) }
+        }
+        for garment in garments { upsert(garment) }
+        for edit in bodyEdits { await commitBody(edit) }
+    }
+
+    /// "Yüzümü ve görünüşümü sil": the figure goes back to the neutral form and the record is destroyed.
+    func deletePersonalLook() {
+        personalLook = nil
+        save([Records.personalLook.id]) { vault in
+            if await vault.contains(Records.personalLook.id) { _ = try await vault.delete(Records.personalLook.id) }
         }
     }
 

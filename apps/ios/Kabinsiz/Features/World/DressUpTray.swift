@@ -1,4 +1,5 @@
 import AvatarDressing
+import SelfModel
 import SwiftUI
 
 /// Dress-up (user decision 2026-11-04: "oyun gibi olmalı, ekleyip çıkarabilmeli"). The tray sits under
@@ -9,6 +10,7 @@ struct DressUpTray: View {
     @Environment(AppModel.self) private var model
     @Environment(HomeWorldModel.self) private var world
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.photoGarments) private var photoGarments
     let onDone: () -> Void
 
     @State private var slot: GarmentSlotID = .top
@@ -95,7 +97,7 @@ struct DressUpTray: View {
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
                         .fill(Color.white)
                         .frame(width: 84, height: 92)
-                        .overlay { GarmentThumb(item: item, padding: 8) }
+                        .overlay { thumb(item) }
                         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous)
                             .strokeBorder(worn ? Atelier.copper : Color.black.opacity(0.08), lineWidth: worn ? 2.5 : 1))
                     if worn {
@@ -119,6 +121,16 @@ struct DressUpTray: View {
         .accessibilityHint(worn ? "Çıkarmak için dokun" : "Giymek için dokun")
         .accessibilityAddTraits(worn ? .isSelected : [])
         .accessibilityIdentifier("dressItem-\(item.id)")
+    }
+
+    /// A garment sewn from a photo shows its own front (the photo's pixels), not the generic drawing.
+    @ViewBuilder private func thumb(_ item: DressItem) -> some View {
+        if let png = photoGarments[item.id]?.frontPNG, let image = UIImage(data: png) {
+            Image(uiImage: image).resizable().scaledToFit().padding(8)
+                .accessibilityHidden(true)
+        } else {
+            GarmentThumb(item: item, padding: 8)
+        }
     }
 
     private func roundButton(_ symbol: String, _ label: String, id: String, enabled: Bool, action: @escaping () -> Void) -> some View {

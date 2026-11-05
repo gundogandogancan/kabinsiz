@@ -3,6 +3,7 @@ import Combine
 import LivingWorld
 import QuartzCore
 import RealityKit
+import SelfModel
 import SwiftUI
 
 /// The neutral 3D body (ADR-007), turned by the user's own hand: one-finger drag spins it about the
@@ -19,6 +20,7 @@ struct BodyModel3DView: View {
     var identifier = "body3D"
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.personalLook) private var look
     @State private var stage = Stage()
     /// Radians about +y; 0 = facing the viewer.
     @State private var yaw: Float = 0
@@ -86,7 +88,7 @@ struct BodyModel3DView: View {
         // Only the angle's binding is captured, never `self`: through `self` the callback would hold
         // this view's state, which holds the stage, and the stage would never be freed.
         let settledYaw = $yaw
-        return StageView(stage: stage, mesh: mesh, dark: colorScheme == .dark, yaw: yaw, zoom: zoom,
+        return StageView(stage: stage, mesh: mesh, dark: colorScheme == .dark, look: look, yaw: yaw, zoom: zoom,
                          onSettled: { settledYaw.wrappedValue = $0 })
             .allowsHitTesting(false)
     }
@@ -150,6 +152,7 @@ final class Stage {
     private let camera = PerspectiveCamera()
     private var shown: BodyMesh?
     private var shownDark: Bool?
+    private var shownLook: PersonalLook?
     private var heightM: Float = 1.7
     private var yaw: Float = 0
     private var spin = TurntableSpin()
@@ -226,18 +229,20 @@ final class Stage {
         pivot.transform = Transform(scale: .one, rotation: simd_quatf(angle: yaw, axis: SIMD3(0, 1, 0)), translation: .zero)
     }
 
-    func show(_ mesh: BodyMesh, dark: Bool) {
+    func show(_ mesh: BodyMesh, dark: Bool, look: PersonalLook? = nil) {
         // Previews during a drag keep the same revision, so the geometry itself is compared.
-        guard mesh != shown || dark != shownDark else { return }
+        guard mesh != shown || dark != shownDark || look != shownLook else { return }
         shown = mesh
         shownDark = dark
+        shownLook = look
         heightM = mesh.heightM
-        var material = PhysicallyBasedMaterial()
-        // Covered, matte, linen-toned: reads as a neutral form, not skin (§108.3 "covered").
-        material.baseColor = .init(tint: dark ? UIColor(red: 0.71, green: 0.64, blue: 0.56, alpha: 1) : UIColor(red: 0.84, green: 0.77, blue: 0.68, alpha: 1))
-        material.roughness = .init(floatLiteral: 0.88)
+        // Without a personal look: covered, matte, linen-toned, a neutral form, not skin (§108.3 "covered").
+        var material = PersonalFigure.bodyMaterial(look, neutral: dark ? UIColor(red: 0.71, green: 0.64, blue: 0.56, alpha: 1)
+                                                                      : UIColor(red: 0.84, green: 0.77, blue: 0.68, alpha: 1))
+        if look == nil { material.roughness = .init(floatLiteral: 0.88) }
         material.metallic = .init(floatLiteral: 0)
         body.children.removeAll()
+        for entity in PersonalFigure.headEntities(for: mesh, look: look) { body.addChild(entity) }
         for piece in mesh.pieces {
             var d = MeshDescriptor(name: piece.part.rawValue)
             d.positions = MeshBuffers.Positions(piece.positions)
@@ -365,6 +370,7 @@ private struct StageView: UIViewRepresentable {
     let stage: Stage
     let mesh: BodyMesh
     let dark: Bool
+    let look: PersonalLook?
     let yaw: Float
     let zoom: Float
     let onSettled: (Float) -> Void
@@ -377,14 +383,14 @@ private struct StageView: UIViewRepresentable {
         view.backgroundColor = .clear
         view.isUserInteractionEnabled = false
         stage.build(in: view)
-        stage.show(mesh, dark: dark)
+        stage.show(mesh, dark: dark, look: look)
         stage.place(yaw: yaw, zoom: zoom, animated: false)
         stage.onSpinSettled = onSettled
         return view
     }
 
     func updateUIView(_ view: DirectARView, context: Context) {
-        stage.show(mesh, dark: dark)
+        stage.show(mesh, dark: dark, look: look)
     }
 
     static func dismantleUIView(_ view: DirectARView, coordinator: Stage) {

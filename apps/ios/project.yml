@@ -55,6 +55,10 @@ targets:
         product: MorningReady
       - package: KabinsizCore
         product: ProductCapture
+      - package: KabinsizCore
+        product: SelfModel
+      - package: KabinsizCore
+        product: GarmentPattern
       - sdk: WeatherKit.framework
     info:
       path: Kabinsiz/Info.plist

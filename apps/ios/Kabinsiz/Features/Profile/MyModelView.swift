@@ -5,6 +5,8 @@ import SwiftUI
 struct MyModelView: View {
     @Environment(AppModel.self) private var model
     @State private var confirmDeleteAll = false
+    /// Presented from the list, not from its row: a row's sheet closes when the list recycles the row.
+    @State private var showSelfModel = false
 
     var body: some View {
         @Bindable var model = model
@@ -13,6 +15,7 @@ struct MyModelView: View {
                 .listRowBackground(Color.clear)
                 .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
             BodyStudioSection()
+            SelfModelSection(showFlow: $showSelfModel)
 
             Section {
                 Toggle("Denemelerimi önerilerde kullan", isOn: $model.passport.learningEnabled)
@@ -72,6 +75,7 @@ struct MyModelView: View {
         // list still scrolls its full length and keeps the keyboard avoidance it had.
         .safeAreaInset(edge: .top, spacing: 0) { BodyFigureHeader() }
         .background(Token.surfaceBase)
+        .sheet(isPresented: $showSelfModel) { SelfModelFlowView() }
         .navigationTitle("Benim Modelim")
         // Inline: the fixed 3D figure takes the space a large title would leave empty.
         .navigationBarTitleDisplayMode(.inline)

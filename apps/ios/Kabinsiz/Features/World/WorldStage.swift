@@ -4,7 +4,9 @@ import LivingWorld
 import Metal
 import os
 import QuartzCore
+import GarmentPattern
 import RealityKit
+import SelfModel
 import SwiftUI
 import UIKit
 
@@ -57,7 +59,11 @@ final class WorldStage {
     /// Garment meshes by (form, body revision): built once, so a look swap only swaps entities.
     private var meshCache: [String: [(GarmentMesh.Role, MeshResource, [ShapeResource])]] = [:]
     private var shownBody: BodyMesh?
+    private var shownLook: PersonalLook?
     private var shownOutfit: DressedOutfit?
+    private var shownPhotoKey = ""
+    /// Sewn photo garments by (garment, record), for the shown body.
+    private var sewnCache: [String: [(MeshResource, PhysicallyBasedMaterial, [ShapeResource])]] = [:]
     private var shownLight: WorldLight?
     private(set) var selectedSlot: GarmentSlotID?
 
@@ -85,16 +91,19 @@ final class WorldStage {
 
     // MARK: Figure
 
-    func show(body mesh: BodyMesh) {
-        guard mesh != shownBody else { return }
+    func show(body mesh: BodyMesh, look: PersonalLook? = nil) {
+        guard mesh != shownBody || look != shownLook else { return }
+        if mesh != shownBody {
+            meshCache.removeAll()
+            sewnCache.removeAll()
+            shownOutfit = nil
+        }
         shownBody = mesh
-        meshCache.removeAll()
-        shownOutfit = nil
-        var skin = PhysicallyBasedMaterial()
-        // Covered, matte, linen-toned form (§108.3): a neutral figure, not skin.
-        skin.baseColor = .init(tint: UIColor(red: 0.80, green: 0.73, blue: 0.64, alpha: 1))
-        skin.roughness = .init(floatLiteral: 0.85)
+        shownLook = look
+        // Without a personal look: the covered, matte, linen-toned form (§108.3), not skin.
+        let skin = PersonalFigure.bodyMaterial(look)
         body.children.removeAll()
+        for entity in PersonalFigure.headEntities(for: mesh, look: look) { body.addChild(entity) }
         for piece in mesh.pieces {
             guard let resource = try? MeshResource.generate(from: [descriptor(piece.positions, piece.normals, piece.indices, piece.part.rawValue)]) else { continue }
             let entity = ModelEntity(mesh: resource, materials: [skin])
@@ -110,14 +119,30 @@ final class WorldStage {
     }
 
     /// Dress the figure: one entity per slot, named by the slot so a ray hit names what was touched.
-    func dress(_ outfit: DressedOutfit, snapshot: AvatarSnapshot) {
-        guard outfit != shownOutfit else { return }
+    /// A garment with a photo record (`PhotoGarment`) is sewn from its own pattern around this body and
+    /// carries its photo on the front; every other garment keeps its generic shape.
+    func dress(_ outfit: DressedOutfit, snapshot: AvatarSnapshot, photos: [String: PhotoGarment] = [:]) {
+        let photoKey = photos.filter { outfit.items.values.map(\.id).contains($0.key) }
+            .map { "\($0.key)@\($0.value.createdAt.timeIntervalSince1970)" }.sorted().joined(separator: "|")
+        guard outfit != shownOutfit || photoKey != shownPhotoKey else { return }
         shownOutfit = outfit
+        shownPhotoKey = photoKey
         garments.children.removeAll()
         for slot in outfit.slots {
-            guard let item = outfit[slot], let parts = meshes(item.form, snapshot) else { continue }
+            guard let item = outfit[slot] else { continue }
             let entity = Entity()
             entity.name = slot.rawValue
+            if let photo = photos[item.id], let sewn = sewnParts(photo) {
+                for (resource, material, shapes) in sewn {
+                    let model = ModelEntity(mesh: resource, materials: [material])
+                    model.name = slot.rawValue
+                    model.components.set(CollisionComponent(shapes: shapes))
+                    entity.addChild(model)
+                }
+                garments.addChild(entity)
+                continue
+            }
+            guard let parts = meshes(item.form, snapshot) else { continue }
             for (role, resource, shapes) in parts {
                 let model = ModelEntity(mesh: resource, materials: [Self.material(item, role)])
                 model.name = slot.rawValue
@@ -127,6 +152,40 @@ final class WorldStage {
             garments.addChild(entity)
         }
         highlight(selectedSlot)
+    }
+
+    /// The pattern sewn onto the shown body: the front panels wear the photo, the back and the sleeves
+    /// the garment's main colour (the photo shows the front only). Built once per garment and body.
+    private func sewnParts(_ photo: PhotoGarment) -> [(MeshResource, PhysicallyBasedMaterial, [ShapeResource])]? {
+        guard let body = shownBody else { return nil }
+        let key = "\(photo.garmentID)@\(photo.createdAt.timeIntervalSince1970)"
+        if let cached = sewnCache[key] { return cached }
+        guard let sewn = try? PatternGarmentMesh.sew(photo.pattern, onto: body, photoAspects: [.front: photo.frontAspect]) else { return nil }
+        let colour = UIColor(rgb: photo.colourRGB)
+        var plain = PhysicallyBasedMaterial()
+        plain.baseColor = .init(tint: colour)
+        plain.roughness = 0.86
+        plain.sheen = .init(tint: colour.shaded(by: 1.15))
+        plain.faceCulling = .none
+        var printed = plain
+        if let image = UIImage(data: photo.frontPNG)?.cgImage,
+           let texture = try? TextureResource(image: image, options: .init(semantic: .color)) {
+            printed.baseColor = .init(tint: .white, texture: .init(texture))
+        }
+        var out: [(MeshResource, PhysicallyBasedMaterial, [ShapeResource])] = []
+        for (i, piece) in sewn.pieces.enumerated() {
+            var d = MeshDescriptor(name: "\(photo.garmentID)-\(piece.panel.rawValue)-\(i)")
+            d.positions = MeshBuffers.Positions(piece.positions)
+            d.normals = MeshBuffers.Normals(piece.normals)
+            // RealityKit samples with v up; the pattern UVs carry image v (down).
+            d.textureCoordinates = MeshBuffers.TextureCoordinates(piece.uvs.map { SIMD2($0.x, 1 - $0.y) })
+            d.primitives = .triangles(piece.indices)
+            guard let resource = try? MeshResource.generate(from: [d]) else { continue }
+            out.append((resource, piece.panel == .front ? printed : plain, [ShapeResource.generateConvex(from: piece.positions)]))
+        }
+        guard !out.isEmpty else { return nil }
+        sewnCache[key] = out
+        return out
     }
 
     private func meshes(_ form: GarmentForm, _ snapshot: AvatarSnapshot) -> [(GarmentMesh.Role, MeshResource, [ShapeResource])]? {
